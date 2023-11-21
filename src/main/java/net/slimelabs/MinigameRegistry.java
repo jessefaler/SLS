@@ -106,7 +106,7 @@ public class MinigameRegistry {
 
     //returns the names of all minigames as a list, spaces are replaced with underscores
     //used for the OnTabComplete in the commands class
-    public Iterable<String> getKeys() {
+    public Iterable<String> getKeys() {//gets all keys
         ArrayList<String> listOfKeys = new ArrayList<>();
         for(String key : MinigameRegistry.keySet()) {
             listOfKeys.add(key.trim().replace(" ", "_").toLowerCase());
