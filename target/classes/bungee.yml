@@ -1,0 +1,5 @@
+name: SLS
+version: '2.0-BETA'
+main: net.slimelabs.SLS
+author: protoxon
+description: Server Management Plugin
