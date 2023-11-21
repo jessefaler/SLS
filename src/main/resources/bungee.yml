@@ -1,0 +1,5 @@
+name: SLS
+version: '${project.version}'
+main: net.slimelabs.SLS
+author: protoxon
+description: Server Management Plugin
