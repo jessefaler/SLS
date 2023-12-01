@@ -16,12 +16,14 @@ public class FileHandler {
     String PATH_TO_MINIGAMES_CONFIG_FILE = "./plugins/sls/minigames.yml";
     String PATH_TO_MINIGAMES_FOLDER = "./plugins/sls/minigames";
 
+    String PATH_TO_JAVA_VERSIONS_FOLDER = "./plugins/sls/java_versions";
     String PATH_TO_SLS_FOLDER = "./plugins/sls";
     public FileHandler() {
         //create Files/Folders if they don't exist
         createSLSPluginFolderIfNotExists();
         createMinigamesConfigFileIfNotExists();
         createMinigamesFolderIfNotExists();
+        createJavaVersionsFolderIfNotExists();
 
         //read the minigame config file;
         addMinigamesToRegistryFromConfigFile();
@@ -41,7 +43,7 @@ public class FileHandler {
         assert data != null;
         List<Map<String, Object>> minigamesList = (List<Map<String, Object>>) data.get("minigames");
         for (Map<String, Object> minigame : minigamesList) {
-            String name = (String) minigame.get("name");
+            String name = minigame.get("name").toString().toLowerCase().trim();
             String authors = (String) minigame.get("authors");
             int maxPlayers = (int) minigame.get("max-players");
             int minPlayers = (int) minigame.get("min-players");
@@ -49,15 +51,17 @@ public class FileHandler {
             boolean reset = (boolean) minigame.get("reset-world");
             String path = (String) minigame.get("server-folder-path");
             String description = (String) minigame.get("description");
+            boolean useCustomJavaVersion = (boolean) minigame.get("use-custom-java-version");
+            String customJavaVersionPath = (String) minigame.get("custom-java-version-path");
             int ramInMB = convertToMegabytes(ram);
             if(ramInMB == -1) {
                 SLS.PROXY.getLogger().warning("[SLS] YAML Read Error: Incorrect RAM format in minigames config file. At minigame \""
                         + name + "\" Received: \"" + ram + "\" Example Formatting: \"2gb\", \"1000mb\", \"5000kb\"");
                 continue;
             }
-            SLS.MINIGAME_REGISTRY.addNewMinigame(name, authors, minPlayers, maxPlayers, ramInMB, reset, path, description);
+            SLS.MINIGAME_REGISTRY.addNewMinigame(name, authors, minPlayers, maxPlayers, ramInMB, reset, useCustomJavaVersion, customJavaVersionPath, path, description);
         }
-    }
+     }
 
     //reads the Minigames Config File. Uses the snake YAML Library to read the YAML file into a Map.
     private Map<String, Object> readYamlFile() {
@@ -128,6 +132,19 @@ public class FileHandler {
         }
     }
 
+    // creates the java versions folder if it doesn't already exist
+    // the minigames folder holds all minigame server folders
+    // located in ./plugins/sls/java_versions
+    public void createJavaVersionsFolderIfNotExists() {
+        File file = new File(PATH_TO_JAVA_VERSIONS_FOLDER);
+        if (!file.exists()) {
+            boolean success = file.mkdir();
+            if(!success) {
+                SLS.PROXY.getLogger().warning("§c[SLS] ERROR: Failed To Create Java Versions Folder");//Send Message To Console If Failed To create New File
+            }
+        }
+    }
+
     // creates the minigames configuration file if it doesn't already exist
     // the minigames config file holds all the configuration options for each minigame
     // located in ./plugins/sls/minigames.yml
@@ -140,14 +157,26 @@ public class FileHandler {
                 String output = "#Note if reset-world is true, you will need to place a copy of the world folder in a"
                         + " folder called reset-world in the minigames server directory.\n#Make the world"
                         + " folders name matches the level-name in the server.properties file. Default level-name is \"world\"\n"
-                        + "#reset-world: true is recommend for minigames\n\n"
+                        + "#reset-world: true is recommend for minigames\n"
+                        + "#Note some servers might not be able to use the default java version. For these servers you will have to download\n"
+                        + "#a compatible java version and place the folder inside of the java_versions directory in the sls plugin folder.\n"
+                        + "#Directions on how to do this below.\n#Adding a custom version of java directions:\n"
+                        + "#1. Go to \"https://www.oracle.com/java/technologies/downloads/archive/\" select the version you need. Download the\n"
+                        + "#Compressed Archive for the machine you are using. If you are using WitherHost. WitherHost runs on linux so download the Linux Compressed Archive\n "
+                        + "#2. Go to the sls plugin folder and drop the Compressed archive into the java_versions folder. Extract the archive and open the folder\n"
+                        + "#find the java.exe inside of the bin folder. Now you are going to copy the local directory path going from the java_versions folder to\n"
+                        + "#the java.exe file then you are going to back out to folders. it should look something like this\n"
+                        + "#\"../../java_versions/jdk-14/bin/java.exe\" (for linux remove .exe) now paste that into the custom-java-version-path: field in the minigames.yml for your\n"
+                        + "#minigame and make sure use-custom-java-version is set to true.\n\n"
                         + "minigames:\n  - name: 'Makers Wars' #name of the game\n"
                         + "    authors: 'MineMakers Team' #the player(s) or team that made the game\n"
                         + "    max-players: 12 #the maximum number of players a game can have\n"
                         + "    min-players: 1 #the minimum number of players a game can have\n"
                         + "    ram-allocation: '1gb' #how much ram to allocate. can use gb, mb, kb\n"
                         + "    reset-world: true #weather to reset the server world on start (suggested).\n"
-                        + "    server-folder-path: './sls/servers/makers_wars/' #path to the server folder for this game\n"
+                        + "    use-custom-java-version: true #use a custom java version.\n"
+                        + "    custom-java-version-path: '../../java_versions/jdk-14/bin/java' #use a custom java version.\n"
+                        + "    server-folder-path: './plugins/sls/minigames/makers_wars' #path to the server folder for this game\n"
                         + "    description: 'players fight to the death in a skywars based minigame' #short description of the game\n";
                 writer.write(output);
                 writer.close();

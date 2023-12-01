@@ -23,62 +23,82 @@ public class ServerRegistry {
             return false;//failed to start
         }
         ServerInstance server = new ServerInstance();//create an instance of the server instance class
-        server.startServer(path, memory, minigameName);//start a server in server instance
         SERVERS.put(minigameName, server);//add the server instance to the SERVERS map
+        server.startServer(path, memory, minigameName);//start a server in server instance
         return true;
     }
 
     public String startServer(String minigameName) {
-        for(String key : SLS.MINIGAME_REGISTRY.MinigameRegistry.keySet()) {//get the correct casing of the key
-            if(key.equalsIgnoreCase(minigameName)) {
-                minigameName = key;
-                break;
-            }
-        }
         if(SERVERS.containsKey(minigameName)) {
             //this is here to stop two of the same server from running at the same time.
             //I plan to add the ability to run multiple of the same server at once using-
             //an id system or the servers port to identify the server in the future.
-            return "Server already running.";
+            return "§cServer already running.";
         }
         if(!SLS.MINIGAME_REGISTRY.containsMinigame(minigameName)) {
-            return "Server " + minigameName + " dose not exist.";
+            return "§cServer " + minigameName + " dose not exist.";
         }
         ServerInstance server = new ServerInstance();//create an instance of the server instance class
         server.startServer(SLS.MINIGAME_REGISTRY.getFolderName(minigameName), SLS.MINIGAME_REGISTRY.getCustomRam(minigameName), minigameName);//start a server in server instance
         SERVERS.put(minigameName, server);//add the server instance to the SERVERS map
-        return "Starting server " + minigameName;
+        return "§7Starting server " + toTitleCase(minigameName);
     }
 
-    public void shutdownServer(String minigameName) {
-        for(String key : SERVERS.keySet()) {//get the correct casing of the key
-            if(key.equalsIgnoreCase(minigameName)) {
-                minigameName = key;
-                SERVERS.get(minigameName).shutDownServer();//shutdown the server
-            }
+    public String shutdownServer(String minigameName) {
+        if(SERVERS.containsKey(minigameName)) {//check if the server is running
+            SERVERS.get(minigameName).shutDownServer();//shutdown the server
+            SERVERS.remove(minigameName);//remove the server from the SERVERS map
+            return "§7Shutdown server " + toTitleCase(minigameName) + ".";
         }
-        SERVERS.remove(minigameName);//remove the server from the SERVERS map
+        if(SLS.MINIGAME_REGISTRY.containsMinigame(minigameName)) {//the minigame exists but is not running
+            return toTitleCase(minigameName) + " §cis not running.";
+        }
+        return "§cNo such server " + toTitleCase(minigameName) + ".";
     }
 
     //shuts down all servers
-    public void shutdownAllServers() {
+    public String shutdownAllServers() {
+        if(SERVERS.isEmpty()) {//no servers are running
+            return "§cNo minigame servers are running.";
+        }
         for(String key : SERVERS.keySet()) {//get all servers
             SERVERS.get(key).shutDownServer();//shutdown the server
         }
         SERVERS = new HashMap<>();//set the servers Map to empty
+        return "§7Shutdown all minigame servers.";
     }
 
     public boolean isServerOnline(String minigameName) {
-        return SERVERS.get(minigameName).isOnline();
+        if(SERVERS.get(minigameName) != null) {
+            return SERVERS.get(minigameName).isOnline();
+        }
+        return false;
+    }
+    public String runACommand(String minigameName, String command) {
+        if(SERVERS.get(minigameName) == null) {
+            if(SLS.MINIGAME_REGISTRY.containsMinigame(minigameName)) {
+                return "§cFailed to run the command. §7" + toTitleCase(minigameName) + " is not online.";
+            }
+            return "§cMinigame " + toTitleCase(minigameName) + " dose not exist.";
+        }
+        SERVERS.get(minigameName).runCommand(command);
+        return "§7executed command \"" + command + "\" on " + toTitleCase(minigameName);
     }
 
     public boolean isShutdown(String minigameName) {
+        if(SERVERS.get(minigameName) == null) {
+            return true;
+        }
         return SERVERS.get(minigameName).isShutdown();
     }
 
-    public Iterable<String> getOnlineMinigameNamesAsList() {
+    //returns a list of all online minigame servers
+    //@param include all. Weather to include the text "all" in the minigame list
+    public Iterable<String> getOnlineMinigameNamesAsList(boolean includeAll) {
         ArrayList<String> output = new ArrayList<>();
-        output.add("all");
+        if(includeAll) {
+            output.add("all");
+        }
         for(String name : SERVERS.keySet()) {
             output.add(name.trim().replace(" ", "_").toLowerCase());
         }
@@ -92,5 +112,64 @@ public class ServerRegistry {
             }
         }
         return false;
+    }
+
+    //returns a string of a minigame and its player count
+    public String info(String minigameName) {
+        boolean hasGame = false;
+        for(String key : SERVERS.keySet()) {//check if game is running
+            if(key.equalsIgnoreCase(minigameName)) {
+                hasGame = true;
+            }
+        }
+        if(!hasGame) {
+            if(SLS.MINIGAME_REGISTRY.containsMinigame(minigameName)) {
+                return "§c" + minigameName + " is not online";
+            }
+            return "§cNo such server " + minigameName;
+        }
+        if(SERVERS.get(minigameName) != null) {
+            return SERVERS.get(minigameName).info();
+        }
+        return "";
+    }
+
+    //returns a String of all minigame names and player counts
+    public String info() {
+        if(SERVERS.size() == 0) {//no servers online
+            return "§cNo minigame servers are currently online.";
+        }
+        StringBuilder info = new StringBuilder("§3Online Minigames: \n");
+        for(String key : SERVERS.keySet()) {
+            info.append("§7- ").append(SERVERS.get(key).info()).append("\n");
+        }
+        return info.toString();
+    }
+
+    //converts a string to title casing
+    public static String toTitleCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return input; // Return the input unchanged if it's null or empty
+        }
+
+        // Split the input string into words
+        String[] words = input.split("\\s+");
+
+        // Capitalize the first letter of each word
+        for (int i = 0; i < words.length; i++) {
+            words[i] = capitalize(words[i]);
+        }
+
+        // Join the words back together
+        return String.join(" ", words);
+    }
+
+    //capitalize a word
+    public static String capitalize(String word) {
+        if (word == null || word.isEmpty()) {
+            return word; // Return the word unchanged if it's null or empty
+        }
+        // Capitalize the first letter and append the rest of the word
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1);
     }
 }

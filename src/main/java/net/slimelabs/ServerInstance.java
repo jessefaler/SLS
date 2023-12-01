@@ -29,11 +29,9 @@ public class ServerInstance {
 
     private Process process;
 
-    private int memory;
     private String name;
 
     private boolean online;
-
     private boolean shutdown;
 
     //starts up and runs a server
@@ -41,28 +39,34 @@ public class ServerInstance {
     public void startServer(String path, int memory, String minigameName) {
         File serverDirectory = new File(path);
         int port = generateRandomPort();
-        this.memory = memory;
         name = minigameName;
         SLS.PROXY.getLogger().info("Starting server " + name
                 + " on port " + port + " with " + memory + "mb ram");
-        ProcessBuilder processBuilder = new ProcessBuilder("java", "-Xmx" + memory + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
+
+        ProcessBuilder processBuilder;
+        if (SLS.MINIGAME_REGISTRY.getUseCustomJDK(minigameName)) {//check if this minigame uses a custom version of java
+            String javaExecutablePath = SLS.MINIGAME_REGISTRY.getCustomJDKPath(minigameName);//if so get the path to the java executable
+            processBuilder = new ProcessBuilder(javaExecutablePath, "-Xmx" + memory + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
+        } else {
+            processBuilder = new ProcessBuilder("java", "-Xmx" + memory + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
+        }
         processBuilder.directory(serverDirectory);
         processBuilder.redirectErrorStream(true);
 
         resetWorld(path, minigameName);//resets world if enabled for this minigame
 
         //runs the server on an asynchronous thread.
-        runServer(processBuilder, minigameName);
+        runServer(processBuilder, minigameName, path);
 
         //add server to bungee-cord
         InetSocketAddress address = new InetSocketAddress("127.0.0.1", port);
-        name = name.trim().replace(" ", "_").toLowerCase();
-        ServerInfo serverInfo = SLS.PROXY.constructServerInfo(name, address, name, false);
-        SLS.PROXY.getServers().put(name, serverInfo);
+        String formattedName = name.trim().replace(" ", "_").toLowerCase();
+        ServerInfo serverInfo = SLS.PROXY.constructServerInfo(formattedName, address, formattedName, false);
+        SLS.PROXY.getServers().put(formattedName, serverInfo);
     }
 
     //runs the server process on an asynchronous thread.
-    public void runServer(ProcessBuilder processBuilder, String minigameName) {
+    public void runServer(ProcessBuilder processBuilder, String minigameName, String path) {
         CompletableFuture.runAsync(() -> {
             try {
                 process = processBuilder.start();
@@ -71,6 +75,7 @@ public class ServerInstance {
                 InputStreamReader isr = new InputStreamReader(is);
                 BufferedReader br = new BufferedReader(isr);
                 String line;
+
                 while ((line = br.readLine()) != null) {
                     System.out.println("[" + name + "] " + line);
                     if(online || line.contains("Done (")) {
@@ -88,13 +93,17 @@ public class ServerInstance {
                 }
 
                 // Wait for the server to finish
-                SLS.PROXY.getServers().remove(name);
+                SLS.PROXY.getServers().remove(name.trim().replace(" ", "_").toLowerCase());
                 shutdown = true;
+                SLS.SERVER_REGISTRY.SERVERS.remove(minigameName);
+                if(SLS.MINIGAME_REGISTRY.getReset(minigameName)) {//delete the world folder if world-reset is enabled to save space
+                    File directoryToDelete = new File(path + "/world");
+                    FileUtils.forceDelete(directoryToDelete);
+                }
                 int exitCode = process.waitFor();
                 System.out.println("Server exited with code " + exitCode);
-            }
-            catch (IOException | InterruptedException e) {
-                e.printStackTrace();
+            } catch (IOException | InterruptedException ignored) {
+
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -122,7 +131,7 @@ public class ServerInstance {
 
     public void shutDownServer() {
         process.destroy();
-        SLS.PROXY.getServers().remove(name);
+        SLS.PROXY.getServers().remove(name.trim().replace(" ", "_").toLowerCase());
     }
 
     public boolean isOnline() {
@@ -136,15 +145,14 @@ public class ServerInstance {
         return name;
     }
 
+    //returns the server name and number of players online
     public String info() {
-        ServerInfo serverInfo = SLS.PROXY.getServerInfo(name);
-        String serverName = serverInfo.getName();
-        int playersOnline = serverInfo.getPlayers().size();
-        String info = "";
-        info += ChatColor.WHITE + "Server Name: " + ChatColor.AQUA + serverName + "\n";
-        info += ChatColor.WHITE + "  Online Players: " + ChatColor.RED + playersOnline + "\n";
-        info += ChatColor.WHITE + "  Memory: " + ChatColor.RED + memory + "mb\n";
-        return info;
+        String formattedName = name.trim().replace(" ", "_").toLowerCase();
+        int players = SLS.PROXY.getServerInfo(formattedName).getPlayers().size();
+        if(players == 1) {
+            return "§a" + name + ": §7" + SLS.PROXY.getServerInfo(formattedName).getPlayers().size() + " player";
+        }
+        return "§a" + name + ": §7" + SLS.PROXY.getServerInfo(formattedName).getPlayers().size() + " players";
     }
 
     public void resetWorld(String pathToServerFolder, String minigame) {
@@ -152,11 +160,31 @@ public class ServerInstance {
             return;
         }
         File sourceDirectory = new File(pathToServerFolder + "/reset-world");
+        File directoryToDelete = new File(pathToServerFolder + "/world");
         File destinationDirectory = new File(pathToServerFolder);
         try {
+            if(directoryToDelete.exists()) {
+                FileUtils.forceDelete(directoryToDelete);//FileUtils.copyDirectory() will replace the directory, but I had some problems with it not deleting it so i added this force delete.
+            }
             FileUtils.copyDirectory(sourceDirectory, destinationDirectory);
         } catch (java.io.IOException e) {
+            e.printStackTrace();
             SLS.PROXY.getLogger().warning(e.getMessage());
+        }
+    }
+
+    public void runCommand(String command) {
+        if(command != null && process.isAlive()) {
+            try {
+                OutputStream os = process.getOutputStream();
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
+                // Example: sending a command to the server
+                bw.write(command);
+                bw.newLine();
+                bw.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

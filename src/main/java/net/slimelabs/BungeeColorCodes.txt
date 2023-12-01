@@ -1,4 +1,6 @@
 
+Text Colors:
+
 §0: Black
 §1: Dark Blue
 §2: Dark Green
@@ -15,3 +17,12 @@
 §d: Light Purple
 §e: Yellow
 §f: White
+
+Formatting Codes:
+
+§k: Obfuscated (Random characters)
+§l: Bold
+§m: Strikethrough
+§n: Underline
+§o: Italic
+§r: Reset (Resets formatting to default)

@@ -16,8 +16,8 @@ public class MinigameRegistry {
     Map<String, MinigameConfig> MinigameRegistry = new HashMap<>();
 
     //adds a new minigame object to the registry
-    public void addNewMinigame(String name, String authors, int minPlayers, int maxPlayers, int ram, boolean reset, String filePath, String MinigameDescription) {
-        MinigameRegistry.put(name, new MinigameConfig(authors, minPlayers, maxPlayers, ram, reset, filePath, MinigameDescription));
+    public void addNewMinigame(String name, String authors, int minPlayers, int maxPlayers, int ram, boolean reset, boolean useCustomJDK, String customJDKPath, String filePath, String MinigameDescription) {
+        MinigameRegistry.put(name, new MinigameConfig(authors, minPlayers, maxPlayers, ram, reset, useCustomJDK, customJDKPath, filePath, MinigameDescription));
     }
 
     public void purgeRegistry() {
@@ -44,6 +44,14 @@ public class MinigameRegistry {
         return MinigameRegistry.get(name).customRamMB;
     }
 
+    public boolean getUseCustomJDK(String name) {
+        return MinigameRegistry.get(name).useCustomJDK;
+    }
+
+    public String getCustomJDKPath(String name) {
+        return MinigameRegistry.get(name).customJDKPath;
+    }
+
     public boolean getReset(String name) {
         return MinigameRegistry.get(name).reset;
     }
@@ -67,6 +75,8 @@ public class MinigameRegistry {
             output.append("\n§3   min-players: §6").append(MinigameRegistry.get(name).minPlayers);
             output.append("\n§3   ram-allocation: §c").append(MinigameRegistry.get(name).customRamMB).append("mb");
             output.append("\n§3   reset-world: §c").append(MinigameRegistry.get(name).reset);
+            output.append("\n§3   use-custom-java-version: §c").append(MinigameRegistry.get(name).useCustomJDK);
+            output.append("\n§3   custom-java-version-path: §c").append(MinigameRegistry.get(name).customJDKPath);
             output.append("\n§3   server-folder-path: §c").append(MinigameRegistry.get(name).FolderName);
             String description = MinigameRegistry.get(name).MinigameDescription;
             if(description.length() > 33) {//shorten the description to 15 characters, so it doesn't take up the screen when viewed
@@ -79,17 +89,18 @@ public class MinigameRegistry {
 
     //returns a string with a single minigames config.
     public String viewAMinigamesConfig(String name) {
-        for(String key : MinigameRegistry.keySet()) {//get the correct casing of the key
-            if(key.equalsIgnoreCase(name)) {
-                name = key;
-            }
+        if(!containsMinigame(name)) {
+            return "§c" + name + " dose not exist.";
         }
+
         return "§7config for " + name + "\n§a - name: " + name +
                 "\n§3   Authors: §c" + MinigameRegistry.get(name).authors +
                 "\n§3   max-players: §6" + MinigameRegistry.get(name).maxPlayers +
                 "\n§3   min-players: §6" + MinigameRegistry.get(name).minPlayers +
                 "\n§3   ram-allocation: §c" + MinigameRegistry.get(name).customRamMB + "mb" +
                 "\n§3   reset-world: §6" + MinigameRegistry.get(name).reset +
+                "\n§3   use-custom-java-version: §6" + MinigameRegistry.get(name).useCustomJDK +
+                "\n§3   custom-java-version-path: §6" + MinigameRegistry.get(name).customJDKPath +
                 "\n§3   server-folder-path: §c" + MinigameRegistry.get(name).FolderName +
                 "\n§3   description: §c" + MinigameRegistry.get(name).MinigameDescription;
     }
@@ -120,6 +131,6 @@ public class MinigameRegistry {
      *  the name of the server folder where the game is located
      * A record in java is a class that is meant to only store data it automatically provides the getter and setter methods.
      */
-    private record MinigameConfig(String authors, int minPlayers, int maxPlayers, int customRamMB, boolean reset, String FolderName, String MinigameDescription) {}
+    private record MinigameConfig(String authors, int minPlayers, int maxPlayers, int customRamMB, boolean reset, boolean useCustomJDK, String customJDKPath, String FolderName, String MinigameDescription) {}
 }
 
