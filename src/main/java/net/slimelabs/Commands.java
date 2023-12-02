@@ -24,7 +24,7 @@ public class Commands {
             if (args.length < 1) {
                 sender.sendMessage(new TextComponent("§cIncorrect Command Usage"));
                 if(sender.hasPermission("sls.command.admin")) {//sender has the admin permission so send them all command options
-                    sender.sendMessage(new TextComponent("§7Usage: /sls §f<§7join§f|§7start§f|§7shutdown§f|§7config§f|§7console§f|§7debug§f|§7info§f>"));
+                    sender.sendMessage(new TextComponent("§7Usage: /sls §8<§7join§8|§7start§8|§7shutdown§8|§7config§8|§7console§8|§7debug§8|§7info§8>"));
                     return;
                 }
                 sender.sendMessage(new TextComponent("§7Usage: /sls <join> <minigame>"));
@@ -174,7 +174,7 @@ public class Commands {
                 default -> {
                     sender.sendMessage(new TextComponent("§cIncorrect Command Usage"));
                     if(sender.hasPermission("sls.command.admin")) {//sender has the admin permission so send them all command options
-                        sender.sendMessage(new TextComponent("§7Usage: /sls §f<§7join§f|§7start§f|§7shutdown§f|§7config§f|§7console§f|§7debug§f|§7info§f>"));
+                        sender.sendMessage(new TextComponent("§7Usage: /sls §8<§7join§8|§7start§8|§7shutdown§8|§7config§8|§7console§8|§7debug§8|§7info§8>"));
                         return;
                     }
                     sender.sendMessage(new TextComponent("§7Usage: /sls <join> <minigame>"));

@@ -1,5 +1,6 @@
 package net.slimelabs;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +23,14 @@ public class ServerRegistry {
             //an id system or the servers port to identify the server in the future.
             return false;//failed to start
         }
+        if (!doseDirectoryExist(path)) {
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.");
+            return false;
+        }
+        if(!doseDirectoryExist(path + "/server.jar")) {
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path);
+            return false;
+        }
         ServerInstance server = new ServerInstance();//create an instance of the server instance class
         SERVERS.put(minigameName, server);//add the server instance to the SERVERS map
         server.startServer(path, memory, minigameName);//start a server in server instance
@@ -39,9 +48,20 @@ public class ServerRegistry {
             return "§cServer " + minigameName + " dose not exist.";
         }
         ServerInstance server = new ServerInstance();//create an instance of the server instance class
+        String path = SLS.MINIGAME_REGISTRY.getFolderName(minigameName);
+        if (!doseDirectoryExist(path)) {
+            SLS.SERVER_REGISTRY.shutdownServer(minigameName);
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.");
+            return "§cFailed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.";
+        }
+        if(!doseDirectoryExist(path + "/server.jar")) {
+            SLS.SERVER_REGISTRY.shutdownServer(minigameName);
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path);
+            return "§cFailed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path;
+        }
         server.startServer(SLS.MINIGAME_REGISTRY.getFolderName(minigameName), SLS.MINIGAME_REGISTRY.getCustomRam(minigameName), minigameName);//start a server in server instance
         SERVERS.put(minigameName, server);//add the server instance to the SERVERS map
-        return "§7Starting server " + toTitleCase(minigameName);
+        return null;//no issues occurred so return null
     }
 
     public String shutdownServer(String minigameName) {
@@ -171,5 +191,10 @@ public class ServerRegistry {
         }
         // Capitalize the first letter and append the rest of the word
         return Character.toUpperCase(word.charAt(0)) + word.substring(1);
+    }
+
+    public boolean doseDirectoryExist(String path) {
+        File file = new File(path);
+        return file.exists();
     }
 }

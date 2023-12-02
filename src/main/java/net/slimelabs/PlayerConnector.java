@@ -58,7 +58,20 @@ public class PlayerConnector extends ServerRegistry {
             return;
         }
         //start the server
-        SLS.SERVER_REGISTRY.startServer(SLS.MINIGAME_REGISTRY.getFolderName(name), SLS.MINIGAME_REGISTRY.getCustomRam(name), name);
+        if(sender.hasPermission("sls.command.admin")) {
+            String output = SLS.SERVER_REGISTRY.startServer(name);
+            if(output != null) {//an issue occurred log the error message to a player
+                sender.sendMessage(new TextComponent(SLS.SERVER_REGISTRY.startServer(name)));
+                return;
+            }
+        }
+        else {
+            String output = SLS.SERVER_REGISTRY.startServer(name);
+            if(output != null) {//an issue occurred log the error message to a player
+                sender.sendMessage(new TextComponent("§cFailed to join " + name));
+                return;
+            }
+        }
         new Task(name, sender, plugin);
     }
 
