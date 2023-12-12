@@ -24,11 +24,11 @@ public class ServerRegistry {
             return false;//failed to start
         }
         if (!doseDirectoryExist(path)) {
-            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.");
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + ". Directory " + path + " dose not exist.");
             return false;
         }
         if(!doseDirectoryExist(path + "/server.jar")) {
-            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path);
+            SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + ". Could not find server.jar in " + path);
             return false;
         }
         ServerInstance server = new ServerInstance();//create an instance of the server instance class
@@ -52,12 +52,12 @@ public class ServerRegistry {
         if (!doseDirectoryExist(path)) {
             SLS.SERVER_REGISTRY.shutdownServer(minigameName);
             SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.");
-            return "§cFailed to start " + toTitleCase(minigameName) + " directory " + path + " dose not exist.";
+            return "§cFailed to start " + toTitleCase(minigameName) + ". Directory " + path + " dose not exist.";
         }
         if(!doseDirectoryExist(path + "/server.jar")) {
             SLS.SERVER_REGISTRY.shutdownServer(minigameName);
             SLS.PROXY.getLogger().warning("§c[SLS] Failed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path);
-            return "§cFailed to start " + toTitleCase(minigameName) + " could not find server.jar in " + path;
+            return "§cFailed to start " + toTitleCase(minigameName) + ". Could not find server.jar in " + path;
         }
         server.startServer(SLS.MINIGAME_REGISTRY.getFolderName(minigameName), SLS.MINIGAME_REGISTRY.getCustomRam(minigameName), minigameName);//start a server in server instance
         SERVERS.put(minigameName, server);//add the server instance to the SERVERS map

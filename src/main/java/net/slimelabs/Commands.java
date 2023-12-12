@@ -94,7 +94,14 @@ public class Commands {
                         return;
                     }
                     //start the server and send the player with the success message
-                    sender.sendMessage(new TextComponent(SLS.SERVER_REGISTRY.startServer(format(args[1]))));//start <minigame>
+                    String output = SLS.SERVER_REGISTRY.startServer(format(args[1]));
+                    if(output != null) {
+                        //the start method returns a string of what happened if an error occur otherwise it returns
+                        //null so if it is not null an error occurred in the starting process
+                        sender.sendMessage(new TextComponent(SLS.SERVER_REGISTRY.startServer(format(args[1]))));//start <minigame>
+                        return;
+                    }
+                    sender.sendMessage(new TextComponent("§7Starting " + format(args[1])));
                 }
 
                 //---------------------- configuration of the /shutdown command ---------------------- \/ 🟪 /shutdown
