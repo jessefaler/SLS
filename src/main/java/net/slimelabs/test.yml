@@ -1,18 +1,9 @@
 minigames:
-  - name: 'meteor miners'
-    authors: 'MineMakers Team'
-    max-players: 25
+  - name: 'name'
+    authors: 'author'
+    max-players: 12
     min-players: 0
     ram-allocation: '25mb'
-    server-folder-path: './sls/servers/meteor_miners/'
-    description: 'team-based space shooter in which two teams fight over valuable ores in an attempt to score more points than the enemy.'
-  - name: 'skywars'
-    authors: 'likeabauws, YZEROgame, and 123maarten123'
-    max-players: 25
-    min-players: 0
-    ram-allocation: '25mb'
-    server-folder-path: './sls/servers/skywars/'
-    description: 'skywars-based minigame'
-
-
+    server-folder-path: './sls/servers/name/'
+    description: 'description'
 
