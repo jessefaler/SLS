@@ -1,16 +1,28 @@
-# SLS
-Server managment plugin for SlimeLabs.net
+# SLS Plugin
 
-Update 2.0.1 - 12/1/2023 9:43 AM -->
+**SLS** is a powerful plugin designed to dynamically start and manage servers, facilitate cross-server communication, and maintain a server registry.
 
-Changes from V-2.0.0:
+## Features
+- **Dynamic Server Management:** Automatically start and stop servers as needed.
+- **Cross-Server Communication:** Seamlessly manage communication between multiple servers.
+- **Server Registry Management:** Keep track of active and available servers.
 
-1. Minigame names are now read from the config in lowercase for consistency.
-2. Casing checks for minigame names have been removed.
-3. The commands class has been rewritten for enhanced modularity. Adding new commands is now much easier, and commands include usage messages.
-4. Added permission "sls.command.admin" to the /sls command. Players can still use /sls join <minigame> without the permission but can't force other players to join.
-5. checks if the minigames directory and server.jar exist before starting a minigame now
-6. The "already connected to this server" message no longer appears for players already in the minigame when using /sls join <minigame> all.
-7. Fixed a bug where minigame servers were not properly removed from BungeeCord when shutting down.
-8. The viewAMinigameConfig method now checks if the minigame is in the config before attempting to view it.
-9. I figured out how to use GitHub
+## Installation
+
+1. **Download the Latest Jar:**
+   - Obtain the latest version of the SLS plugin [here](https://github.com/protoxon/SLS/releases/tag/pre-release2).
+   
+2. **Move Jar to Plugins Folder:**
+   - Move the downloaded jar file to the `plugins` folder of your proxy server.
+   
+3. **Start the Server:**
+   - Launch your proxy server to generate the configuration files.
+   
+4. **Modify the Configurations:**
+   - Adjust the configuration settings as needed to suit your server setup. The configuration files can be found in the `plugins/SLS` directory.
+
+## Permissions
+
+- **Administrator Commands:** 
+  - Permission: `sls.command.admin`
+  - Required for executing administrative commands on the proxy server.
