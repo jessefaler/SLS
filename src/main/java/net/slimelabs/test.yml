@@ -1,9 +1,0 @@
-minigames:
-  - name: 'name'
-    authors: 'author'
-    max-players: 12
-    min-players: 0
-    ram-allocation: '25mb'
-    server-folder-path: './sls/servers/name/'
-    description: 'description'
-
