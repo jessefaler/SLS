@@ -10,7 +10,7 @@
 ## Installation
 
 1. **Download the Latest Jar:**
-   - Obtain the latest version of the SLS plugin [here](https://github.com/protoxon/SLS/releases/tag/pre-release2).
+   - Obtain the latest version of the SLS plugin [here](https://github.com/protoxon/SLS/releases).
    
 2. **Move Jar to Plugins Folder:**
    - Move the downloaded jar file to the `plugins` folder of your proxy server.
@@ -19,7 +19,7 @@
    - Launch your proxy server to generate the configuration files.
    
 4. **Modify the Configurations:**
-   - Adjust the configuration settings as needed to suit your server setup. The configuration files can be found in the `plugins/SLS` directory.
+   - Adjust the configuration settings as needed to suit your server setup. The configuration files can be found in the `plugins/sls` directory.
 
 ## Permissions
 
