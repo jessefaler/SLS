@@ -15,7 +15,7 @@ Here’s how you can create a dropdown menu for the command details using HTML d
 ## Commands
 
 <details>
-<summary>/sln join</summary>
+<summary>/sls join</summary>
 
 **Description:**  
 Starts a server and sends the player to it.
@@ -30,24 +30,44 @@ Starts a server and sends the player to it.
 
 </details>
 
----
+<details>
+<summary>/sls start</summary>
 
-You can add more commands following the same format. The dropdown will be collapsible, making the page easier to navigate.
-
-### `/anothercommand`
 **Description:**  
-Executes another command.  
+Starts a server
 
 **Usage:**  
-`/anothercommand [optionalArg]`
+`/sln start <[minigame][archive][adventure]> <(server name)>`
 
 **Arguments:**
-- `[optionalArg]`: Optional argument.
+- `<[minigame][archive][adventure]>`: The registry to use.
+- `<(server name)>`: The name of the server to start.
 
-**Permissions:**  
-- `plugin.anothercommand`: Grants access to use this command.
+</details>
 
-## Usage
+<details>
+<summary>/sls shutdown</summary>
+
+**Description:**  
+Starts a server
+
+**Usage:**  
+`/sln shutdown <(server name)|all>`
+
+**Arguments:**
+- `<(server name)>`: The name of the server to shutdown.
+
+</details>
+
+<details>
+<summary>/sls info</summary>
+
+**Description:**
+lists all the online servers and their player counts
+**Usage:**  
+`/sln info`
+
+</details>
 
 ## Installation
 
