@@ -100,7 +100,7 @@ lists all the online servers and their player counts
    - Your server should now appear in the list.
 
 5. **Join the Server**:
-   - To join the server, use the command `'/sls join <registry> <server_name>'`.
+   - To join the server, use the command `/sls join <registry> <server_name>`.
 
 ## Permissions
 
