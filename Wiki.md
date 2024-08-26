@@ -68,10 +68,8 @@ lists all the online servers and their player counts
 
 ## Installation
 
-<details>
-1. <summary>**Download the Latest Jar:**</summary>
+1. **Download the Latest Jar:**
    - Obtain the latest version of the SLS plugin [here](https://github.com/protoxon/SLS/releases).
-</details>
 
 2. **Move Jar to Plugins Folder:**
    - Move the downloaded jar file to the `plugins` folder of your proxy server.
