@@ -5,12 +5,6 @@ SLS is a powerful plugin designed to dynamically start and manage servers, facil
 
 ## Commands
 
-Here’s how you can create a dropdown menu for the command details using HTML details and summary tags within the Markdown:
-
----
-
-## Commands
-
 <details>
 <summary>/sls join</summary>
 
