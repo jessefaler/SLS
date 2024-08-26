@@ -81,6 +81,27 @@ lists all the online servers and their player counts
 4. **Modify the Configurations:**
    - Adjust the configuration settings as needed to suit your server setup. The configuration files can be found in the `plugins/sls` directory.
 
+## Adding Servers
+
+1. **Choose a Registry**: 
+   - Select the registry where you want to add your server. The options are `minigames`, `archive`, or `adventure`.
+
+2. **Set Up Server Files**:
+   - Navigate to the corresponding folder within the `sns` config directory.
+   - Create a new folder for your server inside this registry folder.
+   - Place all your server files in this new folder and ensure that the server's JAR file is named `server.jar`.
+
+3. **Update the Config File**:
+   - Open the configuration file for the chosen registry.
+   - Follow the existing format in the config file to add your server.
+
+4. **Reload the Server List**:
+   - In-game, run the command `/sls reload`.
+   - Your server should now appear in the list.
+
+5. **Join the Server**:
+   - To join the server, use the command `'/sls join <registry> <server_name>'`.
+
 ## Permissions
 
 - **Administrator Commands:** 
