@@ -86,7 +86,7 @@ lists all the online servers and their player counts
    - Select the registry where you want to add your server. The options are `minigames`, `archive`, or `adventure`.
 
 2. **Set Up Server Files**:
-   - Navigate to the corresponding folder within the `sns` config directory.
+   - Navigate to the corresponding folder within the `sls` config directory.
    - Create a new folder for your server inside this registry folder.
    - Place all your server files in this new folder and ensure that the server's JAR file is named `server.jar`.
 
