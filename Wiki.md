@@ -61,6 +61,7 @@ Starts a server
 
 **Description:**
 lists all the online servers and their player counts
+
 **Usage:**  
 `/sls info`
 
