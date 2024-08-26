@@ -1,7 +1,7 @@
 
 ---
 
-# SLN plugin
+# SLS plugin
 
 ## Overview
 A plugin that dose things
@@ -21,7 +21,7 @@ Here’s how you can create a dropdown menu for the command details using HTML d
 Starts a server and sends the player to it.
 
 **Usage:**  
-`/sln join <[minigame][archive][adventure]> <(server name)> <player|all|local>`
+`/sls join <[minigame][archive][adventure]> <(server name)> <player|all|local>`
 
 **Arguments:**
 - `<[minigame][archive][adventure]>`: The registry to use.
@@ -37,7 +37,7 @@ Starts a server and sends the player to it.
 Starts a server
 
 **Usage:**  
-`/sln start <[minigame][archive][adventure]> <(server name)>`
+`/sls start <[minigame][archive][adventure]> <(server name)>`
 
 **Arguments:**
 - `<[minigame][archive][adventure]>`: The registry to use.
@@ -52,7 +52,7 @@ Starts a server
 Starts a server
 
 **Usage:**  
-`/sln shutdown <(server name)|all>`
+`/sls shutdown <(server name)|all>`
 
 **Arguments:**
 - `<(server name)>`: The name of the server to shutdown.
@@ -65,7 +65,7 @@ Starts a server
 **Description:**
 lists all the online servers and their player counts
 **Usage:**  
-`/sln info`
+`/sls info`
 
 </details>
 
@@ -82,15 +82,6 @@ lists all the online servers and their player counts
    
 4. **Modify the Configurations:**
    - Adjust the configuration settings as needed to suit your server setup. The configuration files can be found in the `plugins/sls` directory.
-
-### Configuration
-- After installation, a configuration file will be generated in the `plugins/pluginname` directory.
-- Modify the configuration to fit your server's needs.
-- Use `/reload` to apply configuration changes without restarting the server.
-
-### Basic Usage
-- Use `/examplecommand` to perform the basic action of the plugin.
-- Adjust permissions using your permissions plugin to control who can access each command.
 
 ## Permissions
 
@@ -110,6 +101,6 @@ lists all the online servers and their player counts
 
 ### Configuration Changes Not Applying
 - **Cause:** The server may not have been reloaded after making changes.
-- **Solution:** Use the `/reload` command or restart your server after editing the configuration.
+- **Solution:** Use the `/sls reload` command or restart your server after editing the configuration.
 
 ---
