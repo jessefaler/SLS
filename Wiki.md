@@ -18,7 +18,7 @@ A plugin that dose things
 **Arguments:**
 - `<[minigame][archive][adventure]>`: The registry to use.
 - `<(server name)>`: The name of the server to join
-- - `<player|all|local>`: The player(s) to send to the server (leave blank to send yourself)
+- `<player|all|local>`: The player(s) to send to the server (leave blank to send yourself)
 
 ### `/anothercommand`
 **Description:**  
