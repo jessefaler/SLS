@@ -8,17 +8,31 @@ A plugin that dose things
 
 ## Commands
 
-### `/sln join`
+Here’s how you can create a dropdown menu for the command details using HTML details and summary tags within the Markdown:
+
+---
+
+## Commands
+
+<details>
+<summary>/sln join</summary>
+
 **Description:**  
-`starts a server and sends the player to the it`
+Starts a server and sends the player to it.
 
 **Usage:**  
 `/sln join <[minigame][archive][adventure]> <(server name)> <player|all|local>`
 
 **Arguments:**
 - `<[minigame][archive][adventure]>`: The registry to use.
-- `<(server name)>`: The name of the server to join
-- `<player|all|local>`: The player(s) to send to the server (leave blank to send yourself)
+- `<(server name)>`: The name of the server to join.
+- `<player|all|local>`: The player(s) to send to the server (leave blank to send yourself).
+
+</details>
+
+---
+
+You can add more commands following the same format. The dropdown will be collapsible, making the page easier to navigate.
 
 ### `/anothercommand`
 **Description:**  
