@@ -1,7 +1,7 @@
 # ![SLS standalone logo](https://cdn.modrinth.com/data/cached_images/7115a8404f7d6a94fd7aab586d6c4de1e9b3846c.png)
 
 ## Overview
-A plugin that dose things
+SLS is a powerful plugin designed to dynamically start and manage servers, facilitate cross-server communication, and maintain a server registry.
 
 ## Commands
 
