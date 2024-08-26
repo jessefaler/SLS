@@ -112,7 +112,7 @@ lists all the online servers and their player counts
 
 ### Plugin Not Loading
 - **Cause:** The plugin may not be compatible with your server version.
-- **Solution:** Ensure you are using a supported version of Minecraft. Check the [Releases](../releases) page for compatibility information.
+- **Solution:** Ensure you are using a supported version of Minecraft. Check the [Releases](https://github.com/protoxon/SLS/releases) page for compatibility information.
 
 ### Commands Not Working
 - **Cause:** Missing permissions or incorrect command syntax.
