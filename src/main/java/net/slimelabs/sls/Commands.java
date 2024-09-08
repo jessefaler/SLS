@@ -21,17 +21,19 @@ public final class Commands {
             if (args.length < 1) {
                 sender.sendMessage(Component.text("[§aSLS§r] Incorrect Command Usage", NamedTextColor.DARK_RED));
                 if (sender.hasPermission("sls.command.admin")) {//sender has the admin permission so send them all command options
-                    sender.sendMessage(Component.text("[§aSLS§r] Usage: /sls <join|start|shutdown|config|console|debug|info>", NamedTextColor.GRAY));
+                    sender.sendMessage(Component.text("[§aSLS§r] Usage: /sls <join | start | shutdown | config | console | debug | info>", NamedTextColor.GRAY));
                     return;
                 }
-                sender.sendMessage(Component.text("[§aSLS§r] Usage: /sls <join> <registry> <world>", NamedTextColor.GRAY));
+                sender.sendMessage(Component.text("[§aSLS§r] Usage: /sls <join | info>", NamedTextColor.GRAY));
                 return;
             }
 
             // Check if a player has permission to execute all the following commands other than what is listed here.
-            if (!args[0].equals("join") && !sender.hasPermission("sls.command.admin")) {
-                sender.sendMessage(Component.text("[§aSLS§r] You do not have permission to execute this command", NamedTextColor.DARK_RED));
-                return;
+            if (!args[0].equals("join") && !args[0].equals("info")) {
+                if (!sender.hasPermission("sls.command.admin")) {
+                    sender.sendMessage(Component.text("[§aSLS§r] You do not have permission to execute this command", NamedTextColor.DARK_RED));
+                    return;
+                }
             }
 
             // Subcommand configuration
@@ -251,7 +253,7 @@ public final class Commands {
             if (args.length <= 1) {
                 if (!sender.hasPermission("sls.command.admin")) {
                     //returns commands that only players without the sls.command.admin can use
-                    return CompletableFuture.completedFuture(List.of("join"));
+                    return CompletableFuture.completedFuture(List.of("join", "info"));
                 }
                 //returns all commands players with the sls.command.admin can use
                 return CompletableFuture.completedFuture(List.of("join", "start", "shutdown", "config", "console", "debug", "info"));

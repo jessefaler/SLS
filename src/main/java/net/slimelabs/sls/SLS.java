@@ -5,6 +5,7 @@ import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
@@ -21,7 +22,7 @@ import java.util.UUID;
 @Plugin(
         id = "sls",
         name = "SLS",
-        version = "2.1.1HF",
+        version = "2.1.2",
         description = "Slimelabs Network",
         url = "slimelabs.net",
         authors = {"protoxon & Yeetoxic"}
@@ -62,19 +63,19 @@ public class SLS {
         String GREEN = "\u001B[32m";
         String CYAN = "\u001B[36m";
         String BLUE = "\u001B[34m";
-        LOGGER.info(CYAN + " \n" + CYAN + "————————————————————————————————————————————————\n" +
-                GREEN + "  ____  _ _                _          _         \n" +
-                GREEN + " / ___|| (_)_ __ ___   ___| |    __ _| |__  ___ \n" +
-                GREEN + " \\___ \\| | | '_ ` _ \\ / _ \\ |   / _` | '_ \\/ __|\n" +
-                GREEN + "  ___) | | | | | | | |  __/ |__| (_| | |_) \\__ \\\n" +
-                GREEN + " |____/|_|_|_| |_| |_|\\___|_____\\__,_|_.__/|___/\n" +
-                GREEN + "  _   _ _____ _______        _____  ____  _  __ \n" +
-                GREEN + " | \\ | | ____|_   _\\ \\      / / _ \\|  _ \\| |/ / \n" +
-                GREEN + " |  \\| |  _|   | |  \\ \\ /\\ / / | | | |_) | ' /  \n" +
-                GREEN + " | |\\  | |___  | |   \\ V  V /| |_| |  _ <| . \\  \n" +
-                GREEN + " |_| \\_|_____| |_|    \\_/\\_/  \\___/|_| \\_\\_|\\_\\ \n" + RESET +
+        String RED = "\u001B[31m";       // Red
+        String DARK_GRAY = "\u001B[90m"; // Dark Gray
+        String MAGENTA = "\u001B[35m";   // Magenta (Purple)
+        String LIGHT_BLUE = "\u001B[94m"; // Light Blue
+
+        LOGGER.info(" \n" + CYAN + "————————————————————————————————————————————————\n" +
+                GREEN + "  ___ _    ___ \n" +
+                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v2.1.2" + "\n" +
+                GREEN + " \\__ \\ |__\\__ \\" + DARK_GRAY + " Network Management Plugin" + "\n" +
+                GREEN + " |___/____|___/" + LIGHT_BLUE + " Made by: " + MAGENTA + "Protoxon & Yeetoxic" + "\n" +
+                RESET +
                 "\n" +
-                "[" + GREEN + "SLS" + RESET + "]" + CYAN + " SlimeLabs Server Management Plugin " + RESET + YELLOW + "Version 2.1.1HF" + RESET + CYAN +" by " + RESET + BLUE + "protoxon" + RESET + CYAN + " & " + RESET + BLUE + "Yeetoxic" + RESET + "\n" +
+                "[" + GREEN + "SLS" + RESET + "]" + LIGHT_BLUE + " Made for " + RESET + GREEN + "SlimeLabs.net" + RESET + LIGHT_BLUE + ", " + BLUE + "Established " + RESET + MAGENTA + "2013" + RESET + LIGHT_BLUE +  "!" + RESET + "\n" +
                 " \n" + CYAN + "————————————————————————————————————————————————");
 
         // Register the example command
@@ -110,6 +111,22 @@ public class SLS {
 
             PLAYER_CONNECTOR.joinServer(parts[1].replace("_", " ").trim(), targetPlayer);
         }
+    }
+
+    @Subscribe
+    public void OnProxyShutdown(ProxyShutdownEvent event) {
+        String RESET = "\u001B[0m";
+        String GREEN = "\u001B[32m";
+        String RED = "\u001B[31m";       // Red
+        String DARK_GRAY = "\u001B[90m"; // Dark Gray
+
+        LOGGER.info(" \n" + RED + "————————————————————————————————————————————————\n" +
+                GREEN + "  ___ _    ___ \n" +
+                GREEN + " / __| |  / __|" + DARK_GRAY + " Server Launch System " + "\n" +
+                GREEN + " \\__ \\ |__\\__ \\" + RED + " Shutting Down..." + "\n" +
+                GREEN + " |___/____|___/" + DARK_GRAY + " Made by: Protoxon & Yeetoxic" + "\n" +
+                RESET +
+                "\n" + RED + "————————————————————————————————————————————————");
     }
 }
 

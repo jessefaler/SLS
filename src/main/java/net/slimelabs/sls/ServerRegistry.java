@@ -158,7 +158,7 @@ public class ServerRegistry {
     //returns a String of all minigame names and player counts
     public String info() {
         if(SERVERS.size() == 0) {//no servers online
-            return "[§aSLS§r] §cNo servers are currently online.";
+            return "§cNo servers are currently online.";
         }
         StringBuilder info = new StringBuilder("§3Online Minigames: \n");
         for(String key : SERVERS.keySet()) {
