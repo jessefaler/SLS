@@ -6,7 +6,7 @@
 
     <groupId>net.slimelabs</groupId>
     <artifactId>SLS</artifactId>
-    <version>v2.1.1HF</version>
+    <version>v2.1.2</version>
     <packaging>jar</packaging>
 
     <name>SLS</name>
