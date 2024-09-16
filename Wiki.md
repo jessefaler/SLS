@@ -100,7 +100,7 @@ SLS is a powerful plugin designed to dynamically start and manage servers, facil
 > 
 > **Arguments:**
 > - `<[reload]>`: Reloads the config file of the given registry
-> - `<[view]>`: The name of the server to start.
+> - `<[view]>`: View the config file of the given server.
 > - `<(server name)>`: The name of the server to view.
 > - `<(registry name)>`: The name of the registry to reload.
 > ---
