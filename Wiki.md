@@ -145,7 +145,7 @@ SLS is a powerful plugin designed to dynamically start and manage servers, facil
    Follow the existing format in the config file to add your server.
 
 4. **Reload the Server List:**  
-   In-game, run the command `/sls reload`.  
+   In-game, run the command `/sls config reload all`.  
    Your server should now appear in the list.
 
 5. **Join the Server:**  
