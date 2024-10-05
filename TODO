@@ -1,0 +1,14 @@
+TODO:
+
+- Add auto resource pack versioning (If possible)
+  - A resource pack can automatically be put into a version conversion tool and generate all resource pack versions and then all versions should be added to velocity resource packs config
+  - https://www.convertmcpack.net/index.php#
+
+- Finish implementing the allowed-client-versions in the registry config
+  - when read in a minecraft version value should be converted to a data version or protocol version note only versions 1.7 and up have data versions so you will need to use protocol versions instead
+  use Data_Versions Mappings file
+
+  -- add a test class or method to test each individual server:
+    - it should start the server and attempt to send a fake player to it. If the server successfully starts and the player successfully joins the test passes.
+    - if any errors occur or the player fails to join the test fails and it should print the reason
+    - the command to run the test should be something like /sls tools tests join [registry|all] [worldName|all]

@@ -1,0 +1,5 @@
+# Operations to Verify for Correct Functionality Once the Plugin is operational
+
+- Check in ServerInstance.runServer()
+    - Ensure that the errorReader correctly prints any issues that cause the server to crash or fail to start.
+    - If errorReader does not work as expected, add logic to display errors for unsupported Java versions and any other relevant issues. These errors should be printed to the console and shown to players with debug mode enabled.
