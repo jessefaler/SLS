@@ -11,7 +11,4 @@ public class Start implements SimpleCommand {
         invocation.source().sendMessage(Component.text("Joining server..."));
     }
 
-    public List<String> suggest(SimpleCommand.Invocation invocation) {
-        return List.of(); // No suggestions for join command
-    }
 }
