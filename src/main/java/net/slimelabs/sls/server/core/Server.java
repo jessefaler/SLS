@@ -5,6 +5,8 @@ import com.google.gson.Gson;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
 
+import java.nio.file.Paths;
+
 public class Server {
 
     private static final String APPLICATION_API_KEY = "ptla_A0T0M72ZKXYZd73inutGvT0C8s9U1kn6k3dhGAxIOtT"; // Replace with your API key
@@ -12,13 +14,13 @@ public class Server {
     private static final String endpoint = "http://panel.slimelabs.net/api/application/servers";
     private static final Gson gson = new Gson();
 
-    public static String createServer(ServerConfiguration serverConfig, String name) throws Exception {
+    public static String createServer(ServerConfiguration serverConfig, String name) {
         Payload payload = configurePayload(serverConfig, name);
         String jsonBody = gson.toJson(payload);
         return HttpClient.executePost(endpoint, jsonBody, APPLICATION_API_KEY);
     }
 
-    public static String createServer(Payload payload) throws Exception {
+    public static String createServer(Payload payload) {
         String jsonBody = gson.toJson(payload);
         return HttpClient.executePost(endpoint, jsonBody, APPLICATION_API_KEY);
     }
@@ -29,22 +31,27 @@ public class Server {
      * @return a payload object
      */
     public static Payload configurePayload(ServerConfiguration serverConfig, String name) {
+        //int allocationid = HttpClient.getNextAvailableAllocation();
+        //HttpClient.getAllocationData(allocationid);
         Payload payload = new Payload();
         payload.user = 1;
         payload.name = name;
         payload.egg = getEggID(serverConfig.software);
         payload.allocation.defaultAllocation = HttpClient.getNextAvailableAllocation();
-        payload.docker_image = MinecraftJavaVersionMapper.getRequiredJavaVersion(serverConfig.version);
-        payload.startup = "java -Xms128M -Xmx" + serverConfig.ram + " -jar server.jar nogui";
+        //payload.docker_image = MinecraftJavaVersionMapper.getRequiredJavaVersion(serverConfig.version);
+        payload.startup = "java -Xms3G -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar";
         payload.environment.put("view-distance", String.valueOf(serverConfig.viewDistance));
         payload.limits.io = 100;
         payload.limits.memory = 4096;
+        payload.environment.put("SERVER_PATH", serverConfig.serversFolder + "/" + serverConfig.software + "/" + serverConfig.version);
+        String absoluteWorldPath = Paths.get(serverConfig.worldFolder).toAbsolutePath().toString();
+        payload.environment.put("WORLD_PATH", absoluteWorldPath);
         return payload;
     }
 
     public static int getEggID(String serverSoftware) {
         return switch (serverSoftware) {
-            case "sls-paper" -> 15;
+            case "sls-paper", "sls-fabric" -> 21;
             case "sls-spigot" -> 16;
             case "sls-vanilla" -> 17;
             case "mc-paper" -> 2;

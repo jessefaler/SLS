@@ -17,8 +17,11 @@ import net.slimelabs.sls.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class StartCommand {
+
     public static LiteralArgumentBuilder<CommandSource> register() {
         return LiteralArgumentBuilder.<CommandSource>literal("start")
                 .executes(context -> {
@@ -108,13 +111,15 @@ public class StartCommand {
                                 .sendMessage(source);
                         return 0;
                     }
-                    boolean success = SLS.SERVER_REGISTRY.startServer(world, serverConfiguration, source);
-                    if(!success) {
-                        Message.chat()
-                                .add("An error occurred while attempting to start the server. Please try again or check the logs for more details.", NamedTextColor.RED)
-                                .sendMessage(source);
-                        return 0;
-                    }
+                    // Execute the server start on a separate thread so Http Requests don't block the main thread
+                    SLS.EXECUTOR.submit(() -> {
+                        boolean success = SLS.SERVER_REGISTRY.startServer(world, serverConfiguration, source);
+                        if(!success) {
+                            Message.chat()
+                                    .add("An error occurred while attempting to start the server. Please try again or check the logs for more details.", NamedTextColor.RED)
+                                    .sendMessage(source);
+                        }
+                    });
                     Message.chat()
                             .add(MessagePreset.SLS)
                             .addMiniMessage("<gradient:#58FF7A:#33C0C6> Starting " + world.replace("_", " ") + "...</gradient>")

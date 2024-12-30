@@ -5,6 +5,7 @@ import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.registries.Registry;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,61 +51,42 @@ public class RegistryIO {
     }
 
     /**
-     * Searches for worlds in registry folders who are not listed in the registries config file.
-     * @return A hashmap with keys as the registry name and values as the Paths to the unassigned worlds.
-     */
-    public HashMap<String, ArrayList<Path>> getUnassignedWorlds() {
-        HashMap<String, ArrayList<Path>> unassignedWorlds = new HashMap<>();
-        for (Registry registry : SLS.REGISTRY_MANAGER.REGISTRIES.values()) {
-            try {
-                List<Path> worldFolders = locateWorldFolders(registry.path);
-                Set<Path> registeredWorldPaths = registry.getWorlds().values().stream()
-                        .map(world -> Path.of(world.folderName))
-                        .collect(Collectors.toSet());
-                List<Path> unregisteredWorldFolders = worldFolders.stream()
-                        .filter(path -> !registeredWorldPaths.contains(path))
-                        .toList();
-                if (!unregisteredWorldFolders.isEmpty()) {
-                    unassignedWorlds.put(registry.name, new ArrayList<>(unregisteredWorldFolders));
-                }
-            } catch (IOException e) {
-                SLS.LOGGER.warn(e.toString());
-            }
-        }
-        return unassignedWorlds;
-    }
-
-    /**
      * Searches for worlds in registry folders who are not listed in the
      * registries config file and prints them to console.
      */
-    public void printUnassignedWorlds() {
+    public void checkUnregisteredWorlds() {
         for (Registry registry : SLS.REGISTRY_MANAGER.REGISTRIES.values()) {
-            try {
-                List<Path> worldFolders = locateWorldFolders(registry.path);
-                Set<Path> registeredWorldPaths = registry.getWorlds().values().stream()
-                        .map(world -> Path.of(world.folderName))
-                        .collect(Collectors.toSet());
+            String registryPath = registry.path.toString(); // Get the path of the registry
+            File registryFolder = new File(registryPath);
 
-                // Filter out unregistered world folders
-                List<Path> unregisteredWorldFolders = worldFolders.stream()
-                        .filter(path -> !registeredWorldPaths.contains(path))
-                        .toList();
+            if (!registryFolder.exists() || !registryFolder.isDirectory()) {
+                SLS.LOGGER.warn("Registry folder not found: {}", registryPath);
+                continue;
+            }
 
-                // Ensure only root directories are kept
-                List<Path> rootFolders = unregisteredWorldFolders.stream()
-                        .filter(path -> unregisteredWorldFolders.stream()
-                                .noneMatch(otherPath -> !path.equals(otherPath) && path.startsWith(otherPath)))
-                        .toList();
+            // Get all registered worlds for the current registry
+            HashMap<String, ServerConfiguration> registeredWorldsMap = registry.getWorlds();
+            Set<String> registeredWorldNames = registeredWorldsMap.keySet();
 
-                if (!rootFolders.isEmpty()) {
-                    SLS.LOGGER.warn("Unregistered world folders found for registry: " + registry.name);
-                    for (Path unregisteredFolder : rootFolders) {
-                        SLS.LOGGER.warn(" - " + unregisteredFolder);
-                    }
+            // Check for unregistered world folders
+            File[] worldFolders = registryFolder.listFiles(File::isDirectory);
+            if (worldFolders == null) {
+                continue;
+            }
+
+            boolean unregisteredWorldsFound = false;
+            StringBuilder unregisteredWorlds = new StringBuilder();
+
+            for (File worldFolder : worldFolders) {
+                if (!registeredWorldNames.contains(worldFolder.getName())) {
+                    unregisteredWorldsFound = true;
+                    unregisteredWorlds.append(String.format(" - %s%n", worldFolder.getPath()));
                 }
-            } catch (IOException e) {
-                SLS.LOGGER.warn("Config for registry " + registry.name + " exists but no registry folder was found");
+            }
+
+            if (unregisteredWorldsFound) {
+                SLS.LOGGER.warn("Unregistered world folders found for registry: {}", registryPath);
+                SLS.LOGGER.warn(unregisteredWorlds.toString());
             }
         }
     }
@@ -160,8 +142,11 @@ public class RegistryIO {
             serverConfiguration.ram = ram;
             serverConfiguration.viewDistance = viewDistance;
             serverConfiguration.software = serverSoftware;
-            serverConfiguration.folderName = folderName;
-            worlds.put(worldName, serverConfiguration);}
+            serverConfiguration.worldFolder = registryPath + "/" + folderName;
+            serverConfiguration.worldFolderName = folderName;
+            serverConfiguration.version = minecraftVersion;
+            worlds.put(worldName, serverConfiguration);
+        }
         return new Registry(registryName, worlds, path1);
     }
 

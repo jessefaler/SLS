@@ -98,7 +98,7 @@ public class JoinCommand {
                         return 0;
                     }
                     // The World Is Present So Connect The Player To It.
-                    Message.chat().add(" Joining " + world).sendMessage(source);
+                    SLS.PLAYER_CONNECTOR.joinServer(world, registryName, source);
                     return 1;
                 });
     }

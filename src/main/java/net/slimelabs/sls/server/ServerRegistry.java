@@ -7,6 +7,8 @@ import net.slimelabs.sls.server.core.ServerInstance;
 
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ServerRegistry {
 
@@ -43,6 +45,10 @@ public class ServerRegistry {
         servers.get(name).shutdown();
     }
 
+    public void killServer(String name) {
+        servers.get(name).kill();
+    }
+
     public void registerServer(String name, ServerInstance serverInstance) {
         servers.put(name, serverInstance);
     }
@@ -59,13 +65,31 @@ public class ServerRegistry {
         return servers.keySet();
     }
 
+    public boolean isShutdown(String name) {
+        if(!servers.containsKey(name)) {
+            return true;
+        }
+        return servers.get(name).isShutdown();
+    }
+
+    public boolean failedToStart(String name) {
+        if (!servers.containsKey(name)) {
+            return true;
+        }
+        return servers.get(name).failedToStart;
+    }
+
     /**
      * Gets a servers status.
      * online, starting, stopped, offline
      * @return the status of the server
      */
     public String getStatus(String name) {
-        return servers.get(name).status;
+        ServerInstance serverInstance = servers.get(name);
+        if(serverInstance == null) {
+            return "offline";
+        }
+        return serverInstance.status;
     }
 
     /**
@@ -127,6 +151,4 @@ public class ServerRegistry {
             return null; // Return null if an error occurs
         }
     }
-
-
 }

@@ -10,11 +10,17 @@ import net.slimelabs.sls.SLS;
 import net.slimelabs.sls.api.HttpClient;
 import net.slimelabs.sls.api.WebSocketClient;
 import net.slimelabs.sls.api.WebSocketMessageListener;
+import net.slimelabs.sls.registries.RegistryManager;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.utils.Message.Message;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 
+import java.io.*;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,12 +30,15 @@ import static net.slimelabs.sls.utils.Color.*;
 
 public class ServerInstance {
 
-    String id;
-    String name;
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    public String id;
+    public String name;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     WebSocketClient webSocketClient;
-    public String status = "offline";
+    public String status = "starting";
     WebSocketMessageListener listener;
+    public boolean failedToStart;
     boolean outputToProxyConsole;
     CommandSource source;
 
@@ -102,7 +111,8 @@ public class ServerInstance {
             // Register the server with velocity
             InetSocketAddress address = new InetSocketAddress(allocationData[0], Integer.parseInt(allocationData[1])); // Create socket address
             ServerInfo serverInfo = new ServerInfo(name, address);                                                     // Build server info
-            SLS.PROXY.registerServer(serverInfo);                                                                      // Register with proxy
+            SLS.PROXY.registerServer(serverInfo);
+            // Register with proxy
         } catch (Exception e) {
             shutdown();
             System.out.println(RED + "An error occurred while creating the server." + RESET);
@@ -122,7 +132,6 @@ public class ServerInstance {
         webSocketClient = new WebSocketClient(id);
         webSocketClient.addMessageListener(listener);
         try {
-            System.out.println("connected");
             webSocketClient.connect();
         } catch (Exception e) {
             System.out.println(RED + "Failed to establish a WebSocket connection to server " + id + ". Shutting down the server." + RESET);
@@ -139,10 +148,16 @@ public class ServerInstance {
             } else if (message.contains("\"status\",\"args\":[\"starting\"]")) {
                 status = "starting";
             } else if (message.contains("\"status\",\"args\":[\"stopping\"]")) {
-                if(status.equals("starting")) failedToStartMessage(); // If the server goes from starting to stopping an error occurred
+                if(status.equals("starting")) { // If the server goes from starting to stopping an error occurred
+                    failedToStart = true;
+                    failedToStartMessage();
+                }
                 status = "stopping";
             } else if (message.contains("\"status\",\"args\":[\"offline\"]")) {
-                if(status.equals("starting")) failedToStartMessage(); // If the server goes from starting to offline an error occurred
+                if(status.equals("starting")) { // If the server goes from starting to stopping an error occurred
+                    failedToStart = true;
+                    failedToStartMessage();
+                }
                 status = "offline";
                 shutdown();
             }
@@ -160,6 +175,7 @@ public class ServerInstance {
 
     // shutdown the server gracefully
     public void shutdown() {
+        status = "offline";
         SLS.SERVER_REGISTRY.unRegisterServer(name);
         HttpClient.stopServer(id);
         if(webSocketClient != null) webSocketClient.closeConnection();
@@ -168,6 +184,14 @@ public class ServerInstance {
         if (SLS.PROXY.getServer(name).isPresent()) {
             SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
         }
+    }
+
+    /**
+     * gets if the server is shutdown
+     * @return true if the server is shutdown or stopping
+     */
+    public boolean isShutdown() {
+        return status.equals("stopping") || status.equals("offline");
     }
 
     // kills the server
@@ -222,6 +246,7 @@ public class ServerInstance {
                     return identifierNode.asText(); // Return the identifier value
                 }
             }
+            System.out.println(json);
             throw new IllegalArgumentException("Identifier field not found in JSON.");
         } catch (Exception e) {
             e.printStackTrace();

@@ -17,6 +17,10 @@ import net.slimelabs.sls.registries.RegistryManager;
 import net.slimelabs.sls.server.ServerRegistry;
 import net.slimelabs.sls.utils.PlayerUtils;
 import org.slf4j.Logger;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import static net.slimelabs.sls.utils.Color.*;
 
 /*
@@ -45,9 +49,11 @@ public class SLS {
     public static ProxyServer PROXY;
     public static PacketListener PACKET_LISTENER;
     public static RegistryManager REGISTRY_MANAGER;
+    public static PlayerConnector PLAYER_CONNECTOR;
     public static ServerRegistry SERVER_REGISTRY;
     public static FileHandler FILE_HANDLER;
     public static RegistryIO REGISTRYIO;
+    public static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     public static SLS PLUGIN;
 
 
@@ -67,8 +73,8 @@ public class SLS {
         REGISTRYIO = new RegistryIO();
         //DEBUGGER = new Debugger();
         REGISTRYIO.reloadAllRegistries(); // Load in the registries
-        REGISTRYIO.printUnassignedWorlds(); // Print any unassigned worlds
-        //PLAYER_CONNECTOR = new PlayerConnector();
+        REGISTRYIO.checkUnregisteredWorlds(); // Print any unassigned worlds
+        PLAYER_CONNECTOR = new PlayerConnector();
         SERVER_REGISTRY = new ServerRegistry();
         PACKET_LISTENER = new PacketListener();
 

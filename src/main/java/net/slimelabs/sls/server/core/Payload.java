@@ -11,10 +11,10 @@ import java.util.Map;
  * environment variables, and Docker image setup for server deployment.
  */
 public class Payload {
-    String name = "test";
+    String name = "";
     int user = 1;  // User ID
     int egg = 2;   // Egg ID
-    String docker_image = "ghcr.io/pterodactyl/yolks:java_21";
+    String docker_image = "sls:latest";
     String startup = "java -Xms128M -Xmx1024M -jar server.jar nogui";
     Limits limits = new Limits();
     FeatureLimits feature_limits = new FeatureLimits();
@@ -22,8 +22,8 @@ public class Payload {
     Map<String, String> environment = new HashMap<>();
 
     public Payload() {
-        environment.put("SERVER_JARFILE", "server.jar");
-        environment.put("BUILD_NUMBER", "1");
+        environment.put("MINECRAFT_VERSION", "1.20.6");
+        environment.put("SERVER_SOFTWARE", "sls-paper");
     }
 
     static class Limits {
