@@ -59,8 +59,8 @@ public class SetMount {
         System.out.println("XSRF-TOKEN: " + xsrfToken);
 
         // Step 3: Log in using username and password
-        String username = "admin@slimelabs.net";
-        String password = "422364";
+        String username = "";
+        String password = "";
         String loginPayload = String.format("{\"user\":\"%s\",\"password\":\"%s\",\"g-recaptcha-response\":\"\"}", username, password);
 
         HttpRequest loginRequest = HttpRequest.newBuilder()
