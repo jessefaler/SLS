@@ -145,6 +145,7 @@ public class RegistryIO {
             serverConfiguration.worldFolder = registryPath + "/" + folderName;
             serverConfiguration.worldFolderName = folderName;
             serverConfiguration.version = minecraftVersion;
+            serverConfiguration.registry = registryName;
             worlds.put(worldName, serverConfiguration);
         }
         return new Registry(registryName, worlds, path1);

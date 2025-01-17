@@ -2,48 +2,57 @@ package net.slimelabs.sls.server.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mattmalec.pterodactyl4j.DataType;
+import com.mattmalec.pterodactyl4j.EnvironmentValue;
+import com.mattmalec.pterodactyl4j.PteroAction;
+import com.mattmalec.pterodactyl4j.UtilizationState;
+import com.mattmalec.pterodactyl4j.application.entities.ApplicationAllocation;
+import com.mattmalec.pterodactyl4j.application.entities.ApplicationEgg;
+import com.mattmalec.pterodactyl4j.application.entities.ApplicationServer;
+import com.mattmalec.pterodactyl4j.application.entities.Node;
+import com.mattmalec.pterodactyl4j.client.entities.ClientAllocation;
+import com.mattmalec.pterodactyl4j.client.entities.ClientServer;
+import com.mattmalec.pterodactyl4j.entities.Allocation;
+import com.mattmalec.pterodactyl4j.exceptions.LoginException;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
+import net.slimelabs.sls.api.Api;
 import net.slimelabs.sls.api.HttpClient;
-import net.slimelabs.sls.api.WebSocketClient;
-import net.slimelabs.sls.api.WebSocketMessageListener;
-import net.slimelabs.sls.registries.RegistryManager;
+import net.slimelabs.sls.api.NoAvailableAllocationsException;
+import net.slimelabs.sls.server.ServerWebSocket;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.utils.Message.Message;
 import net.slimelabs.sls.utils.Message.MessagePreset;
+import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
 
-import java.io.*;
 import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import static net.slimelabs.sls.api.Api.*;
 import static net.slimelabs.sls.utils.Color.*;
 
 public class ServerInstance {
 
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-
-    public String id;
     public String name;
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    WebSocketClient webSocketClient;
-    public String status = "starting";
-    WebSocketMessageListener listener;
-    public boolean failedToStart;
+    ServerWebSocket serverWebSocket;
+    public UtilizationState state = UtilizationState.OFFLINE;
+    public boolean shutdown;
     boolean outputToProxyConsole;
     CommandSource source;
+    ClientServer clientServer;
+    String identifier;
+    Flags FLAGS;
 
     public ServerInstance(String name) {
         this.name = name;
+        this.FLAGS = new Flags();
     }
 
     // You can set the source that called the creation of this server (i.e., player) for debugging
@@ -63,30 +72,41 @@ public class ServerInstance {
      * @return true if no errors occurred
      */
     public boolean startServer(ServerConfiguration serverConfiguration) {
-        id = HttpClient.getServerIdByName(name);
-        if(id == null) return createServer(serverConfiguration, name); // If the server does not already exist create it.
-        try {
-            HttpClient.startServer(id);                               // Start the server
-            String data = HttpClient.getServerData(id);               // Get the servers data
-            String[] allocationData = getAddressFromServerData(data); // Get ip and port from server data
-            if(allocationData == null) {
-                System.out.println(RED + "Error starting server " + name + " allocation data was null." + RESET);
-                HttpClient.killServer(id);
-                return false;
+        clientAPI.retrieveServersByName(name, false).executeAsync(servers -> {
+            if (servers.isEmpty()) { // No server already exists so create it
+                createServer(serverConfiguration, name);
+                return;
             }
-            SLS.LOGGER.info("Starting server {}{}{} on port {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, allocationData[1], RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
-            establishWebSocketMonitor(id); // Monitor the server
-            // Register the server with velocity
-            InetSocketAddress address = new InetSocketAddress(allocationData[0], Integer.parseInt(allocationData[1])); // Create socket address
-            ServerInfo serverInfo = new ServerInfo(name, address);                                                     // Build server info
-            SLS.PROXY.registerServer(serverInfo);
-            status = "online";
-        } catch (Exception e) {
-            System.out.println(RED + "An error occurred while starting the server." + RESET);
-            System.out.println(e.getMessage());
-            return false;
-        }
+            if(servers.size() > 1) {
+                System.err.println("Found multiple servers with the name '\" + name + \"' while starting. Ignoring all but the first one.");
+            }
+            ClientServer clientServer = servers.get(0);
+            clientServer.start().executeAsync(
+                        success -> {
+                            SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, clientServer.getPrimaryAllocation().getFullAddress(), RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
+                            registerServer(clientServer); // Register the server
+                        },
+                        throwable -> sendErrorMessage("Failed to start server: " + clientServer.getName(), source)
+                );
+        }, throwable -> {
+            if (throwable instanceof LoginException) {
+                sendErrorMessage("Failed to retrieve servers: Invalid API key or insufficient permissions", source);
+            } else {
+                sendErrorMessage("Failed to retrieve servers: " + throwable.getMessage(), source);
+            }
+        });
         return true;
+    }
+
+    public void registerServer(ClientServer clientServer) {
+        identifier = clientServer.getIdentifier();
+        this.clientServer = clientServer; // Set the clientServer object
+        establishWebSocketMonitor(clientServer.getIdentifier()); // Monitor the server
+        // Register the server with velocity
+        ClientAllocation allocation = clientServer.getPrimaryAllocation();
+        InetSocketAddress address = new InetSocketAddress(allocation.getIP(), allocation.getPortInt()); // Create socket address
+        ServerInfo serverInfo = new ServerInfo(name, address);                                          // Build server info
+        SLS.PROXY.registerServer(serverInfo); // Register the server
     }
 
     /**
@@ -96,30 +116,76 @@ public class ServerInstance {
      * @return true if no errors occurred
      */
     public boolean createServer(ServerConfiguration serverConfiguration, String name) {
-        try {
-            String response = Server.createServer(serverConfiguration, name); // Create The Server
-            id = getIdentifier(response);                              // Get the servers id
-            String data = HttpClient.getServerData(id);                       // Get the servers data
-            String[] allocationData = getAddressFromServerData(data);         // Get the servers address from the data
-            if(allocationData == null) {
-                System.out.println(RED + "Error creating server " + name + " allocation data was null. Shutting down the server." + RESET);
-                HttpClient.killServer(id);
-                return false;
-            }
-            SLS.LOGGER.info("Starting server {}{}{} on port {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, allocationData[1], RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
-            establishWebSocketMonitor(id); // Monitor the server
-            // Register the server with velocity
-            InetSocketAddress address = new InetSocketAddress(allocationData[0], Integer.parseInt(allocationData[1])); // Create socket address
-            ServerInfo serverInfo = new ServerInfo(name, address);                                                     // Build server info
-            SLS.PROXY.registerServer(serverInfo);
-            // Register with proxy
-        } catch (Exception e) {
-            shutdown();
-            System.out.println(RED + "An error occurred while creating the server." + RESET);
-            System.out.println(e.getMessage());
-            return false;
-        }
+        // Configure Environment Variables
+        String serverPath = serverConfiguration.serversFolder + "/" + serverConfiguration.software + "/" + serverConfiguration.version;
+        String absoluteWorldPath = Paths.get(serverConfiguration.worldFolder).toAbsolutePath().toString();
+        Map<String, EnvironmentValue<?>> environmentVariables = new HashMap<>();
+        environmentVariables.put("SERVER_PATH", EnvironmentValue.of(serverPath));
+        environmentVariables.put("WORLD_PATH", EnvironmentValue.of(absoluteWorldPath));
+
+        // Configure the server
+        PteroAction<ApplicationServer> action = applicationAPI.createServer()
+                .setName(name)
+                .setOwner(applicationAPI.retrieveUserById(1).execute())
+                .setDescription("SLS " + serverConfiguration.registry + " server.")
+                .setMemory(4, DataType.GB)
+                .skipScripts(true)
+                .startOnCompletion(true)
+                .setAllocation(getNextAvailableAllocation())
+                .setEgg(applicationAPI.retrieveEggById(applicationAPI.retrieveNestById(9).execute(), getEggID(serverConfiguration.software)).execute())
+                .setDockerImage(MinecraftJavaVersionMapper.getRequiredJavaVersion(serverConfiguration.version))
+                .setEnvironment(environmentVariables)
+                .setStartupCommand(getStartCommand("3072"));
+
+        // Create the server
+        action.executeAsync(
+                ApplicationServer -> {
+                    identifier = ApplicationServer.getIdentifier();
+                    // Get the ClientServer
+                    clientAPI.retrieveServerByIdentifier(ApplicationServer.getIdentifier()).executeAsync(
+                            clientServer -> {
+                                SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, clientServer.getPrimaryAllocation().getFullAddress(), RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
+                                registerServer(clientServer); // Register the server
+                                },
+                            throwable -> {
+                                shutdown();
+                                SLS.LOGGER.error("Failed to retrieve client server: {}", throwable.getMessage());
+                            });
+                    },
+                failure -> sendErrorMessage("Failed to create server: " + name, source));
         return true;
+    }
+
+    private String getStartCommand(String ram) {
+        // Optimised start flags by Aikar, see: https://docs.papermc.io/misc/tools/start-script-gen
+        return "java -Xms" + 500 + "M " +
+                "-XX:MaxRAMPercentage=95.0 " +
+                "-Dterminal.jline=false " +
+                "-Dterminal.ansi=true " +
+                "-jar server.jar nogui";
+    }
+
+
+
+    public ApplicationAllocation getNextAvailableAllocation() {
+        Node node = applicationAPI.retrieveNodeById(1).execute();
+        for (ApplicationAllocation allocation : node.retrieveAllocations()) {
+            if (!allocation.isAssigned()) {
+                return allocation;
+            }
+        }
+        throw new NoAvailableAllocationsException();
+    }
+
+    public static long getEggID(String serverSoftware) {
+        return switch (serverSoftware) {
+            case "sls-paper", "sls-fabric" -> 21;
+            case "sls-spigot" -> 16;
+            case "sls-vanilla" -> 17;
+            case "mc-paper" -> 2;
+            case "mc-vanilla" -> 5;
+            default -> throw new InvalidEggException("\"" + serverSoftware + "\" is not a valid server software egg");
+        };
     }
 
     /**
@@ -127,43 +193,7 @@ public class ServerInstance {
      * @param id the id of the server
      */
     public void establishWebSocketMonitor(String id) {
-        // The listener is asynchronous and receives WebSocket messages, passing them to the handleWebSocketData method for processing.
-        listener = this::handleWebSocketData;
-        webSocketClient = new WebSocketClient(id);
-        webSocketClient.addMessageListener(listener);
-        try {
-            webSocketClient.connect();
-        } catch (Exception e) {
-            System.out.println(RED + "Failed to establish a WebSocket connection to server " + id + ". Shutting down the server." + RESET);
-            HttpClient.killServer(id);
-            e.printStackTrace();
-            System.out.println(e.getMessage());
-        }
-    }
-
-    public void handleWebSocketData(String message) {
-        try {
-            if(message.contains("\"state\\\":\\\"running\\\"")) {
-                status = "online";
-            } else if (message.contains("\"status\",\"args\":[\"starting\"]")) {
-                status = "starting";
-            } else if (message.contains("\"status\",\"args\":[\"stopping\"]")) {
-                if(status.equals("starting")) { // If the server goes from starting to stopping an error occurred
-                    failedToStart = true;
-                    failedToStartMessage();
-                }
-                status = "stopping";
-            } else if (message.contains("\"status\",\"args\":[\"offline\"]")) {
-                if(status.equals("starting")) { // If the server goes from starting to stopping an error occurred
-                    failedToStart = true;
-                    failedToStartMessage();
-                }
-                status = "offline";
-                shutdown();
-            }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
+        serverWebSocket = new ServerWebSocket(id, this);
     }
 
     public void failedToStartMessage() {
@@ -175,15 +205,40 @@ public class ServerInstance {
 
     // shutdown the server gracefully
     public void shutdown() {
-        status = "offline";
-        SLS.SERVER_REGISTRY.unRegisterServer(name);
-        HttpClient.stopServer(id);
-        if(webSocketClient != null) webSocketClient.closeConnection();
-        listener = null;
+        if(!FLAGS.SAVE) {
+            deleteServerSilent(); // Delete the server if saving is not enabled
+        } else {
+            HttpClient.stopServer(identifier);
+        }
+        shutdown = true;
+        if(serverWebSocket != null) serverWebSocket.closeConnection();
         // Unregister the server in Velocity
         if (SLS.PROXY.getServer(name).isPresent()) {
             SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
         }
+        SLS.SERVER_REGISTRY.unRegisterServer(name);
+    }
+
+    // kills the server
+    public void kill() {
+        if(!FLAGS.SAVE) {
+            deleteServerSilent(); // Delete the server if saving is not enabled
+        } else {
+            HttpClient.killServer(identifier);
+        }
+        if(serverWebSocket != null) serverWebSocket.closeConnection();
+        // Unregister the server in Velocity
+        if (SLS.PROXY.getServer(name).isPresent()) {
+            SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
+        }
+    }
+
+    public void sendCommand(String command) {
+        serverWebSocket.sendCommand(command);
+    }
+
+    public void sendCommand(String command, CommandSource commandSource) {
+        serverWebSocket.sendCommand(command, commandSource);
     }
 
     /**
@@ -191,21 +246,22 @@ public class ServerInstance {
      * @return true if the server is shutdown or stopping
      */
     public boolean isShutdown() {
-        return status.equals("stopping") || status.equals("offline");
+        return state.equals(UtilizationState.STOPPING) || state.equals(UtilizationState.OFFLINE);
     }
 
-    // kills the server
-    public void kill() {
-        if(webSocketClient != null) webSocketClient.closeConnection();
-        listener = null;
-        HttpClient.killServer(id);
-        // Unregister the server in Velocity
-        if (SLS.PROXY.getServer(name).isPresent()) {
-            SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
-        }
+    public void setFlags(Flags flags) {
+        this.FLAGS = flags;
     }
 
+    // Forcefully deletes the server
+    public void deleteServer() {
+        Api.deleteServer(name, source);
+    }
 
+    // Forcefully deletes the server
+    public void deleteServerSilent() {
+        Api.deleteServer(name);
+    }
 
     // -------------------- Utility and Helper Methods -----------------------------
 
@@ -227,30 +283,6 @@ public class ServerInstance {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
-        }
-    }
-
-    public static String getIdentifier(String json) {
-        try {
-            // Create an ObjectMapper instance
-            ObjectMapper objectMapper = new ObjectMapper();
-
-            // Parse the JSON string into a JsonNode
-            JsonNode rootNode = objectMapper.readTree(json);
-
-            // Navigate to the "attributes" object and extract the "identifier"
-            JsonNode attributes = rootNode.get("attributes");
-            if (attributes != null) {
-                JsonNode identifierNode = attributes.get("identifier");
-                if (identifierNode != null) {
-                    return identifierNode.asText(); // Return the identifier value
-                }
-            }
-            System.out.println(json);
-            throw new IllegalArgumentException("Identifier field not found in JSON.");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null; // Return null if an error occurs
         }
     }
 }

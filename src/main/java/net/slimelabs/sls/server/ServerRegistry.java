@@ -2,7 +2,9 @@ package net.slimelabs.sls.server;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mattmalec.pterodactyl4j.UtilizationState;
 import com.velocitypowered.api.command.CommandSource;
+import net.slimelabs.sls.server.core.Flags;
 import net.slimelabs.sls.server.core.ServerInstance;
 
 import java.util.HashMap;
@@ -14,6 +16,7 @@ public class ServerRegistry {
 
     // ServerName --> ID
     private final HashMap<String, ServerInstance> servers = new HashMap<>();
+    private final HashMap<String, Flags> savedFlags = new HashMap<>();
 
     /**
      * Starts a server or creates it if it doesn't exist.
@@ -36,6 +39,51 @@ public class ServerRegistry {
      */
     public boolean startServer(String name, ServerConfiguration serverConfiguration, CommandSource source) {
         ServerInstance serverInstance = new ServerInstance(name);
+        registerServer(name, serverInstance);
+        serverInstance.setSource(source);
+        return serverInstance.startServer(serverConfiguration);
+    }
+
+    /**
+     * Starts a server or creates it if it doesn't exist.
+     * @param serverConfiguration the servers configuration data
+     * @param name the name of the server
+     * @param source the source that called for the server creation i.e., player
+     * @return true if no errors occurred
+     */
+    public boolean startServer(String name, ServerConfiguration serverConfiguration, CommandSource source, Flags flags) {
+        flags = configureFlags(name, flags);
+        savedFlags.put(name, flags);
+        ServerInstance serverInstance = new ServerInstance(name);
+        serverInstance.setFlags(flags);
+        registerServer(name, serverInstance);
+        serverInstance.setSource(source);
+        return serverInstance.startServer(serverConfiguration);
+    }
+
+    public Flags configureFlags(String name, Flags newFlags) {
+        Flags savedFlags = this.savedFlags.get(name);
+        if (savedFlags != null) {
+            // Override saved flags with new flags
+            if (newFlags.SAVE) savedFlags.SAVE = true;
+            if (newFlags.VIEW_DISTANCE != 0) savedFlags.VIEW_DISTANCE = newFlags.VIEW_DISTANCE;
+            if (newFlags.RAM != 0) savedFlags.RAM = newFlags.RAM;
+            if (newFlags.PLAYERS != 0) savedFlags.PLAYERS = newFlags.PLAYERS;
+        } else {
+            savedFlags = newFlags;
+        }
+        return newFlags;
+    }
+
+
+    /**
+     * Starts a server or creates it if it doesn't exist.
+     * @param serverConfiguration the servers configuration data
+     * @param name the name of the server
+     * @param source the source that called for the server creation i.e., player
+     * @return true if no errors occurred
+     */
+    public boolean startServer(String name, ServerConfiguration serverConfiguration, CommandSource source, ServerInstance serverInstance) {
         registerServer(name, serverInstance);
         serverInstance.setSource(source);
         return serverInstance.startServer(serverConfiguration);
@@ -72,11 +120,11 @@ public class ServerRegistry {
         return servers.get(name).isShutdown();
     }
 
-    public boolean failedToStart(String name) {
-        if (!servers.containsKey(name)) {
-            return true;
+    // Forcefully deletes the server with the given name
+    public void deleteServer(String name) {
+        if(servers.containsKey(name)) {
+            servers.get(name).deleteServer();
         }
-        return servers.get(name).failedToStart;
     }
 
     /**
@@ -84,26 +132,35 @@ public class ServerRegistry {
      * online, starting, stopped, offline
      * @return the status of the server
      */
-    public String getStatus(String name) {
+    public UtilizationState getStatus(String name) {
         ServerInstance serverInstance = servers.get(name);
         if(serverInstance == null) {
-            return "offline";
+            return UtilizationState.OFFLINE;
         }
-        return serverInstance.status;
+        return serverInstance.state;
+    }
+
+    public ServerInstance getServer(String name) {
+        return servers.get(name);
     }
 
     /**
-     * Checks if the server is online, indicating it is ready to accept players.
-     *
-     * @param name the name of the server to check
-     * @return {@code true} if the server is online, {@code false} otherwise
+     * Executes a console command on the given server
+     * @param command the command to execute
+     * @param serverName the name of the server to run the command on
      */
-    public boolean isOnline(String name) {
-        return getStatus(name).equals("online");
+    public void sendCommand(String command, String serverName) {
+        servers.get(serverName).sendCommand(command);
     }
 
-    public boolean isStopping(String name) {
-        return getStatus(name).equals("stopping");
+    /**
+     * Executes a console command on the given server
+     * @param command the command to execute
+     * @param serverName the name of the server to run the command on
+     * @param commandSource the source that is sending the command
+     */
+    public void sendCommand(String command, String serverName, CommandSource commandSource) {
+        servers.get(serverName).sendCommand(command, commandSource);
     }
 
     // -------------------- Utility and Helper Methods -----------------------------

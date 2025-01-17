@@ -25,7 +25,7 @@ public class MessageFormatter {
     public Message usage(Message message) {
         String delimiter = " | ";
         message.add(MessagePreset.SLS);
-        message.add(" Usage: ", NamedTextColor.DARK_AQUA);
+        message.add("Usage: ", NamedTextColor.DARK_AQUA);
         message.add(command, NamedTextColor.GRAY);
         message.add(" <", NamedTextColor.DARK_GRAY);
         // Loop through the arguments and add them with the delimiter

@@ -11,7 +11,7 @@ public enum MessagePreset {
         public Message applyPreset(Message message) {
             message.add("[", NamedTextColor.GRAY)
                     .add("SLS", TextColor.color(99, 255, 122))
-                    .add("]", NamedTextColor.GRAY);
+                    .add("] ", NamedTextColor.GRAY);
             return message;
         }
     },
@@ -19,7 +19,7 @@ public enum MessagePreset {
         @Override
         public Message applyPreset(Message message) {
             message.add(MessagePreset.SLS)
-                    .add(" Incorrect Command Usage!", TextColor.color(237, 67, 55));
+                    .add("Incorrect Command Usage! ", TextColor.color(237, 67, 55));
             return message;
         }
     };

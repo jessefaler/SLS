@@ -1,6 +1,9 @@
 package net.slimelabs.sls.server;
 
+import net.slimelabs.sls.server.core.Flags;
+
 public class ServerConfiguration {
+    public String registry;
     public String name; // World name (Required)
     public String[] authors;
     public String version = "latest"; // Minecraft Version to use (Default: latest)
@@ -12,5 +15,6 @@ public class ServerConfiguration {
     // The program will look for a subfolder named after the server software and then look for a subfolder in that.
     // Named after the version and create it if it doesn't exist.
     public String worldFolderName = "";
+    Flags flags;
     public String serversFolder = "/home/jesse/Desktop/network/proxy/plugins/sls/servers";
 }

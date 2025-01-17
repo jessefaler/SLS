@@ -38,11 +38,11 @@ public class MinecraftJavaVersionMapper {
     private static @NotNull NavigableMap<Double, String> getThresholds() {
         NavigableMap<Double, String> versionThresholds = new TreeMap<>();
         // Populate the thresholds (version, Java version)
-        versionThresholds.put(1.21, "ghcr.io/pterodactyl/yolks:java_21");
-        versionThresholds.put(1.17, "ghcr.io/pterodactyl/yolks:java_17");
-        versionThresholds.put(1.16, "ghcr.io/pterodactyl/yolks:java_16");
-        versionThresholds.put(1.13, "ghcr.io/pterodactyl/yolks:java_11");
-        versionThresholds.put(1.0, "ghcr.io/pterodactyl/yolks:java_8");
+        versionThresholds.put(1.20, "sls:java_21");
+        versionThresholds.put(1.17, "sls:java_17");
+        versionThresholds.put(1.16, "sls:java_16");
+        versionThresholds.put(1.13, "sls:java_11");
+        versionThresholds.put(1.0, "sls:java_8");
         return versionThresholds;
     }
 

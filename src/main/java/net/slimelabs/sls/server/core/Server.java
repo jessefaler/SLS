@@ -1,12 +1,12 @@
 package net.slimelabs.sls.server.core;
 
-import net.slimelabs.sls.api.HttpClient;
 import com.google.gson.Gson;
+import net.slimelabs.sls.api.HttpClient;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
 
 import java.nio.file.Paths;
-
+@Deprecated
 public class Server {
 
     private static final String APPLICATION_API_KEY = "ptla_A0T0M72ZKXYZd73inutGvT0C8s9U1kn6k3dhGAxIOtT"; // Replace with your API key
@@ -38,8 +38,8 @@ public class Server {
         payload.name = name;
         payload.egg = getEggID(serverConfig.software);
         payload.allocation.defaultAllocation = HttpClient.getNextAvailableAllocation();
-        //payload.docker_image = MinecraftJavaVersionMapper.getRequiredJavaVersion(serverConfig.version);
-        payload.startup = "java -Xms3G -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar";
+        payload.docker_image = MinecraftJavaVersionMapper.getRequiredJavaVersion(serverConfig.version);
+        payload.startup = "java -Xms3072M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar";
         payload.environment.put("view-distance", String.valueOf(serverConfig.viewDistance));
         payload.limits.io = 100;
         payload.limits.memory = 4096;

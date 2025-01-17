@@ -15,9 +15,7 @@ import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import net.slimelabs.sls.utils.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class JoinCommand {
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -99,6 +97,56 @@ public class JoinCommand {
                     }
                     // The World Is Present So Connect The Player To It.
                     SLS.PLAYER_CONNECTOR.joinServer(world, registryName, source);
+                    return 1;
+                })
+                .then(player());
+    }
+
+    // /sls join registry world
+    private static RequiredArgumentBuilder<CommandSource, String> player() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("player", StringArgumentType.string())
+                .requires(source -> source.hasPermission("sls.command.admin"))
+                .suggests((context, builder) -> {
+                    builder.suggest("all");
+                    builder.suggest("local");
+                    for(Player player : SLS.PROXY.getAllPlayers()) {
+                        builder.suggest(player.getUsername());
+                    }
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String registryName = StringArgumentType.getString(context, "registry");
+                    if (!checkIfRegistryExists(source, registryName)) return 0;
+                    String world = StringArgumentType.getString(context, "world");
+                    String playerName = StringArgumentType.getString(context, "player");
+                    if(!SLS.REGISTRY_MANAGER.getRegistry(registryName).isWorldPresent(StringUtils.removeTextAfterPeriod(world))) {
+                        Message.chat().add(MessagePreset.SLS)
+                                .add(" World " + world + " is not present in " + registryName + " registry.", NamedTextColor.RED)
+                                .sendMessage(source);
+                        return 0;
+                    }
+                    // The World Is Present So Connect The Player To It.
+                    if(playerName.equals("all")) { // Connect all players
+                        for (Player player : SLS.PROXY.getAllPlayers()) {
+                            SLS.PLAYER_CONNECTOR.joinServer(world, registryName, player);
+                        }
+                    } else if (playerName.equals("local")) { // Connect all players that are on the same server as the executor
+                        Player player = (Player) source;
+                        String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
+                        for (Player targetPlayer : Objects.requireNonNull(SLS.PROXY.getServer(serverName).orElse(null)).getPlayersConnected()) {
+                            SLS.PLAYER_CONNECTOR.joinServer(world, registryName, targetPlayer);
+                        }
+                    } else { // Connect the given player if not null
+                        Optional<Player> player = SLS.PROXY.getPlayer(playerName);
+                        if(player.isPresent()) {
+                            Message.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + world.replace("_", " "), NamedTextColor.DARK_AQUA).sendMessage(source);
+                            SLS.PLAYER_CONNECTOR.joinServer(world, registryName, player.get());
+                            return 1;
+                        }
+                        Message.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
+                        return 0;
+                    }
                     return 1;
                 });
     }

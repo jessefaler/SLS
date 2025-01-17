@@ -43,7 +43,7 @@ public class ShutdownCommand {
                         SLS.SERVER_REGISTRY.shutdownServer(serverName);
                         Message.chat()
                                 .add(MessagePreset.SLS)
-                                .add(" Shutdown " + serverName.replace("_", " "), NamedTextColor.GRAY)
+                                .add("Shutdown " + serverName.replace("_", " "), NamedTextColor.GRAY)
                                 .sendMessage(source);
                         return 1;
                     }
@@ -51,14 +51,14 @@ public class ShutdownCommand {
                     if(SLS.REGISTRY_MANAGER.doseWorldExist(StringUtils.removeTextAfterPeriod(serverName))) {
                         Message.chat()
                                 .add(MessagePreset.SLS)
-                                .add(" " + serverName.replace("_", " ") + " is not running.", NamedTextColor.RED)
+                                .add(serverName.replace("_", " ") + " is not running.", NamedTextColor.RED)
                                 .sendMessage(source);
                         return 0;
                     }
                     // No such server exists
                     Message.chat()
                             .add(MessagePreset.SLS)
-                            .add(" No such server " + serverName, NamedTextColor.RED)
+                            .add("No such server " + serverName, NamedTextColor.RED)
                             .sendMessage(source);
                     return 0;
                 });

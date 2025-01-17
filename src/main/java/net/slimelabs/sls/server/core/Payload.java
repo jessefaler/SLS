@@ -10,12 +10,13 @@ import java.util.Map;
  * This class includes properties such as server configuration, limits, feature limits,
  * environment variables, and Docker image setup for server deployment.
  */
+@Deprecated
 public class Payload {
     String name = "";
     int user = 1;  // User ID
     int egg = 2;   // Egg ID
     String docker_image = "sls:latest";
-    String startup = "java -Xms128M -Xmx1024M -jar server.jar nogui";
+    String startup = "java -Xms3072M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar";
     Limits limits = new Limits();
     FeatureLimits feature_limits = new FeatureLimits();
     Allocation allocation = new Allocation();

@@ -1,6 +1,7 @@
 package net.slimelabs.sls;
 
 
+import com.mattmalec.pterodactyl4j.UtilizationState;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.Player;
@@ -24,6 +25,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static net.slimelabs.sls.PacketListener.enableActionBarPackets;
+
 /* Server Management System <>
  * Author: protoxon & Yeetoxic
  * Network: SlimeLabs.net
@@ -35,25 +38,30 @@ public class PlayerConnector {
     // Contain players who are in queue for a server
     // players UUID --> server name
     public Map<UUID, String> queue = new ConcurrentHashMap<>();
+    public Map<UUID, QueueService> activeServices = new ConcurrentHashMap<>();
 
     public void joinServer(String name, String registry, CommandSource source) {
+        ServerInstance serverInstance;
         if(SLS.SERVER_REGISTRY.containsServer(name)) {
-            if(SLS.SERVER_REGISTRY.isOnline(name)) {//server is on and ready for players
-                connectToServer(name, source);
+            serverInstance = SLS.SERVER_REGISTRY.getServer(name);
+            if(serverInstance.state == UtilizationState.RUNNING) {//server is on and ready for players
+                sendConnectionRequest((Player) source, name); // Send connection request
                 return;
             }
             // Server is in the registry and is not running and not stopping so assume it is starting
             // Queue the player to join the server once it is running
-            if(!SLS.SERVER_REGISTRY.isStopping(name)) {
+            if(serverInstance.state != UtilizationState.STOPPING) {
                 Player player = (Player) source;
                 if(SLS.PLAYER_CONNECTOR.queue != null && SLS.PLAYER_CONNECTOR.queue.get(player.getUniqueId()) != null && SLS.PLAYER_CONNECTOR.queue.get(player.getUniqueId()).equals(name)) {
                     Message.chat().add(MessagePreset.SLS).add(" You are already in queue for " + name, NamedTextColor.RED);
                     return;
                 }
-                new QueueService().queuePlayerToJoinServer(name, source); // Queue the player
+                new QueueService().queuePlayerToJoinServer(name, SLS.SERVER_REGISTRY.getServer(name), source); // Queue the player
                 return;
             }
+            return;
         }
+        serverInstance = new ServerInstance(name);
         String worldName = StringUtils.removeTextAfterPeriod(name); // Removes the namespace
         if(!SLS.REGISTRY_MANAGER.doseRegistryExist(registry)) { // Registry does not exist send error message
             Message.chat().add(MessagePreset.SLS).add(" No such registry " + registry, NamedTextColor.RED);
@@ -77,21 +85,46 @@ public class PlayerConnector {
         ServerConfiguration serverConfiguration = SLS.REGISTRY_MANAGER.getRegistry(registry).getWorld(worldName);
         // Execute the server start on a separate thread so Http requests don't block the main thread.
         SLS.EXECUTOR.submit(() -> {
-            boolean success = SLS.SERVER_REGISTRY.startServer(name, serverConfiguration);
+            boolean success = SLS.SERVER_REGISTRY.startServer(name, serverConfiguration, null, serverInstance);
             if(!success) {
                 Message.chat()
                         .add("An error occurred while attempting to start the server. Please try again or check the logs for more details.", NamedTextColor.RED)
                         .sendMessage(source);
             }
         });
-        new QueueService().queuePlayerToJoinServer(name, source); // Queue the player
+        new QueueService().queuePlayerToJoinServer(name, serverInstance, source); // Queue the player
     }
 
-    // Connects the player to a server if it is online
-    public void connectToServer(String name, CommandSource source) {
-        Player player = (Player) source;
-        SLS.PROXY.getServer(name).ifPresentOrElse(
-                targetServer -> player.createConnectionRequest(targetServer).fireAndForget(),
-                () -> Message.chat().add(MessagePreset.SLS).add(" Server not found.", NamedTextColor.RED).sendMessage(source));
+    public void dequeuePlayer(UUID uuid) {
+        if(activeServices.containsKey(uuid)) {
+            activeServices.get(uuid).dequeue();
+        }
+    }
+
+    /**
+     * Sends a connection request to join the given player to the specified server
+     * @param player the player instance to connect
+     * @param serverName the name of the server
+     */
+    public void sendConnectionRequest(Player player, String serverName) {
+        SLS.PROXY.getServer(serverName).ifPresentOrElse(
+                targetServer -> player.createConnectionRequest(targetServer).connectWithIndication().thenAccept(connection -> {
+                    enableActionBarPackets(player.getUniqueId());
+                    Message.actionBar().sendMessage(player); // Send a blank message to clear their actionbar
+                }).exceptionally(throwable -> {
+                    // Handle connection failure
+                    Message.chat()
+                            .add(MessagePreset.SLS)
+                            .add("Error: Could not connect to " + serverName, NamedTextColor.RED)
+                            .sendMessage(player);
+                    SLS.LOGGER.error("There was an error while connecting {} to {} ensure the ip and port are configured correctly and the server is accessible through velocity", player.getUsername(), serverName);
+                    System.err.println(throwable.getMessage());
+                    return null;
+                }),
+                () -> Message.chat()
+                        .add(MessagePreset.SLS)
+                        .add("Error: Server not found", NamedTextColor.RED)
+                        .sendMessage(player)
+        );
     }
 }

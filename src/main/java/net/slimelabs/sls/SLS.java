@@ -3,6 +3,8 @@ package net.slimelabs.sls;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.google.inject.Inject;
+import com.mattmalec.pterodactyl4j.PteroBuilder;
+import com.mattmalec.pterodactyl4j.application.entities.PteroApplication;
 import com.mojang.brigadier.CommandDispatcher;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -16,10 +18,12 @@ import net.slimelabs.sls.io.RegistryIO;
 import net.slimelabs.sls.registries.RegistryManager;
 import net.slimelabs.sls.server.ServerRegistry;
 import net.slimelabs.sls.utils.PlayerUtils;
+import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 
 import static net.slimelabs.sls.utils.Color.*;
 
@@ -42,7 +46,9 @@ import static net.slimelabs.sls.utils.Color.*;
 @Plugin(
         id = "sls",
         name = "SLS",
-        version = "1.0.0"
+        version = "1.0.0",
+        description = "Server Management Plugin",
+        authors = {"protoxon", "Yeetoxic"}
 )
 public class SLS {
     public static Logger LOGGER;
@@ -55,7 +61,6 @@ public class SLS {
     public static RegistryIO REGISTRYIO;
     public static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     public static SLS PLUGIN;
-
 
     @Inject //injects the proxy server and logger into the plugin class (dependency injection)
     public SLS(ProxyServer PROXY, Logger LOGGER) {
