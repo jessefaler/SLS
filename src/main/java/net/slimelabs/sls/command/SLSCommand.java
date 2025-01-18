@@ -9,10 +9,17 @@ import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.TextColor;
 import net.slimelabs.sls.SLS;
 import net.slimelabs.sls.command.subcommand.*;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 
+/**
+ * The base command for the SLS system, registered as `/sls`.
+ * <p>
+ * This class is responsible for registering subcommands under the root `/sls` command.
+ * It handles the command registration process and associates subcommands with their respective actions.
+ * </p>
+ */
 public class SLSCommand {
     public static void register() {
         CommandManager commandManager = SLS.PROXY.getCommandManager();
@@ -22,13 +29,14 @@ public class SLSCommand {
         root.executes(SLSCommand::handleRootCommand);
 
         // Register subcommands
-        root.then(JoinCommand.register());
-        root.then(StartCommand.register());
-        root.then(Debug.register());
-        root.then(ShutdownCommand.register());
-        root.then(DeleteCommand.register());
-        root.then(ConsoleCommand.register());
-        root.then(DequeueCommand.register());
+        root.then(JoinCommand.register());     // JOIN
+        root.then(StartCommand.register());    // START
+        root.then(Debug.register());           // DEBUG
+        root.then(ShutdownCommand.register()); // SHUTDOWN
+        root.then(DeleteCommand.register());   // DELETE
+        root.then(ConsoleCommand.register());  // CONSOLE
+        root.then(DequeueCommand.register());  // DEQUEUE
+        root.then(VersionCommand.register());  // VERSION
 
         // Create the Brigadier command
         BrigadierCommand brigadierCommand = new BrigadierCommand(root);
@@ -45,19 +53,19 @@ public class SLSCommand {
     private static int handleRootCommand(CommandContext<CommandSource> context) {
         CommandSource source = context.getSource();
 
-        Message.chat()
+        ProtoMessage.chat()
                 .add(MessagePreset.SLS)
                 .add(" Incorrect Command Usage!", TextColor.color(237, 67, 55))
                 .sendMessage(source);
 
         if (source.hasPermission("sls.command.admin")) {
-            Message.chat()
-                    .add(MessageFormatter.usage("/sls", "join", "start", "shutdown", "config", "console", "debug", "info"))
+            ProtoMessage.chat()
+                    .add(MessageFormatter.commandUsage("/sls", "join", "start", "shutdown", "config", "console", "debug", "info"))
                     .sendMessage(source);
             return 1;
         } else {
-            Message.chat()
-                    .add(MessageFormatter.usage("/sls", "join", "info"))
+            ProtoMessage.chat()
+                    .add(MessageFormatter.commandUsage("/sls", "join", "info"))
                     .sendMessage(source);
         }
         return 0;
