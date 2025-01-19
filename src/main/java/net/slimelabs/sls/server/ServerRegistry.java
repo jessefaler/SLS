@@ -8,8 +8,7 @@ import net.slimelabs.sls.io.ServerData;
 import net.slimelabs.sls.server.core.Server;
 import net.slimelabs.sls.server.core.ServerInstance;
 
-import java.util.HashMap;
-import java.util.Set;
+import java.util.*;
 
 public class ServerRegistry {
 
@@ -160,7 +159,9 @@ public class ServerRegistry {
      * Shutdown all servers present in the server registry.
      */
     public void shutDownAllServers() {
-        for(ServerInstance serverInstance : servers.values()) {
+        // Collect servers into a temporary list to avoid modifying the map during iteration
+        List<ServerInstance> serversToShutdown = new ArrayList<>(servers.values());
+        for (ServerInstance serverInstance : serversToShutdown) {
             serverInstance.shutdown();
         }
     }
