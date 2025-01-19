@@ -17,6 +17,8 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static net.slimelabs.sls.api.HttpClient.CLIENT_API_KEY;
 
+// Deprecated use ServerWebSocket located in the server package instead
+@Deprecated
 public class WebSocketClient {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
