@@ -2,6 +2,18 @@
 
 **SLS** is a powerful plugin designed to dynamically start and manage servers, facilitate cross-server communication, and maintain a server registry.
 
+## Latest Update
+Release 4.0.0-beta: First release with Pterodactyl integration
+
+This release introduces major changes with the integration of Pterodactyl for server management. Pterodactyl enables running servers on separate machines using Wings, providing enhanced scalability, improved security, and better performance. It also allows the separation of proxy and game servers onto different machines.
+
+In addition to Pterodactyl integration, this version introduces several long-awaited features, including:
+
+- Support for running multiple instances of the same world
+- Dynamic registries
+- World saving and creation of custom worlds on the fly
+- Numerous minor upgrades and quality-of-life improvements
+
 ## Features
 - **Dynamic Server Management:** Automatically start and stop servers as needed.
 - **Cross-Server Communication:** Seamlessly manage communication between multiple servers.
