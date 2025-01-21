@@ -1,157 +1,128 @@
 package net.slimelabs.sls;
 
-import com.velocitypowered.api.proxy.server.RegisteredServer;
-import org.apache.commons.io.FileUtils;
+import com.velocitypowered.api.proxy.server.ServerInfo;
+import net.slimelabs.sls.namespaces.Namespace;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import com.velocitypowered.api.proxy.server.ServerInfo;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import static net.slimelabs.sls.utils.Color.*;
 
-
-/* Server Management System <>
- * Author: protoxon & Yeetoxic
- * Network: SlimeLabs.net
- * starts up and runs a server
- * SLS - Slime Labs Network <>
+/**
+ * Represents a single server instance
+ * Starts and manages a single server
  */
 public class ServerInstance {
-
     private Process process;
+    public String name; // The name of the world the server is using (specified in the config)
+    public File serverPath;
+    public boolean online; // Indicates whether the server has completed the startup process and is ready to accept players.
+    private boolean shutdown; // Indicates whether the server failed to start or has shut down. Used to stop queuing players if the server didn't start.
+    public int port; // (1024..65535)
+    public boolean outputToConsole; // If true server output is printed to the proxy's console
+    public Namespace namespace;
+    long startTime;
 
-    private String name;
+    /**
+     * Builds the server possess then calls runServer() to run the server
+     * @param world a World object
+     */
+    public ServerInstance startServer(World world, String name, Namespace namespace) {
+        serverPath = world.serverPath.toFile();
+        port = generateRandomPort();
+        startTime = System.nanoTime();
+        SLS.LOGGER.info("Starting server " + BLUE + name + RESET + " on port " + BLUE + port + RESET + " with " + BLUE + world.ramAllocation + RESET + "mb ram");
+        String JDK = world.JDK;
+        JDK = (JDK == null) ? "java" : JDK;
+        ProcessBuilder processBuilder = new ProcessBuilder(JDK, "-Xmx" + world.ramAllocation + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
 
-    private boolean online;
-    private boolean shutdown;
-
-    //starts up and runs a server
-    //@param path the path to the server folder
-    public void startServer(String path, int memory, String worldName) {
-        File serverDirectory = new File(path);
-        int port = generateRandomPort();
-        name = worldName;
-        SLS.LOGGER.info("Starting server " + name
-                + " on port " + port + " with " + memory + "mb ram");
-
-        ProcessBuilder processBuilder;
-        if (SLS.REGISTRY_ROUTER.getUseCustomJDK(worldName)) {//check if this minigame uses a custom version of java
-            String javaExecutablePath = SLS.REGISTRY_ROUTER.getCustomJDKPath(worldName);//if so get the path to the java executable
-            processBuilder = new ProcessBuilder(javaExecutablePath, "-Xmx" + memory + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
-        } else {
-            processBuilder = new ProcessBuilder("java", "-Xmx" + memory + "M", "-jar", "server.jar", "gui", "--port", Integer.toString(port));
-        }
-        processBuilder.directory(serverDirectory);
+        processBuilder.directory(serverPath);
         processBuilder.redirectErrorStream(true);
 
-        resetWorld(path, worldName);//resets world if enabled for this minigame
+        //Runs the server on an asynchronous thread.
+        runServer(processBuilder);
 
-        //runs the server on an asynchronous thread.
-        runServer(processBuilder, worldName, path);
-
-        //add server to bungee-cord
-        InetSocketAddress address = new InetSocketAddress("127.0.0.1", port); // Example IP and port
+        //Register the server with velocity
+        InetSocketAddress address = new InetSocketAddress("127.0.0.1", port);
         String formattedName = name.trim().replace(" ", "_").toLowerCase();
         ServerInfo serverInfo = new ServerInfo(formattedName, address);
-        RegisteredServer registeredServer = SLS.PROXY.registerServer(serverInfo);
-
+        SLS.PROXY.registerServer(serverInfo);
+        return this;
     }
 
-    //runs the server process on an asynchronous thread.
-    public void runServer(ProcessBuilder processBuilder, String worldName, String path) {
+    public ServerInstance startServer(World world, Namespace namespace) {
+        return startServer(world, world.name, namespace);
+    }
+
+    // Runs the server process on an asynchronous thread.
+    private void runServer(ProcessBuilder processBuilder) {
         CompletableFuture.runAsync(() -> {
             try {
                 process = processBuilder.start();
+
                 // Redirect output to console
-                InputStream is = process.getInputStream();
-                InputStreamReader isr = new InputStreamReader(is);
-                BufferedReader br = new BufferedReader(isr);
+                BufferedReader outputReader  = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+
                 String line;
-
-                while ((line = br.readLine()) != null) {
-                    System.out.println("[" + name + "] " + line);
-                    if(online || line.contains("Done (")) {
+                while ((line = outputReader.readLine()) != null) {
+                    if (outputToConsole) System.out.println("[" + BLUE + name + RESET + "] " + line);
+                    if (!online && line.contains("Done (")) {
                         online = true;
+                        System.out.printf("[%s%s%s] %sServer %sstartup complete. Elapsed time: %s%.2f%s%s%n", BLUE, name,
+                                RESET, YELLOW, RESET, RED, (System.nanoTime() - startTime) / 1000000000.0, RESET, "s");
                     }
-                    else {//for debug players show console in action bar
-                        Component component = Component.text("§7" + line.replaceAll("\\[.*?\\]", "").replace(":", "").trim()).color(NamedTextColor.GRAY);
+                }
 
-                        for (UUID uuid : SLS.PLAYER_CONNECTOR.playersInQueue.keySet()) {
-                            if (SLS.PLAYER_CONNECTOR.debugEnabledPlayers.contains(uuid) && SLS.PLAYER_CONNECTOR.playersInQueue.get(uuid).equals(worldName)) {
-                                SLS.PROXY.getPlayer(uuid).ifPresent(player -> player.sendActionBar(component));
-                            }
-                        }
-                    }
+                // Read error stream for crashes or failures
+                while ((line = errorReader.readLine()) != null) {
+                    System.err.println("[" + RED + name + RESET + "] ERROR: " + line);
                 }
 
                 // Wait for the server to finish
-                String formattedName = name.trim().replace(" ", "_").toLowerCase();
-                if (SLS.PROXY.getServer(formattedName).isPresent()) {
-                    SLS.PROXY.unregisterServer(SLS.PROXY.getServer(formattedName).get().getServerInfo());
-                }
                 shutdown = true;
-                SLS.SERVER_REGISTRY.SERVERS.remove(worldName);
-                if(SLS.REGISTRY_ROUTER.getReset(worldName)) {//delete the world folder if world-reset is enabled to save space
-                    File directoryToDelete = new File(path + "/world");
-                    FileUtils.forceDelete(directoryToDelete);
-                }
-                int exitCode = process.waitFor();
-                System.out.println("Server exited with code " + exitCode);
-            } catch (IOException | InterruptedException ignored) {
+                SLS.SERVER_REGISTRY.unregisterServer(namespace, name);//Unregister the server in the server registry
+                // Unregister the server in Velocity
+                String formattedName = name.trim().replace(" ", "_").toLowerCase();
+                SLS.PROXY.getServer(formattedName).ifPresent(server -> SLS.PROXY.unregisterServer(server.getServerInfo()));
 
+                System.out.println("[" + BLUE + name + RESET + "] Server exited with code " + process.waitFor());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                System.out.println("[" + RED + name + RESET + "] " + e.getMessage());
             }
         });
     }
 
-    public int generateRandomPort() {
-        int port;
-        while (true) {
-            port = (int) (Math.random() * (65535 - 1024 + 1) + 1024);
-            if (isPortAvailable(port)) {
-                return port;
-            }
-        }
-    }
-
-    //check if port is available -------------------------
-    private boolean isPortAvailable(int port) {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    public void shutDownServer() {
+    public void shutdownServer() {
         process.destroy();
-        String formattedName = name.trim().replace(" ", "_").toLowerCase();
-        if (SLS.PROXY.getServer(formattedName).isPresent()) {
-            SLS.PROXY.unregisterServer(SLS.PROXY.getServer(formattedName).get().getServerInfo());
-        }
-    }
-
-    public boolean isOnline() {
-        return online;
     }
 
     public boolean isShutdown() {
         return shutdown;
     }
-    public String getName() {
-        return name;
+
+    //runs a command on the server
+    public String runCommand(String command) {
+        if (command != null && process.isAlive()) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {
+
+                bw.write(command);
+                bw.newLine();
+                bw.flush();
+                return br.readLine();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return "Unable to run the command; the server is not running";
     }
 
-    //returns the server name and number of players online
+    //Returns the server name and number of players online
     public String info() {
         String formattedName = name.trim().replace(" ", "_").toLowerCase();
-
         int players = 0;
         if (SLS.PROXY.getServer(formattedName).isPresent()) {
             players = SLS.PROXY.getServer(formattedName).get().getPlayersConnected().size();
@@ -162,35 +133,23 @@ public class ServerInstance {
         return "§a" + name + ": §7" + SLS.PROXY.getServer(formattedName).get().getPlayersConnected().size() + " players";
     }
 
-    public void resetWorld(String pathToServerFolder, String minigame) {
-        if(!SLS.REGISTRY_ROUTER.getReset(minigame)) {//world reset is set to false so do nothing
-            return;
-        }
-        File sourceDirectory = new File(pathToServerFolder + "/reset-world");
-        File directoryToDelete = new File(pathToServerFolder + "/world");
-        File destinationDirectory = new File(pathToServerFolder);
-        try {
-            if(directoryToDelete.exists()) {
-                FileUtils.forceDelete(directoryToDelete);//FileUtils.copyDirectory() will replace the directory, but I had some problems with it not deleting it so i added this force delete.
+    //Gets a random port in the range (1024..65535)
+    public int generateRandomPort() {
+        int port;
+        while (true) {
+            port = (int) (Math.random() * (65535 - 1024 + 1) + 1024);
+            if (isPortAvailable(port)) {
+                return port;
             }
-            FileUtils.copyDirectory(sourceDirectory, destinationDirectory);
-        } catch (java.io.IOException e) {
-            e.printStackTrace();
-            SLS.LOGGER.warn(e.getMessage());
         }
     }
 
-    public void runCommand(String command) {
-        if(command != null && process.isAlive()) {
-            try {
-                OutputStream os = process.getOutputStream();
-                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));
-                bw.write(command);
-                bw.newLine();
-                bw.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    //checks if a given port is available
+    private boolean isPortAvailable(int port) {
+        try (ServerSocket ignored = new ServerSocket(port)) {
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 }
