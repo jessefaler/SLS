@@ -26,7 +26,7 @@ public class SLSCommand {
         // Create the root command
         LiteralArgumentBuilder<CommandSource> root = LiteralArgumentBuilder.literal("sls");
 
-        root.executes(SLSCommand::handleRootCommand);
+        root.executes(SLSCommand::handleRootCommand); // Handle the execution of /sls when no arguments are given
 
         // Register subcommands
         root.then(JoinCommand.register());     // JOIN
@@ -37,6 +37,7 @@ public class SLSCommand {
         root.then(ConsoleCommand.register());  // CONSOLE
         root.then(DequeueCommand.register());  // DEQUEUE
         root.then(VersionCommand.register());  // VERSION
+        root.then(FlagsCommand.register());    // FLAGS
 
         // Create the Brigadier command
         BrigadierCommand brigadierCommand = new BrigadierCommand(root);
