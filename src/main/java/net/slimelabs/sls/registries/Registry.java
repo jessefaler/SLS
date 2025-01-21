@@ -2,12 +2,13 @@ package net.slimelabs.sls.registries;
 
 import net.slimelabs.sls.server.ServerConfiguration;
 
-import java.nio.file.Path;
+import java.nio.file.Path
+import net.slimelabs.sls.World;
+
 import java.util.HashMap;
 
 public class Registry {
-    public String name;
-    public HashMap<String, ServerConfiguration> worlds;
+    public String name    public HashMap<String, ServerConfiguration> worlds;
     public Path path;
     public Registry(String name, HashMap<String, ServerConfiguration> worlds, Path path) {
         this.name = name;
@@ -33,5 +34,13 @@ public class Registry {
      */
     public ServerConfiguration getWorld(String name) {
         return worlds.get(name);
+    }
+    public HashMap<String, World> worlds;
+    public Registry(String name, HashMap<String, World> worlds) {
+        this.name = name;
+        this.worlds = worlds;
+    }
+    public HashMap<String, World> getWorlds() {
+        return worlds;
     }
 }

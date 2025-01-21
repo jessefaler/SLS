@@ -1,20 +1,25 @@
 package net.slimelabs.sls.io;
 import net.slimelabs.sls.SLS;
-
 import net.slimelabs.sls.server.Flags;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.registries.Registry;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
+import net.slimelabs.sls.World;
+import net.slimelabs.sls.registries.Registry;
+import org.yaml.snakeyaml.Yaml;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 
@@ -24,6 +29,9 @@ import java.util.stream.Stream;
 public class RegistryIO {
     public String REGISTRY_CONFIGS_FOLDER = "./plugins/sls/registry_configs";
     public String SERVERS_FOLDER = "./plugins/sls/servers";
+
+    public String REGISTRY_CONFIGS_FOLDER = "./plugins/sln/registry_configs";
+    public String SERVERS_FOLDER = "./plugins/sln/servers";
 
     /**
      * Retrieves a list of all files in the Registry Configs directory that have
@@ -42,15 +50,17 @@ public class RegistryIO {
         return yamlFilePaths;
     }
     public List<Path> locateWorldFolders(Path registryDirectory) throws IOException {
+    public List<Path> locateWorldFolders(Path registryDirectory) {
         List<Path> subFolders = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(registryDirectory)) {
             paths.filter(Files::isDirectory) // Filter to get only directories
                     .filter(path -> !path.equals(registryDirectory)) // Exclude root directory
-                    .forEach(subFolders::add); // Add each directory path to the list
+                    .forEach(subFolders::add); // Add each directory path to the lis
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return subFolders;
     }
-
     /**
      * Searches for worlds in registry folders who are not listed in the
      * registries config file and prints them to console.
@@ -107,7 +117,7 @@ public class RegistryIO {
 
     @SuppressWarnings("unchecked")
     public Registry readRegistryConfig(Path path) {
-        HashMap<String, ServerConfiguration> worlds = new HashMap<>();
+        HashMap<String, World> worlds = new HashMap<>();
         Map<String, Object> data = readYML(path);
         assert data != null;
         //read in registry settings (name, path)
@@ -188,6 +198,22 @@ public class RegistryIO {
             worlds.put(worldName, serverConfiguration);
         }
         return new Registry(registryName, worlds, path1);
+            String serverFolderName = getRequiredValue(settings, "server-folder", registryName);
+
+            //OPTIONAL ARGUMENTS
+            String ram = (String) settings.getOrDefault("ram-allocation", "2048M");
+            int maxPlayers = (int) settings.getOrDefault("max-players", 69);
+            boolean saveWorld = (boolean) settings.getOrDefault("save-world", false);
+            int viewDistance = (int) settings.getOrDefault("view-distance", 15);
+            String authors = getOptionalValue(settings, "authors");
+            String description = getOptionalValue(settings, "description");
+            Path serverFolderPath = Path.of(SERVERS_FOLDER, serverFolderName);
+
+            assert registryPath != null;
+            registryPath.append(registryPath.toString().endsWith("\\") ? "" : "\\").append(folderName);
+            worlds.put(worldName, new World(Path.of(String.valueOf(registryPath)), serverFolderPath, worldName, authors, maxPlayers, saveWorld, ram, description, viewDistance));
+        }
+        return new Registry(registryName, worlds);
     }
 
     //Reads a YML file into a Map

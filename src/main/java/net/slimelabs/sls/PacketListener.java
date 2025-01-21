@@ -12,6 +12,8 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPl
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import javax.swing.*;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerActionBar;
+import net.kyori.adventure.text.Component;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -24,6 +26,7 @@ import java.util.UUID;
  */
 public class PacketListener implements com.github.retrooper.packetevents.event.PacketListener {
     private static final Set<UUID> disabledActionBars = new HashSet<>();
+    private final Set<UUID> disabledActionBars = new HashSet<>();
     public void onPacketSend(PacketSendEvent event) {
         if (event.getPacketType() == PacketType.Play.Server.ACTION_BAR) {
             if(disabledActionBars.contains(event.getUser().getUUID())) {
@@ -37,6 +40,7 @@ public class PacketListener implements com.github.retrooper.packetevents.event.P
      * @param uuid the uuid of the player
      */
     public static void enableActionBarPackets(UUID uuid) {
+    public void enableActionBarPackets(UUID uuid) {
         disabledActionBars.remove(uuid);
     }
 
@@ -45,6 +49,7 @@ public class PacketListener implements com.github.retrooper.packetevents.event.P
      * @param uuid the uuid of the player
      */
     public static void disableActionBarPackets(UUID uuid) {
+    public void disableActionBarPackets(UUID uuid) {
         disabledActionBars.add(uuid);
     }
 
@@ -68,7 +73,11 @@ public class PacketListener implements com.github.retrooper.packetevents.event.P
             PacketEvents.getAPI().getPlayerManager().sendPacket(player, packet);
         }
     }
-
-
-
+     * @param uuid the players uuid
+     */
+    public void sendSilentActionBarMessage(Component component, UUID uuid) {
+        WrapperPlayServerActionBar actionBarPacket = new WrapperPlayServerActionBar(component); // build the packet
+        User user = PacketEvents.getAPI().getPlayerManager().getUser(uuid); // Get the user
+        user.sendPacketSilently(actionBarPacket); // Send the packet
+    }
 }
