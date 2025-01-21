@@ -6,7 +6,7 @@ package net.slimelabs.sls.server;
 public class Flags {
     public boolean SAVE;      // Indicates whether the server should be saved.
     public int VIEW_DISTANCE; // The number of chunks to load around a player.
-    public int RAM;           // The maximum amount of RAM allocated for the server (in MB/GB).
+    public String RAM;           // The maximum amount of RAM allocated for the server (in MB/GB).
     public int PLAYERS;       // The maximum number of players allowed on the server.
 
     /**
@@ -27,14 +27,12 @@ public class Flags {
      * @return the merged flags
      */
     public Flags mergeFlags(Flags flags1, Flags flags2) {
-        if(flags1.RAM != 0) {
+        flags2.SAVE = flags1.SAVE;
+        if(flags1.RAM != null) {
             flags2.RAM = flags1.RAM;
         }
         if(flags1.PLAYERS != 0) {
             flags2.PLAYERS = flags1.PLAYERS;
-        }
-        if(flags1.SAVE) {
-            flags2.SAVE = true;
         }
         if(flags1.VIEW_DISTANCE != 0) {
             flags2.VIEW_DISTANCE = flags1.VIEW_DISTANCE;
@@ -67,7 +65,7 @@ public class Flags {
                         VIEW_DISTANCE = Integer.parseInt(value);
                         break;
                     case "ram":
-                        RAM = Integer.parseInt(value);
+                        RAM = value;
                         break;
                     case "players":
                         PLAYERS = Integer.parseInt(value);
