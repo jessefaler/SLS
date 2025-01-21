@@ -1,5 +1,6 @@
 package net.slimelabs.sls.registries;
 
+import java.util.HashMap
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,5 +33,33 @@ public class RegistryManager {
         REGISTRIES.clear();
     }
 
+    /**
+     * Gets a registry given its name
+     * @param name the registry's name
+     * @return the registry with the given name or
+     * null if there is no registry with the given name
+     */
+    public Registry getRegistry(String name) {
+        return REGISTRIES.get(name);
+    }
 
+    /**
+     * Checks if a registry with the given name exists
+     * @param name the registries name
+     * @return true if the registry is present
+     */
+    public boolean doseRegistryExist(String name) {
+        return REGISTRIES.containsKey(name);
+    }
+
+    public boolean doseWorldExist(String world) {
+        for(Registry registry : REGISTRIES.values()) {
+            for(String name : registry.getWorlds().keySet()) {
+                if(name.equals(world)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }

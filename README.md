@@ -2,6 +2,8 @@
 
 Welcome to the development branch of the SLS plugin, which features an ongoing partial rewrite aimed at introducing new functionalities and improvements.
 
+**SLS** pterodactyl wings integration.
+=======
 ## New Features
 
 ### Dynamic Registries
@@ -63,4 +65,3 @@ Unit tests have been added to validate key methods in the plugin. There are also
 - **Configuration Options**: New configuration options have been added to world configurations. Refer to the `template.yml` file in the resources folder for details.
 - **Error Handling**: Improved error handling throughout the plugin.
 - **Code Refinement**: Existing classes have been refactored for improved performance, readability, and error handling. JavaDocs have been added where necessary.
-

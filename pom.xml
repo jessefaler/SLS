@@ -5,11 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.slimelabs</groupId>
+    <artifactId>sls</artifactId>
+    <version>1.0</version>
     <artifactId>SLS</artifactId>
     <version>v1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>SLS</name>
+    <name>sls</name>
 
     <properties>
         <java.version>17</java.version>
@@ -20,21 +22,6 @@
         <profile>
             <id>release</id>
             <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.2.0</version>
-                        <executions>
-                            <execution>
-                                <id>attach-javadocs</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
                 <resources>
                     <resource>
                         <directory>src/main/resources</directory>
@@ -46,6 +33,7 @@
     </profiles>
 
     <build>
+        <defaultGoal>clean package</defaultGoal>
         <resources>
             <resource>
                 <directory>${project.basedir}/src/main/resources</directory>
@@ -56,10 +44,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
                     <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <target>${java.version}</target>D
                 </configuration>
             </plugin>
             <plugin>
@@ -74,6 +62,61 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>3.12.1</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>3.0.1</version>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                    <scmCommentPrefix xml:space="preserve">[RELEASE] </scmCommentPrefix>
+                    <goals>install deploy site-deploy
+                    </goals> <!-- install is here to fix javadoc generation in multi-module projects -->
+                    <releaseProfiles>release</releaseProfiles>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.1</version>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>templating-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <executions>
+                    <execution>
+                        <id>filter-src</id>
+                        <goals>
+                            <goal>filter-sources</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <outputFile>/home/jesse/Desktop/network/proxy/plugins/sls.jar</outputFile> <!-- Specify the desired output directory -->
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                            <resource>META-INF/services/java.sql.Driver</resource>
+                        </transformer>
+                    </transformers>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.graalvm.buildtools</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>0.9.28</version>
+                <configuration>
+                    <buildArgs>
+                        <buildArg>-Dorg.sqlite.lib.exportPath=${project.build.directory}</buildArg>
+                    </buildArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -125,12 +168,67 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.48.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>5.0.0-alpha.14</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.14.3</version> <!-- Or any latest version -->
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.8</version> <!-- Use the latest version if needed -->
+        </dependency>
+        <dependency>
+            <groupId>com.neovisionaries</groupId>
+            <artifactId>nv-websocket-client</artifactId>
+            <version>2.14</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-api</artifactId>
+            <version>1.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.velocitypowered</groupId>
             <artifactId>velocity-api</artifactId>
-            <version>3.3.0-SNAPSHOT</version>
+            <version>3.4.0-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.18.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.retrooper</groupId>
+            <artifactId>packetevents-velocity</artifactId>
+            <version>2.7.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version> <!-- Or the version you're using -->
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.4.13</version> <!-- Or the version you're using -->
             <groupId>com.github.retrooper</groupId>
             <artifactId>packetevents-velocity</artifactId>
             <version>2.6.0</version>
