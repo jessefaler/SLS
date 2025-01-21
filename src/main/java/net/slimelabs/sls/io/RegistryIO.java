@@ -1,6 +1,7 @@
 package net.slimelabs.sls.io;
 import net.slimelabs.sls.SLS;
 
+import net.slimelabs.sls.server.Flags;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.registries.Registry;
 import org.yaml.snakeyaml.Yaml;
@@ -128,16 +129,54 @@ public class RegistryIO {
             String folderName = getRequiredValue(settings, "folder-name", registryName);
 
             //OPTIONAL ARGUMENTS
-            String ram = (String) settings.getOrDefault("ram-allocation", "2048M");
-            int maxPlayers = (int) settings.getOrDefault("max-players", 69);
+            //String ram = (String) settings.getOrDefault("ram-allocation", "2048M");
+            //int maxPlayers = (int) settings.getOrDefault("max-players", 69);
             int viewDistance = (int) settings.getOrDefault("view-distance", 15);
             String minecraftVersion = (String) settings.getOrDefault("minecraft-version", "latest");
             String allowedClientVersions = (String) settings.getOrDefault("allowed-client-versions", null);
-            boolean saveWorld = (boolean) settings.getOrDefault("save-world", false);
+            //boolean saveWorld = (boolean) settings.getOrDefault("save-world", false);
             String serverSoftware = (String) settings.getOrDefault("server-software", "paper");
 
-            worldName = worldName.trim().replace(' ', '_').toLowerCase();
+            // Define Flags
+            boolean save = false;
+            int players = 69;
+            String ram = "2";
+
+// Extract flags (if present)
+            List<Map<String, Object>> parsedFlags = (List<Map<String, Object>>) settings.getOrDefault("flags", new ArrayList<>());
+            for (Map<String, Object> flagMap : parsedFlags) {
+                for (Map.Entry<String, Object> entry : flagMap.entrySet()) {
+                    String flag = entry.getKey();
+                    Object value = entry.getValue();
+                    switch (flag) {
+                        case "save":
+                            if (value instanceof Boolean) {
+                                save = (Boolean) value; // Set save to the value (true or false)
+                            }
+                            break;
+                        case "players":
+                            if (value instanceof Integer) {
+                                players = (Integer) value; // Set players to the integer value
+                            }
+                            break;
+                        case "ram":
+                            if (value instanceof String) {
+                                ram = (String) value; // Set ram to the string value
+                            }
+                            break;
+                        // Add more cases for other flags if needed
+                    }
+                }
+            }
             ServerConfiguration serverConfiguration = new ServerConfiguration();
+            // Set the flags
+            Flags flags = new Flags();
+            flags.SAVE = save;
+            flags.RAM = ram;
+            flags.PLAYERS = players;
+            serverConfiguration.flags = flags;
+            // Set the configuration values
+            worldName = worldName.trim().replace(' ', '_').toLowerCase();
             serverConfiguration.name = worldName;
             serverConfiguration.ram = ram;
             serverConfiguration.viewDistance = viewDistance;
