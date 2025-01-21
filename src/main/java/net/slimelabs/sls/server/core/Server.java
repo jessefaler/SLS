@@ -1,6 +1,7 @@
 package net.slimelabs.sls.server.core;
 
 import com.google.gson.Gson;
+import net.slimelabs.sls.api.Endpoint;
 import net.slimelabs.sls.api.HttpClient;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
@@ -9,7 +10,7 @@ import java.nio.file.Paths;
 @Deprecated
 public class Server {
 
-    private static final String APPLICATION_API_KEY = "ptla_A0T0M72ZKXYZd73inutGvT0C8s9U1kn6k3dhGAxIOtT"; // Replace with your API key
+    private static final String APPLICATION_API_KEY = Endpoint.APPLICATION_API_KEY.getValue(); // Replace with your API key
 
     private static final String endpoint = "http://panel.slimelabs.net/api/application/servers";
     private static final Gson gson = new Gson();

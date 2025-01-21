@@ -3,18 +3,13 @@ package net.slimelabs.sls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.suggestion.Suggestions;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
-import net.slimelabs.sls.utils.Message.Message;
-import net.slimelabs.sls.utils.Message.MessageFormatter;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 
-import java.util.concurrent.CompletableFuture;
-
-import static net.slimelabs.sls.api.Api.deleteServer;
-import static net.slimelabs.sls.api.Api.getAllServerNames;
+import static net.slimelabs.sls.api.API.deleteServer;
 
 public class ConsoleCommand {
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -56,8 +51,8 @@ public class ConsoleCommand {
     }
 
     private static void sendUsage(CommandSource source) {
-        Message.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
-        Message.chat()
+        ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
+        ProtoMessage.chat()
                 .add("Usage: ", NamedTextColor.DARK_AQUA)
                 .add("/sls console ", NamedTextColor.GRAY)
                 .add("<", NamedTextColor.DARK_GRAY)

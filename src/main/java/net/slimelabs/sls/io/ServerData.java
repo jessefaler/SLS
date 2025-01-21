@@ -202,22 +202,24 @@ public class ServerData {
      * Retrieves the flags associated with a specific server from the database.
      *
      * @param name The unique name for the server whose flags are to be fetched.
-     * @return The flags as a string, or {@code null} if no flags are found for the given identifier.
+     * @return The flags as a comma-separated string, or {@code null} if no flags are found for the given identifier.
      */
     public static String getServerFlags(String name) {
         if (!validateConnection()) return null;
+        // Query to get the flags for the server
         String selectSQL = "SELECT saved_flags FROM ServerData WHERE name = ?";
         try (PreparedStatement preparedStatement = connection.prepareStatement(selectSQL)) {
             preparedStatement.setString(1, name);
             ResultSet resultSet = preparedStatement.executeQuery();
+
+            // Check if the server exists and return the flags
             if (resultSet.next()) {
                 return resultSet.getString("saved_flags");
             }
-            return null;
         } catch (SQLException e) {
-            System.err.println("[SLS] SQLite: An error occurred while retrieving server flags for server " + name + " in " + SERVER_DATA);
+            System.err.println("[SLS] SQLite: An Error Occurred while retrieving server data from " + SERVER_DATA);
             System.err.println(e.getMessage());
-            return null;
         }
+        return null;
     }
 }

@@ -7,34 +7,33 @@ import com.mattmalec.pterodactyl4j.EnvironmentValue;
 import com.mattmalec.pterodactyl4j.PteroAction;
 import com.mattmalec.pterodactyl4j.UtilizationState;
 import com.mattmalec.pterodactyl4j.application.entities.ApplicationAllocation;
-import com.mattmalec.pterodactyl4j.application.entities.ApplicationEgg;
 import com.mattmalec.pterodactyl4j.application.entities.ApplicationServer;
 import com.mattmalec.pterodactyl4j.application.entities.Node;
 import com.mattmalec.pterodactyl4j.client.entities.ClientAllocation;
 import com.mattmalec.pterodactyl4j.client.entities.ClientServer;
-import com.mattmalec.pterodactyl4j.entities.Allocation;
 import com.mattmalec.pterodactyl4j.exceptions.LoginException;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
-import net.slimelabs.sls.api.Api;
+import net.slimelabs.sls.api.API;
 import net.slimelabs.sls.api.HttpClient;
 import net.slimelabs.sls.api.NoAvailableAllocationsException;
+import net.slimelabs.sls.io.ServerData;
+import net.slimelabs.sls.server.Flags;
 import net.slimelabs.sls.server.ServerWebSocket;
 import net.slimelabs.sls.server.ServerConfiguration;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import static net.slimelabs.sls.api.Api.*;
+import static net.slimelabs.sls.api.API.*;
 import static net.slimelabs.sls.utils.Color.*;
 
 public class ServerInstance {
@@ -48,11 +47,10 @@ public class ServerInstance {
     CommandSource source;
     ClientServer clientServer;
     String identifier;
-    Flags FLAGS;
+    public Flags flags;
 
     public ServerInstance(String name) {
         this.name = name;
-        this.FLAGS = new Flags();
     }
 
     // You can set the source that called the creation of this server (i.e., player) for debugging
@@ -60,7 +58,7 @@ public class ServerInstance {
         this.source = source;
     }
 
-    public void sendMessageToSource(Message message) {
+    public void sendMessageToSource(ProtoMessage message) {
         if(source instanceof Player) {
             message.sendMessage(source);
         }
@@ -198,14 +196,14 @@ public class ServerInstance {
 
     public void failedToStartMessage() {
         SLS.LOGGER.error("Error: Failed to start server {}", name.replace("_", " "));
-        sendMessageToSource(Message.chat()
+        sendMessageToSource(ProtoMessage.chat()
                 .add(MessagePreset.SLS)
                 .add(" Error: Failed to start " + name.replace("_", " "), NamedTextColor.RED));
     }
 
     // shutdown the server gracefully
     public void shutdown() {
-        if(!FLAGS.SAVE) {
+        if(!flags.SAVE) {
             deleteServerSilent(); // Delete the server if saving is not enabled
         } else {
             HttpClient.stopServer(identifier);
@@ -221,7 +219,7 @@ public class ServerInstance {
 
     // kills the server
     public void kill() {
-        if(!FLAGS.SAVE) {
+        if(!flags.SAVE) {
             deleteServerSilent(); // Delete the server if saving is not enabled
         } else {
             HttpClient.killServer(identifier);
@@ -250,17 +248,17 @@ public class ServerInstance {
     }
 
     public void setFlags(Flags flags) {
-        this.FLAGS = flags;
+        this.flags = flags;
     }
 
     // Forcefully deletes the server
     public void deleteServer() {
-        Api.deleteServer(name, source);
+        API.deleteServer(name, source);
     }
 
     // Forcefully deletes the server
     public void deleteServerSilent() {
-        Api.deleteServer(name);
+        API.deleteServer(name);
     }
 
     // -------------------- Utility and Helper Methods -----------------------------

@@ -1,13 +1,8 @@
 package net.slimelabs.sls;
 
-<<<<<<< HEAD
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.google.inject.Inject;
-import com.mattmalec.pterodactyl4j.PteroBuilder;
-import com.mattmalec.pterodactyl4j.application.entities.PteroApplication;
-import com.mojang.brigadier.CommandDispatcher;
-import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -17,44 +12,23 @@ import net.slimelabs.sls.command.SLSCommand;
 import net.slimelabs.sls.io.FileHandler;
 import net.slimelabs.sls.io.RegistryIO;
 import net.slimelabs.sls.registries.RegistryManager;
+import net.slimelabs.sls.routing.PlayerConnector;
 import net.slimelabs.sls.server.ServerRegistry;
-import net.slimelabs.sls.utils.PlayerUtils;
-import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 
 import static net.slimelabs.sls.utils.Color.*;
 
 /*
- * Copyright (C) 2024 Slimelabs Networks and contributors.
+ * Copyright (C) 2025 Slimelabs Networks and contributors.
  *
  * SLS (Slimelabs Server) is server management software developed by the Slimelabs team and licensed under the MIT License.
  *
  * You should have received a copy of the MIT License along with this program.
  * If not, you can find it at <https://github.com/jessefaler/SLS/blob/main/LICENSE>.
  */
-import net.slimelabs.sls.registries.RegistryManager;
-import org.slf4j.Logger;
-import com.google.inject.Inject;
-import com.velocitypowered.api.plugin.Plugin;
-import static net.slimelabs.sls.utils.Color.*;
-import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.command.CommandManager;
-import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
-import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
-
-@Plugin(
-        id = "sls",
-        name = "SLS",
-        version = "3.0.0",
-        description = "Slimelabs Network",
-        url = "slimelabs.net",
-        authors = {"protoxon & Yeetoxic"}
-)
 
 /* Server Management System <>
  * Authors: protoxon & Yeetoxic
@@ -66,7 +40,7 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 @Plugin(
         id = "sls",
         name = "SLS",
-        version = "1.0.0",
+        version = "4.0.0",
         description = "Server Management Plugin",
         authors = {"protoxon", "Yeetoxic"}
 )
@@ -81,12 +55,7 @@ public class SLS {
     public static RegistryIO REGISTRYIO;
     public static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     public static SLS PLUGIN;
-public class SLS {
-    public static Logger LOGGER;
-    public static ProxyServer PROXY;
-    public static ServerRegistry SERVER_REGISTRY;
-    public static RegistryManager REGISTRY_MANAGER;
-    public static SLS PLUGIN;
+
     @Inject //injects the proxy server and logger into the plugin class (dependency injection)
     public SLS(ProxyServer PROXY, Logger LOGGER) {
         SLS.LOGGER = LOGGER;
@@ -133,22 +102,6 @@ public class SLS {
     }
     public String shutdownMessage() {
         return "\n" + RED + "————————————————————————————————————————————————\n" +
-        LOGGER.info("\n" + CYAN + "————————————————————————————————————————————————\n" +
-                GREEN + "  ___ _    ___ \n" +
-                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v3.0.0" + "\n" +
-                GREEN + " \\__ \\ |__\\__ \\" + DARK_GRAY + " Network Management Plugin" + "\n" +
-                GREEN + " |___/____|___/" + LIGHT_BLUE + " Made by: " + MAGENTA + "Protoxon & Yeetoxic" + "\n" +
-                RESET + "\n" + "[" + GREEN + "SLS" + RESET + "]" + LIGHT_BLUE + " Made for " + RESET + GREEN + "SlimeLabs.net"
-                + RESET + LIGHT_BLUE + ", " + BLUE + "Established " + RESET + MAGENTA + "2013" + RESET + LIGHT_BLUE
-                +  "!" + RESET + "\n" + " \n" + CYAN + "————————————————————————————————————————————————");
-
-        //Register the sls command
-        //CommandManager commandManager = PROXY.getCommandManager();
-        //commandManager.register(commandManager.metaBuilder("sls").build(), new Commands.sls());
-    }
-    @Subscribe
-    public void OnProxyShutdown(ProxyShutdownEvent event) {
-        LOGGER.info("\n" + RED + "————————————————————————————————————————————————\n" +
                 GREEN + "  ___ _    ___ \n" +
                 GREEN + " / __| |  / __|" + DARK_GRAY + " Server Launch System " + "\n" +
                 GREEN + " \\__ \\ |__\\__ \\" + RED + " Shutting Down..." + "\n" +

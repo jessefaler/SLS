@@ -1,11 +1,9 @@
 package net.slimelabs.sls.command.subcommand;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 
 public class Debug {
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -15,7 +13,7 @@ public class Debug {
                 // -------- What to execute -------- /sls debug
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    Message.chat().add("debug mode enabled", NamedTextColor.GRAY).sendMessage(source);
+                    ProtoMessage.chat().add("debug mode enabled", NamedTextColor.GRAY).sendMessage(source);
                     return 1;
                 });
     }

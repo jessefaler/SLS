@@ -17,11 +17,12 @@ import java.util.List;
 /**
  * Provides methods for interaction with the pterodactyl api
  */
+// Deprecated the pterodactyl4j library should be used instead via the API class
 @Deprecated
 public class HttpClient {
 
-    public static final String APPLICATION_API_KEY = "ptla_A0T0M72ZKXYZd73inutGvT0C8s9U1kn6k3dhGAxIOtT"; // Replace with your API key
-    public static final String CLIENT_API_KEY = "ptlc_4fhKAdMgAirrXwcmmQJc836CMc0WM1CdKGh2sfPpvzm";
+    public static final String APPLICATION_API_KEY = Endpoint.APPLICATION_API_KEY.getValue(); // Replace with your API key
+    public static final String CLIENT_API_KEY = Endpoint.CLIENT_API_KEY.getValue();
     private static final ObjectMapper objectMapper = new ObjectMapper();  // Jackson's ObjectMapper to parse JSON
 
     /**

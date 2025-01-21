@@ -63,9 +63,14 @@ public class ServerRegistry {
         } else {
             serverInstance.flags = new Flags();
         }
-        serverInstance.flags.parseFlagsFromString(ServerData.getServerFlags(serverInstance.name)); // Get any saved flags from the database
-        if(serverConfiguration.flags != null) {
-            serverInstance.flags = serverInstance.flags.mergeFlags(serverInstance.flags, serverConfiguration.flags); // Merge the configuration flags with the saved flags
+        String readFlags = ServerData.getServerFlags(serverInstance.name);
+        if(readFlags == null) {
+            serverInstance.flags = serverConfiguration.flags;
+        } else {
+            serverInstance.flags.parseFlagsFromString(readFlags); // Get any saved flags from the database
+            if(serverConfiguration.flags != null) {
+                serverInstance.flags = serverInstance.flags.mergeFlags(serverInstance.flags, serverConfiguration.flags); // Merge the configuration flags with the saved flags
+            }
         }
     }
 

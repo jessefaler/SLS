@@ -6,21 +6,21 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
-import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.StringUtils;
 
-public class ShutdownCommand {
+public class MonitorCommand {
     public static LiteralArgumentBuilder<CommandSource> register() {
-        return LiteralArgumentBuilder.<CommandSource>literal("shutdown")
+        return LiteralArgumentBuilder.<CommandSource>literal("monitor")
                 // -------- Permission --------
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls shutdown", "server"))
+                            .add(MessageFormatter.commandUsage("/sls monitor", "server"))
                             .sendMessage(source);
                     return 1;
                 })
@@ -31,37 +31,16 @@ public class ShutdownCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    builder.suggest("all");
                     SLS.SERVER_REGISTRY.getServerNames().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String serverName = StringArgumentType.getString(context, "server");
-                    if(serverName.equals("all")) {
-                        if(SLS.SERVER_REGISTRY.isRegistryEmpty()) {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("No servers are running.", NamedTextColor.RED)
-                                    .sendMessage(source);
-                            return 1;
-                        }
-                        SLS.SERVER_REGISTRY.shutDownAllServers();
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Shutdown all servers.", NamedTextColor.GRAY)
-                                .sendMessage(source);
-                        return 1;
-                    }
-                    // Shutdown server
                     if(SLS.SERVER_REGISTRY.containsServer(serverName)) {
-                        SLS.SERVER_REGISTRY.shutdownServer(serverName);
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Shutdown " + serverName.replace("_", " "), NamedTextColor.GRAY)
-                                .sendMessage(source);
-                        return 1;
+
                     }
+
                     // Server exists but is not running
                     if(SLS.REGISTRY_MANAGER.doseWorldExist(StringUtils.truncateAtPeriod(serverName))) {
                         ProtoMessage.chat()

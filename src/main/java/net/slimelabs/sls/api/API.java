@@ -18,10 +18,12 @@ import net.slimelabs.sls.utils.Message.MessagePreset;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static net.slimelabs.sls.api.Endpoint.*;
+
 public class API {
 
-    public static PteroApplication applicationAPI= PteroBuilder.createApplication("http://panel.slimelabs.net", "ptla_A0T0M72ZKXYZd73inutGvT0C8s9U1kn6k3dhGAxIOtT");
-    public static PteroClient clientAPI = PteroBuilder.createClient("http://panel.slimelabs.net", "ptlc_4fhKAdMgAirrXwcmmQJc836CMc0WM1CdKGh2sfPpvzm");
+    public static PteroApplication applicationAPI= PteroBuilder.createApplication(APPLICATION_API_URL.getValue(), APPLICATION_API_KEY.getValue());
+    public static PteroClient clientAPI = PteroBuilder.createClient(CLIENT_API_URL.getValue(), CLIENT_API_KEY.getValue());
 
     /**
      * Deletes all servers with the given name asynchronously and handles errors.

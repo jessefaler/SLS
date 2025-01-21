@@ -1,14 +1,11 @@
 package net.slimelabs.sls.utils.Message;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 
 public class MessageFormatter {
 
     // Method to format the usage with arguments
-    public static MessageFormatter usage(String command, String... args) {
+    public static MessageFormatter commandUsage(String command, String... args) {
         return new MessageFormatter(command, args);
     }
 
@@ -22,7 +19,7 @@ public class MessageFormatter {
     }
 
     // This method applies the formatter to the message
-    public Message usage(Message message) {
+    public ProtoMessage commandUsage(ProtoMessage message) {
         String delimiter = " | ";
         message.add(MessagePreset.SLS);
         message.add("Usage: ", NamedTextColor.DARK_AQUA);

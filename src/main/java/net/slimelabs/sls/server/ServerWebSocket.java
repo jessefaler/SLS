@@ -9,22 +9,34 @@ import com.mattmalec.pterodactyl4j.client.managers.WebSocketBuilder;
 import com.mattmalec.pterodactyl4j.client.managers.WebSocketManager;
 import com.mattmalec.pterodactyl4j.client.ws.events.AuthSuccessEvent;
 import com.mattmalec.pterodactyl4j.client.ws.events.StatsUpdateEvent;
-import com.mattmalec.pterodactyl4j.client.ws.events.connection.DisconnectedEvent;
 import com.mattmalec.pterodactyl4j.client.ws.events.connection.DisconnectingEvent;
 import com.mattmalec.pterodactyl4j.client.ws.events.output.ConsoleOutputEvent;
 import com.mattmalec.pterodactyl4j.client.ws.events.output.InstallOutputEvent;
 import com.mattmalec.pterodactyl4j.client.ws.events.output.OutputEvent;
 import com.mattmalec.pterodactyl4j.client.ws.hooks.ClientSocketListenerAdapter;
 import com.velocitypowered.api.command.CommandSource;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.slimelabs.sls.SLS;
+import net.slimelabs.sls.api.Endpoint;
 import net.slimelabs.sls.server.core.ServerInstance;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static net.slimelabs.sls.api.Endpoint.CLIENT_API_KEY;
+import static net.slimelabs.sls.api.Endpoint.CLIENT_API_URL;
+
+/**
+ * Manages a WebSocket connection to a server instance.
+ * <p>
+ * This class is responsible for monitoring the server's status, sending commands,
+ * and handling unexpected crashes or failures during server startup.
+ * </p>
+ * <p>
+ * It extends {@link ClientSocketListenerAdapter} to provide WebSocket event-handling
+ * capabilities tailored for server management tasks.
+ * </p>
+ */
 public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     CommandSource commandSource; // Used for the send command method
@@ -35,7 +47,8 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     public ServerWebSocket(String id, ServerInstance serverInstance) {
         this.serverInstance = serverInstance;
-        PteroClient api = PteroBuilder.createClient("http://panel.slimelabs.net", "SENSITIVE_INFORMATION");api.retrieveServerByIdentifier(id).map(ClientServer::getWebSocketBuilder)
+        PteroClient api = PteroBuilder.createClient(CLIENT_API_URL.getValue(), CLIENT_API_KEY.getValue());
+        api.retrieveServerByIdentifier(id).map(ClientServer::getWebSocketBuilder)
                 .map(builder -> builder.addEventListeners(this))
                 .executeAsync(WebSocketBuilder::build, throwable -> {
                     cleanup();
@@ -52,7 +65,7 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
     }
 
     /**
-     * Schedules a task to start the server every 5 seconds if no error ever occurred and the server is still showing offline.
+     * Schedules a task to start the server every 4 seconds if no error ever occurred and the server is still showing offline.
      */
     private void restartTask() {
         Executors.newScheduledThreadPool(1).schedule(() -> {
@@ -148,19 +161,19 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
                 message = message.replaceFirst("^\\[.*?\\s+INFO\\]:\\s*", ""); // Remove time stamp
                 message = message.replaceAll("\u001B\\[[;\\d]*m", ""); // Remove any color codes
                 if(message.contains("Unknown or incomplete command")) {
-                    Message.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
                             + serverInstance.name.replace("_", " ")
                             + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                             + message + "</red>").sendMessage(source);
                     return;
                 }
                 if(message.contains("<--[HERE]")) {
-                    Message.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
                             + serverInstance.name.replace("_", " ")
                             + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                             + message + "</red>").sendMessage(source);
                 } else {
-                    Message.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
                             + serverInstance.name.replace("_", " ")
                             + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>"
                             + message + "</gray>").sendMessage(source);

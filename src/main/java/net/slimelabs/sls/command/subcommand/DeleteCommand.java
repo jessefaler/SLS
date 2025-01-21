@@ -5,12 +5,12 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.velocitypowered.api.command.CommandSource;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import java.util.concurrent.CompletableFuture;
-import static net.slimelabs.sls.api.Api.deleteServer;
-import static net.slimelabs.sls.api.Api.getAllServerNames;
+import static net.slimelabs.sls.api.API.deleteServer;
+import static net.slimelabs.sls.api.API.getAllServerNames;
 
 public class DeleteCommand {
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -19,9 +19,9 @@ public class DeleteCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    Message.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
-                    Message.chat()
-                            .add(MessageFormatter.usage("/sls delete", "server"))
+                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls delete", "server"))
                             .sendMessage(source);
                     return 1;
                 })

@@ -1,9 +1,6 @@
 package net.slimelabs.sls.registries;
 
-import java.util.HashMap
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 
 public class RegistryManager {
     public HashMap<String, Registry> REGISTRIES = new HashMap<>();
@@ -62,4 +59,5 @@ public class RegistryManager {
         }
         return false;
     }
+
 }

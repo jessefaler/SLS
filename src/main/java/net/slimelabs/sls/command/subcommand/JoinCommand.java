@@ -7,10 +7,8 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.slimelabs.sls.SLS;
-import net.slimelabs.sls.utils.Message.Format;
-import net.slimelabs.sls.utils.Message.Message;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import net.slimelabs.sls.utils.StringUtils;
@@ -24,10 +22,10 @@ public class JoinCommand {
                     CommandSource source = context.getSource();
 
 
-                    Message.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
+                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
 
-                    Message.chat()
-                            .add(MessageFormatter.usage("/sls join", SLS.REGISTRY_MANAGER.getRegistryNames()))
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls join", SLS.REGISTRY_MANAGER.getRegistryNames()))
                             .sendMessage(context.getSource());
                     return 1;
                 })
@@ -44,10 +42,10 @@ public class JoinCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String registryName = StringArgumentType.getString(context, "registry");
-                    Message.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
+                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     if (!checkIfRegistryExists(source, registryName)) return 0;
-                    Message.chat()
-                            .add(MessageFormatter.usage("/sls join " + registryName, "world"))
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls join " + registryName, "world"))
                             .sendMessage(context.getSource());
                     return 0;
                 })
@@ -89,8 +87,8 @@ public class JoinCommand {
                     String registryName = StringArgumentType.getString(context, "registry");
                     if (!checkIfRegistryExists(source, registryName)) return 0;
                     String world = StringArgumentType.getString(context, "world");
-                    if(!SLS.REGISTRY_MANAGER.getRegistry(registryName).isWorldPresent(StringUtils.removeTextAfterPeriod(world))) {
-                        Message.chat().add(MessagePreset.SLS)
+                    if(!SLS.REGISTRY_MANAGER.getRegistry(registryName).isWorldPresent(StringUtils.truncateAtPeriod(world))) {
+                        ProtoMessage.chat().add(MessagePreset.SLS)
                                 .add(" World " + world + " is not present in " + registryName + " registry.", NamedTextColor.RED)
                                 .sendMessage(source);
                         return 0;
@@ -120,8 +118,8 @@ public class JoinCommand {
                     if (!checkIfRegistryExists(source, registryName)) return 0;
                     String world = StringArgumentType.getString(context, "world");
                     String playerName = StringArgumentType.getString(context, "player");
-                    if(!SLS.REGISTRY_MANAGER.getRegistry(registryName).isWorldPresent(StringUtils.removeTextAfterPeriod(world))) {
-                        Message.chat().add(MessagePreset.SLS)
+                    if(!SLS.REGISTRY_MANAGER.getRegistry(registryName).isWorldPresent(StringUtils.truncateAtPeriod(world))) {
+                        ProtoMessage.chat().add(MessagePreset.SLS)
                                 .add(" World " + world + " is not present in " + registryName + " registry.", NamedTextColor.RED)
                                 .sendMessage(source);
                         return 0;
@@ -140,11 +138,11 @@ public class JoinCommand {
                     } else { // Connect the given player if not null
                         Optional<Player> player = SLS.PROXY.getPlayer(playerName);
                         if(player.isPresent()) {
-                            Message.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + world.replace("_", " "), NamedTextColor.DARK_AQUA).sendMessage(source);
+                            ProtoMessage.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + world.replace("_", " "), NamedTextColor.DARK_AQUA).sendMessage(source);
                             SLS.PLAYER_CONNECTOR.joinServer(world, registryName, player.get());
                             return 1;
                         }
-                        Message.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
+                        ProtoMessage.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
                         return 0;
                     }
                     return 1;
@@ -155,12 +153,12 @@ public class JoinCommand {
     // -------------- Helper Methods and Common Logic -----------------
     private static boolean checkIfRegistryExists(CommandSource source,String registryName) {
         if(!SLS.REGISTRY_MANAGER.doseRegistryExist(registryName)) {
-            Message.chat().add(MessagePreset.SLS)
+            ProtoMessage.chat().add(MessagePreset.SLS)
                     .add(" Unknown registry: ", NamedTextColor.AQUA)
                     .add(registryName, NamedTextColor.GRAY)
                     .sendMessage(source);
-            Message.chat()
-                    .add(MessageFormatter.usage("/sls join", SLS.REGISTRY_MANAGER.getRegistryNames()))
+            ProtoMessage.chat()
+                    .add(MessageFormatter.commandUsage("/sls join", SLS.REGISTRY_MANAGER.getRegistryNames()))
                     .sendMessage(source);
             return false;
         }

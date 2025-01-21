@@ -7,10 +7,8 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
-import net.slimelabs.sls.utils.Message.Message;
-import net.slimelabs.sls.utils.Message.MessageFormatter;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessagePreset;
-import net.slimelabs.sls.utils.StringUtils;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -27,7 +25,7 @@ public class DequeueCommand {
                         SLS.PLAYER_CONNECTOR.dequeuePlayer(player.getUniqueId());
                         return 1;
                     }
-                    Message.chat().add(MessagePreset.SLS).add("You are not in queue.", NamedTextColor.GRAY).sendMessage(source);
+                    ProtoMessage.chat().add(MessagePreset.SLS).add("You are not in queue.", NamedTextColor.GRAY).sendMessage(source);
                     return 1;
                 })
                 .then(player());
@@ -63,13 +61,13 @@ public class DequeueCommand {
                         if(player.isPresent()) {
                             if(SLS.PLAYER_CONNECTOR.activeServices.containsKey(player.get().getUniqueId())) {
                                 SLS.PLAYER_CONNECTOR.dequeuePlayer(player.get().getUniqueId());
-                                Message.chat().add(MessagePreset.SLS).add("Dequeued " + playerName, NamedTextColor.DARK_AQUA).sendMessage(source);
+                                ProtoMessage.chat().add(MessagePreset.SLS).add("Dequeued " + playerName, NamedTextColor.DARK_AQUA).sendMessage(source);
                                 return 1;
                             }
-                            Message.chat().add(MessagePreset.SLS).add(playerName + " is not in queue.", NamedTextColor.RED).sendMessage(source);
+                            ProtoMessage.chat().add(MessagePreset.SLS).add(playerName + " is not in queue.", NamedTextColor.RED).sendMessage(source);
                             return 1;
                         }
-                        Message.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
+                        ProtoMessage.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
                         return 0;
                     }
                     return 1;
