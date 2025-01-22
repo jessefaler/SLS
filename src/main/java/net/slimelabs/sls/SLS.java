@@ -93,7 +93,7 @@ public class SLS {
     public String startMessage() {
         return "\n" + CYAN + "————————————————————————————————————————————————\n" +
                 GREEN + "  ___ _    ___ \n" +
-                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v3.0.0" + "\n" +
+                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v4.0.0" + "\n" +
                 GREEN + " \\__ \\ |__\\__ \\" + DARK_GRAY + " Network Management Plugin" + "\n" +
                 GREEN + " |___/____|___/" + LIGHT_BLUE + " Made by: " + MAGENTA + "Protoxon & Yeetoxic" + "\n" +
                 RESET + "\n" + "[" + GREEN + "SLS" + RESET + "]" + LIGHT_BLUE + " Made for " + RESET + GREEN + "SlimeLabs.net"
