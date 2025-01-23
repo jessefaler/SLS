@@ -20,6 +20,7 @@ import net.slimelabs.sls.api.Endpoint;
 import net.slimelabs.sls.server.core.ServerInstance;
 import net.slimelabs.sls.utils.Message.ProtoMessage;
 
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -41,6 +42,8 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     CommandSource commandSource; // Used for the send command method
     boolean output;
+
+    public Watcher watcher;
 
     private WebSocketManager webSocketManager;
     private final ServerInstance serverInstance; // The ServerInstance that this websocket is connected to
@@ -91,6 +94,7 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
         // Used for sending the next line of console output to a player who ran a
         // console command using /sls console
         handleConsoleMessage(commandSource, event.getLine());
+        if (watcher != null) watcher.forwardConsoleOutput(event.getLine());
     }
 
     @Override
@@ -152,7 +156,7 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     /**
      * Handles sending a response when a player uses the /sls console command
-     * @param source the source that send the console command
+     * @param source the source that sends the console command
      * @param message the response message
      */
     public void handleConsoleMessage(CommandSource source, String message) {
