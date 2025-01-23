@@ -24,6 +24,7 @@ import net.slimelabs.sls.io.ServerData;
 import net.slimelabs.sls.server.Flags;
 import net.slimelabs.sls.server.ServerWebSocket;
 import net.slimelabs.sls.server.ServerConfiguration;
+import net.slimelabs.sls.server.Watcher;
 import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
@@ -48,6 +49,7 @@ public class ServerInstance {
     ClientServer clientServer;
     String identifier;
     public Flags flags;
+    public Watcher watcher;
 
     public ServerInstance(String name) {
         this.name = name;
@@ -62,6 +64,28 @@ public class ServerInstance {
         if(source instanceof Player) {
             message.sendMessage(source);
         }
+    }
+
+    public void addWatcher(Player player) {
+        if(watcher == null) {
+            watcher = new Watcher();
+            serverWebSocket.watcher = watcher;
+        }
+        watcher.addWatcher(player);
+    }
+
+    public void removeWatcher(Player player) {
+        if(watcher == null) {
+            return;
+        }
+        watcher.removeWatcher(player);
+    }
+
+    public boolean isWatching(Player player) {
+        if(watcher == null) {
+            return false;
+        }
+        return watcher.isWatching(player);
     }
 
     /**
