@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.SLS;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
@@ -18,6 +19,15 @@ public class MonitorCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
+                    Player player = (Player) source;
+                    if(SLS.WATCHER_SERVICE.isWatching(player)) {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("You are no longer monitoring " + SLS.WATCHER_SERVICE.getWatchingServer(player).replace("_", " ") + ".", NamedTextColor.GRAY)
+                                .sendMessage(source);
+                        SLS.WATCHER_SERVICE.stopWatching(player);
+                        return 1;
+                    }
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
                     ProtoMessage.chat()
                             .add(MessageFormatter.commandUsage("/sls monitor", "server"))
@@ -37,8 +47,24 @@ public class MonitorCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String serverName = StringArgumentType.getString(context, "server");
-                    if(SLS.SERVER_REGISTRY.containsServer(serverName)) {
 
+                    if(SLS.SERVER_REGISTRY.containsServer(serverName)) {
+                        Player player = (Player) source;
+                        if(SLS.WATCHER_SERVICE.isWatching(player, serverName)) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("You are no longer monitoring " + SLS.WATCHER_SERVICE.getWatchingServer(player).replace("_", " ") + ".", NamedTextColor.GRAY)
+                                    .sendMessage(source);
+                            SLS.WATCHER_SERVICE.stopWatching(player);
+                            return 1;
+                        }
+                        SLS.WATCHER_SERVICE.watchServer(player, serverName);
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Monitoring server ", NamedTextColor.DARK_AQUA)
+                                .add(serverName.replace("_", " ") + ".", NamedTextColor.GOLD)
+                                .sendMessage(source);
+                        return 1;
                     }
 
                     // Server exists but is not running
