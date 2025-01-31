@@ -7,7 +7,13 @@
 
 > **Note:** This list is not complete, and more tasks will be added.
 
-> **Note:** Note once an item on the list has been complete, mark it as complete and submit a pull request with the changes to the repository. 
+> **Note:** Note once an item on the list has been complete, mark it as complete and submit a pull request with the changes to the repository.
+
+### 0. **Manually Register Servers with ViaVersion Upon Creation**
+- Investigate how to register newly created servers with ViaVersion, preferably using an API.
+- Currently, when a new server starts in Velocity, ViaVersion takes up to 5 seconds to detect and register it. This delay causes players attempting to join immediately to receive an error: **"Unable to connect to 'server': Outdated server! I'm still on 0.00.0"** if their client version doesn't match.
+- Since SLS connects players as soon as the server starts, this delay is problematic. To resolve it, find a way to manually register the server with Velocity as soon as it is created.
+- Check if Velocity provides an API for this; otherwise, modifying its source code may be necessary.
 
 ### 1. **Implement the `info` Command**
    - Implement the `info` command, similar to the one in the old SLS plugin.
