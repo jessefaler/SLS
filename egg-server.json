@@ -1,0 +1,52 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2025-02-01T02:35:39-06:00",
+    "name": "Server",
+    "author": "admin@slimelabs.net",
+    "description": "High performance Spigot fork that aims to fix gameplay and mechanics inconsistencies.",
+    "features": null,
+    "docker_images": {
+        "sls:latest": "sls:latest"
+    },
+    "file_denylist": [],
+    "startup": "java -Xms3072M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar",
+    "config": {
+        "files": "{\r\n    \"\/server\/upperdir\/server.properties\": {\r\n        \"parser\": \"properties\",\r\n        \"find\": {\r\n            \"server-ip\": \"0.0.0.0\",\r\n            \"server-port\": \"{{server.build.default.port}}\",\r\n            \"query.port\": \"{{server.build.default.port}}\",\r\n            \"online-mode\": \"false\",\r\n            \"allow-nether\": \"false\",\r\n            \"difficulty\": \"normal\",\r\n            \"motd\": \"SLS\",\r\n            \"spawn-protection\": \"0\",\r\n            \"view-distance\": \"12\",\r\n            \"max-players\": \"69\",\r\n            \"level-name\": \"world\",\r\n            \"enable-command-block\": \"true\"\r\n        }\r\n    },\r\n    \"\/server\/upperdir\/spigot.yml\": {\r\n        \"parser\": \"yaml\",\r\n        \"find\": {\r\n            \"settings.bungeecord\": true\r\n        }\r\n    },\r\n    \"\/server\/upperdir\/bukkit.yml\": {\r\n        \"parser\": \"yaml\",\r\n        \"find\": {\r\n            \"settings.allow-end\": false\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \")! For help, type \"\r\n}",
+        "logs": "{}",
+        "stop": "stop"
+    },
+    "scripts": {
+        "installation": {
+            "script": "echo -e \"Installing Server\"",
+            "container": "alpine:3.4",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Server Path",
+            "description": "",
+            "env_variable": "SERVER_PATH",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:200",
+            "field_type": "text"
+        },
+        {
+            "name": "world path",
+            "description": "",
+            "env_variable": "WORLD_PATH",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:200",
+            "field_type": "text"
+        }
+    ]
+}
