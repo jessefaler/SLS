@@ -2,6 +2,11 @@
 
 **SLS** is a powerful plugin designed to dynamically start and manage servers, facilitate cross-server communication, and maintain a server registry.
 
+> [!WARNING]  
+> This version of SLS is in active development and may contain bugs or incomplete features.  
+> For a stable experience, use any release prior to `4.0.0`.  
+> The source code for previous stable versions is available in the `legacy-code` branch.
+
 ## Latest Update
 Release 4.0.0-beta: First release with Pterodactyl integration
 
