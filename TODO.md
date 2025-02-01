@@ -9,6 +9,15 @@
 
 > **Note:** Note once an item on the list has been complete, mark it as complete and submit a pull request with the changes to the repository.
 
+### -1. **Enhance Pterodactyl Wings Security**  
+- Security features on Pterodactyl Wings have been disabled, and containers are started in privileged mode to allow them to mount file systems, which is required for creating the COW layers for the server and world folders.  
+- To improve security, modify the Wings source code to:  
+  1. Start the container in privileged mode to mount the file system.  
+  2. Stop the container once the file system is mounted.  
+  3. Re-enable all previously disabled security features.
+  4. Restart the container without privileged mode.    
+  5. Define and assign a dedicated user.
+
 ### 0. **Manually Register Servers with ViaVersion Upon Creation**
 - Investigate how to register newly created servers with ViaVersion, preferably using an API.
 - Currently, when a new server starts in Velocity, ViaVersion takes up to 5 seconds to detect and register it. This delay causes players attempting to join immediately to receive an error: **"Unable to connect to 'server': Outdated server! I'm still on 0.00.0"** if their client version doesn't match.
