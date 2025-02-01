@@ -43,12 +43,10 @@
    - Modify the SLS server software egg to add environment variables for each server flag.
    - Pass these variables to the server configuration file at startup.
 
-### 6. **Implement `/sls reset <server>` Command**
-   - Allow players to reset worlds they own by:
-     - Setting the save flag to `false`.
-     - Restarting the server.
-     - Restoring the save flag to `true` (only if it was true to begin with).
-   - Ensure only the world owners (e.g., `makers_wars.protoxon`) can reset their worlds.
+### 6. **Implement `/sls reset <server>` Command** (Partially Complete)
+   - ~~Reset the world by stopping the server deleting the contents of the server and world upperdir~~
+     ~~directories and starting the server back up and reconnect all players to it who were on it before the reset~~ **(Complete)**
+   - Ensure only the world owners (e.g., `makers_wars.protoxon`) can reset their worlds. **(In progress)**
 
 ### 7. **Add SQLite Database for User Data and Server Ownership**
    - Implement an SQLite database to store:
