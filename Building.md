@@ -27,7 +27,7 @@ Here's how you can add the link with the name "wings":
    The Dockerfile is located in the `DockerImage` package in the root folder of the repository. Build this image on the machine running Wings.
 
 7. **Add the SLS egg to Pterodactyl**:\
-   The SLS egg can be found in the `pteroEgg` package in the root folder of the repository. Download the egg and add it through the Pterodactyl panel.
+   The SLS egg can be found in the root folder of the repository named egg-server.json. Download the egg and add it through the Pterodactyl panel.
 
 If you have any issues or questions, feel free to ask in the discussions section.
 
