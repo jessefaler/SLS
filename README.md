@@ -20,7 +20,7 @@ In addition to Pterodactyl integration, this version introduces several long-awa
 - Numerous minor upgrades and quality-of-life improvements
 
 ##
-If you’d like to see the SLS plugin in action, join **slimelabs.net** and enter `/sls` in chat. The server is currently running sls version **2.1.2**.
+If you’d like to see the SLS plugin in action, join **slimelabs.net** and enter `/sls` in chat. The server is currently running sls version **2.1.2**. *Note: Administrator features are hidden.*
 
 ## Features
 - **Dynamic Server Management:** Automatically start and stop servers as needed.
