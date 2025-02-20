@@ -24,9 +24,9 @@ import static net.slimelabs.sls.utils.Color.*;
 /*
  * Copyright (C) 2025 Slimelabs Networks and contributors.
  *
- * SLS (Slimelabs Server) is server management software developed by the Slimelabs team and licensed under the MIT License.
+ * SLS (Slimelabs Server) is server management software developed by the Slimelabs team and licensed under the GNU Affero General Public License.
  *
- * You should have received a copy of the MIT License along with this program.
+ * You should have received a copy of the License along with this program.
  * If not, you can find it at <https://github.com/jessefaler/SLS/blob/main/LICENSE>.
  */
 
