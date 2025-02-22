@@ -24,12 +24,13 @@
 - Since SLS connects players as soon as the server starts, this delay is problematic. To resolve it, find a way to manually register the server with Velocity as soon as it is created.
 - Check if Velocity provides an API for this; otherwise, modifying its source code may be necessary.
 
-### 1. **Implement the `info` Command**
-   - Implement the `info` command, similar to the one in the old SLS plugin.
-   - Retrieve and display the following server information:
-     - Server name
-     - Player count
-     - Server status
+~~### 1. **Implement the `info` Command**~~ **Complete ✅**
+
+~~- Implement the `info` command, similar to the one in the old SLS plugin.~~  
+~~- Retrieve and display the following server information:~~  
+  ~~- Server name~~  
+  ~~- Player count~~  
+  ~~- Server status~~  
 
 ### 2. **Implement the `config` Command**
    - Implement the `config` command, mimicking the functionality of the old SLS plugin command.
