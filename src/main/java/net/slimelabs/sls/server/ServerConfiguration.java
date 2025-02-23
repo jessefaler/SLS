@@ -10,6 +10,7 @@ public class ServerConfiguration {
     public String software = "paper";
     public String worldFolder; // The path to the world folder
     public String worldFolderName = "";
+    public String maxPlayers;
     public Flags flags;
     // Path to the folder containing all servers. This is the parent directory where server software folders reside.
     // The program will look for a subfolder named after the server software and then look for a subfolder in that.
