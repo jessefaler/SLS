@@ -9,6 +9,7 @@ import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.TextColor;
 import net.slimelabs.sls.SLS;
 import net.slimelabs.sls.command.subcommand.*;
+import net.slimelabs.sls.server.WatcherService;
 import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessageFormatter;
 import net.slimelabs.sls.utils.Message.MessagePreset;
@@ -38,6 +39,9 @@ public class SLSCommand {
         root.then(DequeueCommand.register());  // DEQUEUE
         root.then(VersionCommand.register());  // VERSION
         root.then(FlagsCommand.register());    // FLAGS
+        root.then(MonitorCommand.register());  // MONITOR
+        root.then(ResetCommand.register());    // RESET
+        root.then(InfoCommand.register());     // INFO
 
         // Create the Brigadier command
         BrigadierCommand brigadierCommand = new BrigadierCommand(root);
