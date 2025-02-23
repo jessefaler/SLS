@@ -32,11 +32,12 @@
   ~~- Player count~~  
   ~~- Server status~~  
 
-### 2. **Implement the `config` Command**
-   - Implement the `config` command, mimicking the functionality of the old SLS plugin command.
-   - Allow administrators to:
-     - View registry config data.
-     - See individual world configuration data.
+~~### 2. **Implement the `config` Command**~~ **Complete ✅**
+
+   ~~- Implement the `config` command, mimicking the functionality of the old SLS plugin command.~~
+   ~~- Allow administrators to:~~
+   ~~- View registry config data.~~
+   ~~- See individual world configuration data.~~
 
 ### 3. **Display Resource Usage and Server Status (`monitor` Command)**
    - Implement the `monitor` command to display resource usage and server status.
