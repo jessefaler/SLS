@@ -41,6 +41,7 @@ public class RegistryIO {
         }
         return yamlFilePaths;
     }
+
     public List<Path> locateWorldFolders(Path registryDirectory) throws IOException {
         List<Path> subFolders = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(registryDirectory)) {
@@ -98,9 +99,27 @@ public class RegistryIO {
      * Configs folder and reads them into the registry class
      */
     public void reloadAllRegistries() {
+        SLS.REGISTRY_MANAGER.purgeRegistries();
         for(Path path : getRegistryConfigs()) {
             Registry registry = readRegistryConfig(path);
             SLS.REGISTRY_MANAGER.addRegistry(registry.name, registry);
+        }
+        SLS.LOGGER.info("Loaded in registries: " + Arrays.toString(SLS.REGISTRY_MANAGER.getRegistryNames()));
+    }
+
+    /**
+     * Reloads all the registries.
+     * Scans all for all config files present in the registry
+     * Configs folder and reads them into the registry class
+     */
+    public void reloadRegistry(String name) {
+        for(Path path : getRegistryConfigs()) {
+            String retrieveRegistryName = retrieveRegistryName(path);
+            if(retrieveRegistryName.equals(name)) {
+                Registry registry = readRegistryConfig(path);
+                SLS.REGISTRY_MANAGER.addRegistry(registry.name, registry);
+                return;
+            }
         }
         SLS.LOGGER.info("Loaded in registries: " + Arrays.toString(SLS.REGISTRY_MANAGER.getRegistryNames()));
     }
@@ -188,6 +207,18 @@ public class RegistryIO {
             worlds.put(worldName, serverConfiguration);
         }
         return new Registry(registryName, worlds, path1);
+    }
+
+    public String retrieveRegistryName(Path path) {
+        Map<String, Object> data = readYML(path);
+        assert data != null;
+        //read in registry settings (name, path)
+        List<Map<String, Object>> registry = (List<Map<String, Object>>) data.get("registry");
+        String registryName = null;
+        for (Map<String, Object> settings : registry) {
+            registryName = getRequiredValue(settings,"name", path.toString());
+        }
+        return registryName;
     }
 
     //Reads a YML file into a Map
