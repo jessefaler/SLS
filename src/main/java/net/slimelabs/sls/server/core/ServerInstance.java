@@ -20,11 +20,13 @@ import net.slimelabs.sls.SLS;
 import net.slimelabs.sls.api.API;
 import net.slimelabs.sls.api.HttpClient;
 import net.slimelabs.sls.api.NoAvailableAllocationsException;
+import net.slimelabs.sls.installer.ServerInstaller;
 import net.slimelabs.sls.io.ServerData;
 import net.slimelabs.sls.server.Flags;
 import net.slimelabs.sls.server.ServerWebSocket;
 import net.slimelabs.sls.server.ServerConfiguration;
 import net.slimelabs.sls.server.Watcher;
+import net.slimelabs.sls.utils.Color;
 import net.slimelabs.sls.utils.Message.ProtoMessage;
 import net.slimelabs.sls.utils.Message.MessagePreset;
 import net.slimelabs.sls.utils.MinecraftJavaVersionMapper;
@@ -36,11 +38,11 @@ import java.util.Map;
 
 import static net.slimelabs.sls.api.API.*;
 import static net.slimelabs.sls.utils.Color.*;
+import static net.slimelabs.sls.utils.Color.CYAN;
 
 public class ServerInstance {
 
     public String name;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     ServerWebSocket serverWebSocket;
     public UtilizationState state = UtilizationState.OFFLINE;
     public boolean shutdown;
@@ -50,6 +52,7 @@ public class ServerInstance {
     String identifier;
     public Flags flags;
     public Watcher watcher;
+    public ServerConfiguration serverConfiguration;
 
     public ServerInstance(String name) {
         this.name = name;
@@ -68,7 +71,7 @@ public class ServerInstance {
 
     public void addWatcher(Player player) {
         if(watcher == null) {
-            watcher = new Watcher();
+            watcher = new Watcher(name);
             serverWebSocket.watcher = watcher;
         }
         watcher.addWatcher(player);
@@ -95,20 +98,22 @@ public class ServerInstance {
      */
     public boolean startServer(ServerConfiguration serverConfiguration) {
         clientAPI.retrieveServersByName(name, false).executeAsync(servers -> {
+            ServerInstaller.installServer(serverConfiguration.version);
             if (servers.isEmpty()) { // No server already exists so create it
                 createServer(serverConfiguration, name);
                 return;
             }
-            if(servers.size() > 1) {
-                System.err.println("Found multiple servers with the name '\" + name + \"' while starting. Ignoring all but the first one.");
-            }
             ClientServer clientServer = servers.get(0);
             clientServer.start().executeAsync(
                         success -> {
-                            SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, clientServer.getPrimaryAllocation().getFullAddress(), RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
+                            SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} and {}{}{} ram", CYAN, name.replace("_", " "), RESET, CYAN, clientServer.getPrimaryAllocation().getFullAddress(), RESET, CYAN, serverConfiguration.ram, RESET);
                             registerServer(clientServer); // Register the server
                         },
-                        throwable -> sendErrorMessage("Failed to start server: " + clientServer.getName(), source)
+                    failure -> {
+                            SLS.PLAYER_CONNECTOR.errorDequeueAllPlayers(name);
+                            System.err.println("[SLS] API call to create server " + name + " failed. \n" + failure.getMessage());
+                            sendErrorMessage("Failed to start server: " + clientServer.getName(), source);
+                        }
                 );
         }, throwable -> {
             if (throwable instanceof LoginException) {
@@ -166,7 +171,7 @@ public class ServerInstance {
                     // Get the ClientServer
                     clientAPI.retrieveServerByIdentifier(ApplicationServer.getIdentifier()).executeAsync(
                             clientServer -> {
-                                SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} with {}{}{} ram", LIGHT_BLUE, name, RESET, LIGHT_BLUE, clientServer.getPrimaryAllocation().getFullAddress(), RESET, LIGHT_BLUE, serverConfiguration.ram, RESET);
+                                SLS.LOGGER.info("Starting server {}{}{} with address {}{}{} and {}{}{} ram", CYAN, name.replace("_", " "), RESET, CYAN, clientServer.getPrimaryAllocation().getFullAddress(), RESET, CYAN, serverConfiguration.ram, RESET);
                                 registerServer(clientServer); // Register the server
                                 },
                             throwable -> {
@@ -174,17 +179,17 @@ public class ServerInstance {
                                 SLS.LOGGER.error("Failed to retrieve client server: {}", throwable.getMessage());
                             });
                     },
-                failure -> sendErrorMessage("Failed to create server: " + name, source));
+                failure -> {
+                    SLS.PLAYER_CONNECTOR.errorDequeueAllPlayers(name);
+                    System.err.println("[SLS] API call to create server " + name + " failed. \n" + failure.getMessage());
+                    sendErrorMessage("Failed to create server: " + name, source);
+                });
         return true;
     }
 
     private String getStartCommand(String ram) {
         // Optimised start flags by Aikar, see: https://docs.papermc.io/misc/tools/start-script-gen
-        return "java -Xms" + 500 + "M " +
-                "-XX:MaxRAMPercentage=95.0 " +
-                "-Dterminal.jline=false " +
-                "-Dterminal.ansi=true " +
-                "-jar server.jar nogui";
+        return "java -Xms1G -Xmx" + ram + "M -jar server.jar nogui";
     }
 
 
@@ -227,6 +232,7 @@ public class ServerInstance {
 
     // shutdown the server gracefully
     public void shutdown() {
+        watcher = null;
         if(!flags.SAVE) {
             deleteServerSilent(); // Delete the server if saving is not enabled
         } else {
@@ -234,6 +240,7 @@ public class ServerInstance {
         }
         shutdown = true;
         if(serverWebSocket != null) serverWebSocket.closeConnection();
+        serverWebSocket = null;
         // Unregister the server in Velocity
         if (SLS.PROXY.getServer(name).isPresent()) {
             SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
@@ -243,16 +250,20 @@ public class ServerInstance {
 
     // kills the server
     public void kill() {
+        watcher = null;
         if(!flags.SAVE) {
             deleteServerSilent(); // Delete the server if saving is not enabled
         } else {
             HttpClient.killServer(identifier);
         }
+        shutdown = true;
         if(serverWebSocket != null) serverWebSocket.closeConnection();
+        serverWebSocket = null;
         // Unregister the server in Velocity
         if (SLS.PROXY.getServer(name).isPresent()) {
             SLS.PROXY.unregisterServer(SLS.PROXY.getServer(name).get().getServerInfo());
         }
+        SLS.SERVER_REGISTRY.unRegisterServer(name);
     }
 
     public void sendCommand(String command) {
