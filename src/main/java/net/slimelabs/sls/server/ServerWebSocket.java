@@ -23,6 +23,7 @@ import net.slimelabs.sls.utils.Message.ProtoMessage;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import static net.slimelabs.sls.api.Endpoint.CLIENT_API_KEY;
 import static net.slimelabs.sls.api.Endpoint.CLIENT_API_URL;
@@ -103,6 +104,7 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     @Override
     public void onStatsUpdate(StatsUpdateEvent event) {
+        serverInstance.metrics = event;
         handleStateInfo(event.getState());
     }
 
@@ -137,9 +139,13 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
 
     private void handleConsoleErrors(String message) {
         if(message.equals("\u001B[33m\u001B[1m[Pterodactyl Daemon]:\u001B[39m Exit code: 1\u001B[0m")) { // Exit code 1 indicates server terminated with an error
-            SLS.LOGGER.error("Failed to start " + serverInstance.name + " Exit code: 1");
+            SLS.LOGGER.error("Failed to start {} Exit code: 1", serverInstance.name);
             cleanup();
-        } else if (message.contains(" INFO]: Closing Server")) {
+        } else if (message.contains("Out of memory: true")) {
+            SLS.LOGGER.error("Failed to start {} Out of memory", serverInstance.name);
+            cleanup();
+        } else if (message.contains(" INFO]: Closing Server") || message.contains("Server marked as offline...")) {
+            SLS.LOGGER.error("Failed to start {} Server closed", serverInstance.name);
             cleanup();
         }
     }
@@ -162,8 +168,9 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
     public void handleConsoleMessage(CommandSource source, String message) {
         if(commandSource != null) {
             if(output) {
-                message = message.replaceFirst("^\\[.*?\\s+INFO\\]:\\s*", ""); // Remove time stamp
-                message = message.replaceAll("\u001B\\[[;\\d]*m", ""); // Remove any color codes
+                message = message.replaceAll("\u001b\\[[;\\d]*m", ""); // Remove color codes
+                message = message.replaceAll(">\u001B\\[2K", ""); // Remove control characters
+                message = message.replace("\r", ""); // Remove CR control code
                 if(message.contains("Unknown or incomplete command")) {
                     ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
                             + serverInstance.name.replace("_", " ")
