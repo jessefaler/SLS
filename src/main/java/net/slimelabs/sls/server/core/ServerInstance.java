@@ -11,6 +11,7 @@ import com.mattmalec.pterodactyl4j.application.entities.ApplicationServer;
 import com.mattmalec.pterodactyl4j.application.entities.Node;
 import com.mattmalec.pterodactyl4j.client.entities.ClientAllocation;
 import com.mattmalec.pterodactyl4j.client.entities.ClientServer;
+import com.mattmalec.pterodactyl4j.client.ws.events.StatsUpdateEvent;
 import com.mattmalec.pterodactyl4j.exceptions.LoginException;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
@@ -53,6 +54,7 @@ public class ServerInstance {
     public Flags flags;
     public Watcher watcher;
     public ServerConfiguration serverConfiguration;
+    public StatsUpdateEvent metrics; // Contains the most update metrics from the ServerWebSocket
 
     public ServerInstance(String name) {
         this.name = name;
