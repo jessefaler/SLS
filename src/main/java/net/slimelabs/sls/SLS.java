@@ -7,15 +7,23 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.proxy.ProxyServer;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.sls.command.SLSCommand;
 import net.slimelabs.sls.io.FileHandler;
 import net.slimelabs.sls.io.RegistryIO;
 import net.slimelabs.sls.registries.RegistryManager;
 import net.slimelabs.sls.routing.PlayerConnector;
 import net.slimelabs.sls.server.ServerRegistry;
+import net.slimelabs.sls.server.WatcherService;
+import net.slimelabs.sls.utils.Message.Format;
+import net.slimelabs.sls.utils.Message.MessagePreset;
+import net.slimelabs.sls.utils.Message.ProtoMessage;
 import org.slf4j.Logger;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -40,7 +48,7 @@ import static net.slimelabs.sls.utils.Color.*;
 @Plugin(
         id = "sls",
         name = "SLS",
-        version = "4.0.0",
+        version = "4.0.1",
         description = "Server Management Plugin",
         authors = {"protoxon", "Yeetoxic"}
 )
@@ -55,6 +63,7 @@ public class SLS {
     public static RegistryIO REGISTRYIO;
     public static ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     public static SLS PLUGIN;
+    public static WatcherService WATCHER_SERVICE;
 
     @Inject //injects the proxy server and logger into the plugin class (dependency injection)
     public SLS(ProxyServer PROXY, Logger LOGGER) {
@@ -76,6 +85,7 @@ public class SLS {
         PLAYER_CONNECTOR = new PlayerConnector();
         SERVER_REGISTRY = new ServerRegistry();
         PACKET_LISTENER = new PacketListener();
+        WATCHER_SERVICE = new WatcherService();
 
         // Register packet listeners
         PacketEvents.getAPI().getEventManager().registerListener(PACKET_LISTENER, PacketListenerPriority.NORMAL);
@@ -93,7 +103,7 @@ public class SLS {
     public String startMessage() {
         return "\n" + CYAN + "————————————————————————————————————————————————\n" +
                 GREEN + "  ___ _    ___ \n" +
-                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v4.0.0" + "\n" +
+                GREEN + " / __| |  / __|" + RED + " Server Launch System " + YELLOW + "v" + getVersion() + "\n" +
                 GREEN + " \\__ \\ |__\\__ \\" + DARK_GRAY + " Network Management Plugin" + "\n" +
                 GREEN + " |___/____|___/" + LIGHT_BLUE + " Made by: " + MAGENTA + "Protoxon & Yeetoxic" + "\n" +
                 RESET + "\n" + "[" + GREEN + "SLS" + RESET + "]" + LIGHT_BLUE + " Made for " + RESET + GREEN + "SlimeLabs.net"
@@ -108,5 +118,14 @@ public class SLS {
                 GREEN + " |___/____|___/" + DARK_GRAY + " Made by: Protoxon & Yeetoxic" + "\n" +
                 RESET +
                 "\n" + RED + "————————————————————————————————————————————————" + RESET;
+    }
+
+    public String getVersion() {
+        Optional<PluginContainer> pluginContainer = SLS.PROXY.getPluginManager().getPlugin("sls");
+        if (pluginContainer.isPresent()) {
+            PluginDescription description = pluginContainer.get().getDescription();
+            return description.getVersion().orElse("unknown");
+        }
+        return "unknown";
     }
 }
