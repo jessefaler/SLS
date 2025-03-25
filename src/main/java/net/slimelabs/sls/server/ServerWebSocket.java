@@ -144,6 +144,9 @@ public class ServerWebSocket extends ClientSocketListenerAdapter {
         } else if (message.contains("Out of memory: true")) {
             SLS.LOGGER.error("Failed to start {} Out of memory", serverInstance.name);
             cleanup();
+        } else if (message.equals("\u001B[33m\u001B[1m[Pterodactyl Daemon]:\u001B[39m Exit code: 128\u001B[0m")) {
+            SLS.LOGGER.error("Failed to start {}, Exit code: 128. This is likely ip Address/Port allocation issue. Ensure the allocations in the target node match the systems ip.", serverInstance.name);
+            cleanup();
         } else if (message.contains(" INFO]: Closing Server") || message.contains("Server marked as offline...")) {
             SLS.LOGGER.error("Failed to start {} Server closed", serverInstance.name);
             cleanup();
