@@ -172,6 +172,13 @@ public class ServerRegistry {
     }
 
     /**
+     * Shutdown all servers present in the server registry.
+     */
+    public Collection<ServerInstance> getAllServers() {
+        return servers.values();
+    }
+
+    /**
      * Executes a console command on the given server
      * @param command the command to execute
      * @param serverName the name of the server to run the command on
