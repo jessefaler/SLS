@@ -192,5 +192,10 @@
             <artifactId>httpcore</artifactId>
             <version>4.4.13</version> <!-- Or the version you're using -->
         </dependency>
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java</artifactId>
+            <version>3.3.6</version>
+        </dependency>
     </dependencies>
 </project>
