@@ -92,6 +92,22 @@ public class PlayerConnector {
     }
 
     /**
+     * Dequeues all players queued for a specific server and sends an error message
+     * Generally used if there is an issue creating/starting the server
+     * @param name the name of the server
+     */
+    public void errorDequeueAllPlayers(String name) {
+        for(QueueService service : activeServices.values()) {
+            if(service.serverInstance.name.equals(name)) {
+                ProtoMessage.chat().add(MessagePreset.SLS)
+                        .add("An error occurred while starting the server.", NamedTextColor.RED)
+                        .sendMessage(service.player);
+                service.dequeue();
+            }
+        }
+    }
+
+    /**
      * Sends a connection request to join the given player to the specified server
      * @param player the player instance to connect
      * @param serverName the name of the server
