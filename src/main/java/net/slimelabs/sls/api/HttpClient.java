@@ -30,7 +30,7 @@ public class HttpClient {
      * @return a JsonNode containing the allocations.
      */
     public static JsonNode getAllocations() {
-        return get("http://panel.slimelabs.net/api/application/nodes/1/allocations", APPLICATION_API_KEY);
+        return get("https://panel.slimelabs.net/api/application/nodes/1/allocations", APPLICATION_API_KEY);
     }
 
     /**
@@ -38,7 +38,7 @@ public class HttpClient {
      * @return a JsonNode containing the allocations.
      */
     public static JsonNode getNests() {
-        return get("http://panel.slimelabs.net/api/application/nests", APPLICATION_API_KEY);
+        return get("https://panel.slimelabs.net/api/application/nests", APPLICATION_API_KEY);
     }
 
     /**
@@ -46,7 +46,7 @@ public class HttpClient {
      * @return a JsonNode containing the allocations.
      */
     public static JsonNode getEggs(int nest) {
-        return get("http://panel.slimelabs.net/api/application/nests/" + nest + "/eggs", APPLICATION_API_KEY);
+        return get("https://panel.slimelabs.net/api/application/nests/" + nest + "/eggs", APPLICATION_API_KEY);
     }
 
     /**
@@ -84,7 +84,7 @@ public class HttpClient {
      */
     public static void startServer(String serverId) {
         // Define the endpoint to start the server
-        String endpoint = "http://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
+        String endpoint = "https://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
 
         // JSON body for starting the server
         String jsonBody = "{\"signal\": \"start\"}";
@@ -98,9 +98,14 @@ public class HttpClient {
      *
      * @param serverId the ID of the server to stop
      */
+    /**
+     * Stops the server by sending a POST request to the Pterodactyl API.
+     *
+     * @param serverId the ID of the server to stop
+     */
     public static void stopServer(String serverId) {
         // Define the endpoint to start the server
-        String endpoint = "http://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
+        String endpoint = "https://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
 
         // JSON body for starting the server
         String jsonBody = "{\"signal\": \"stop\"}";
@@ -116,19 +121,30 @@ public class HttpClient {
      */
     public static void killServer(String serverId) {
         // Define the endpoint to start the server
-        String endpoint = "http://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
+        String endpoint = "https://panel.slimelabs.net/api/client/servers/" + serverId + "/power";
 
         // JSON body for starting the server
         String jsonBody = "{\"signal\": \"kill\"}";
 
-        // Execute the POST request to start the server
-        executePost(endpoint, jsonBody, CLIENT_API_KEY);
+        // Execute the POST request to start the server and verify the response
+        String responseStr = executePost(endpoint, jsonBody, CLIENT_API_KEY);
+        if (responseStr == null) {
+            throw new RuntimeException("Failed to kill server: No response from API");
+        }
+        try {
+            JsonNode response = objectMapper.readTree(responseStr);
+            if (!response.has("attributes") || !response.get("attributes").has("current_state")) {
+                throw new RuntimeException("Failed to kill server: Invalid response from API");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to kill server: " + e.getMessage());
+        }
     }
 
     // Method to get the server ID by its name
     public static String getServerIdByName(String serverName) {
         // Construct the full endpoint to retrieve the servers
-        String endpoint = "http://panel.slimelabs.net/api/application/servers";
+        String endpoint = "https://panel.slimelabs.net/api/application/servers";
         JsonNode response = get(endpoint, APPLICATION_API_KEY);
 
         if (response != null && response.has("data") && response.get("data").isArray()) {
@@ -152,7 +168,7 @@ public class HttpClient {
     public static String[] getAllocationData(int id) {
         try {
             // Perform GET request and retrieve the response as a JsonNode
-            JsonNode rootNode = get("http://panel.slimelabs.net/api/application/nodes/1/allocations", APPLICATION_API_KEY);
+            JsonNode rootNode = get("https://panel.slimelabs.net/api/application/nodes/1/allocations", APPLICATION_API_KEY);
             if (rootNode == null) {
                 throw new IllegalStateException("Failed to retrieve data from the API.");
             }
@@ -186,7 +202,7 @@ public class HttpClient {
      * @return A JSON string representing the server's data, or null if an error occurs.
      */
     public static String getServerData(String serverId) {
-        String endpoint = "http://panel.slimelabs.net/api/client/servers/" + serverId;
+        String endpoint = "https://panel.slimelabs.net/api/client/servers/" + serverId;
 
         // Use the provided GET method to fetch data
         JsonNode response = get(endpoint, CLIENT_API_KEY);
@@ -204,7 +220,7 @@ public class HttpClient {
      * @return the state of the server
      */
     public static String getServerState(String id) {
-        String endpoint = "http://panel.slimelabs.net/api/client/servers/" + id + "/resources";
+        String endpoint = "https://panel.slimelabs.net/api/client/servers/" + id + "/resources";
 
         // Get the server status as a JSON object
         JsonNode response = get(endpoint, CLIENT_API_KEY);
