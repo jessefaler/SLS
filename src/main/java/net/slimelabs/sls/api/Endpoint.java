@@ -6,10 +6,10 @@ package net.slimelabs.sls.api;
  */
 public enum Endpoint {
 
-    APPLICATION_API_URL("http://panel.slimelabs.net"),   // Application Api Endpoint
-    CLIENT_API_URL("http://panel.slimelabs.net"),        // Client Api Endpoint
-    APPLICATION_API_KEY("redacted"),                     // Application Api key
-    CLIENT_API_KEY("redacted");                          // Client Api Key
+    APPLICATION_API_URL("https://panel.slimelabs.net"),   // Application Api Endpoint
+    CLIENT_API_URL("https://panel.slimelabs.net"),        // Client Api Endpoint
+    APPLICATION_API_KEY(""),                     // Application Api key
+    CLIENT_API_KEY("");                          // Client Api Key
 
     private final String value;
 
