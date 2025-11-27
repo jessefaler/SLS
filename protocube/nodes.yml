@@ -1,0 +1,9 @@
+
+  docker stop $(docker ps -aq) && docker rm $(docker ps -aq)
+
+nodes:
+  - name: "sls-1"
+    id: 1
+    location: "us-east"
+    endpoint: "localhost:8080"
+    token: sls-slimelabs-controller-SL86wCPA

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="56e1d5a6-d239-43cc-bbc2-e0cb279df7df" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" url="file://$USER_HOME$/sdk/go1.25.1" />
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="com.goide.dfa.ui.problems.view" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="33d2bGazV8NFg77RO1fkeR7lTOT" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;DefaultGoTemplateProperty&quot;: &quot;Go File&quot;,
+    &quot;Go Build.go build soc.go.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.config_nodes_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.config_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.software_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginOnboarding&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/sls/protocube/api/router&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;go.vgo&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/api/router" />
+      <recent name="$PROJECT_DIR$/system" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/models" />
+      <recent name="$PROJECT_DIR$/server" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/enviroment" />
+      <recent name="$PROJECT_DIR$/server" />
+      <recent name="$PROJECT_DIR$/api/router" />
+      <recent name="$PROJECT_DIR$/api" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go Test.software_test.go">
+    <configuration name="go build soc.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="sos" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <package value="protoxon.com/soc" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/soc.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="config_nodes_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sos" />
+      <working_directory value="$PROJECT_DIR$/config" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/config/config_nodes_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration name="config_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="sos" />
+      <working_directory value="$PROJECT_DIR$/config" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/config/config_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration name="software_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="protocube" />
+      <working_directory value="$PROJECT_DIR$/software" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/software/software_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.software_test.go" />
+        <item itemvalue="Go Build.go build soc.go" />
+        <item itemvalue="Go Test.config_test.go" />
+        <item itemvalue="Go Test.config_nodes_test.go" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-gosdk-f466f9b0953e-146d08934cbf-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-252.27397.100" />
+        <option value="bundled-js-predefined-d6986cc7102b-3aa1da707db6-JavaScript-GO-252.27397.100" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="56e1d5a6-d239-43cc-bbc2-e0cb279df7df" name="Changes" comment="" />
+      <created>1759632697588</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1759632697588</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+  <component name="com.gk646.codestats.settings.Save">
+    <option name="genericTimePoints">
+      <list>
+        <TimePoint>
+          <option name="timestamp" value="1760931198379" />
+          <option name="linesCode" value="3202" />
+          <option name="totalLines" value="5127" />
+          <option name="info" value="Oct 19, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1762426326418" />
+          <option name="linesCode" value="3277" />
+          <option name="totalLines" value="5357" />
+          <option name="info" value="Nov 6, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1762492833447" />
+          <option name="linesCode" value="3364" />
+          <option name="totalLines" value="5383" />
+          <option name="info" value="Nov 6, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1762841638486" />
+          <option name="linesCode" value="4523" />
+          <option name="totalLines" value="7162" />
+          <option name="info" value="Nov 11, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1763093580238" />
+          <option name="linesCode" value="3128" />
+          <option name="totalLines" value="5153" />
+          <option name="info" value="Nov 13, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1763966517445" />
+          <option name="linesCode" value="3720" />
+          <option name="totalLines" value="5956" />
+          <option name="info" value="Nov 24, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1764049443863" />
+          <option name="linesCode" value="3688" />
+          <option name="totalLines" value="5894" />
+          <option name="info" value="Nov 24, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1764068857538" />
+          <option name="linesCode" value="3723" />
+          <option name="totalLines" value="5950" />
+          <option name="info" value="Nov 25, 2025" />
+        </TimePoint>
+        <TimePoint>
+          <option name="timestamp" value="1764114940445" />
+          <option name="linesCode" value="3723" />
+          <option name="totalLines" value="5950" />
+          <option name="info" value="Nov 25, 2025" />
+        </TimePoint>
+      </list>
+    </option>
+  </component>
+</project>

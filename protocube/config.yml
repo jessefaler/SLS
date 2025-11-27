@@ -1,0 +1,20 @@
+# config.yml
+
+app_name: "protocube"
+uuid: "550e8400-e29b-41d4-a716-446655440000"
+debug: true
+plugins-folder: /mnt/c/slime/plugins
+system:
+  root_directory: /mnt/c/slime
+  log_directory: /mnt/c/slime/log
+api:
+  host: 0.0.0.0
+  port: 5050
+  tls:
+    enabled: false
+    cert: /etc/letsencrypt/live/dev.slimelabs.net/fullchain.pem
+    key: /etc/letsencrypt/live/dev.slimelabs.net/privkey.pem
+blueprints:
+  root: /mnt/c/slime/blueprints
+software:
+  root: /mnt/c/slime/software

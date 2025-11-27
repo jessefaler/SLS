@@ -1,0 +1,22 @@
+
+
+TODO: Implement Custom Compression for Blueprint Instances
+
+Objective:
+Design a compression system optimized for Minecraft worlds and server data to reduce storage and transfer size while maintaining fast access.
+
+Proposed Approach (PAC Algorithm):
+
+1. Chunk Aggregation:
+   - Uncompress all chunks of a Minecraft world.
+   - Merge the chunk data into a single contiguous file to reduce per-chunk overhead.
+
+2. Delta Compression
+   - For worlds derived from a common base:
+     - Divide the aggregated file into fixed-size data blocks.
+     - Compare each block against the base file.
+     - Store only the blocks that have changed, along with their offsets.
+     - This approach can drastically reduce storage when most of the data is unchanged.
+
+3. Compression Layer:
+   - Compress the aggregated file (and any server metadata) using a high-performance algorithm such as LZ4 or Zstd.

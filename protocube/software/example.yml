@@ -1,0 +1,18 @@
+
+# Software configuration
+software:
+  id: 'paper'    # Unique slug ID for the software
+  name: 'Paper'  # Human-readable name
+  images:
+    "Java 21": "ghcr.io/pterodactyl/yolks:java_21"
+    "Java 17": "ghcr.io/pterodactyl/yolks:java_17"
+    "Java 16": "ghcr.io/pterodactyl/yolks:java_16"
+    "Java 11": "ghcr.io/pterodactyl/yolks:java_11"
+    "Java 8": "ghcr.io/pterodactyl/yolks:java_8"
+  invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar"  # Start command for the server
+  stop-command: "stop"  # Command to stop the server
+  online-signal: "Done"  # Signal to indicate server is online
+  install-script: # Install script configuration
+    image: "ghcr.io/pterodactyl/yolks:java_8"  # Docker image used for installation
+    entrypoint: "/bin/bash"  # Entrypoint for the installation process
+    script: "paper-installer.sh"

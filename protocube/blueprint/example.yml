@@ -1,0 +1,113 @@
+
+# Blueprints are a high-level specification of a Minecraft server environment.
+#
+# A Blueprint acts as a complete, portable recipe that describes everything
+# required to launch and run a server instance. It combines metadata,
+# world information, and server configuration into a single definition.
+
+# Blueprint metadata
+metadata:
+  id: 'block_hunt'      # Unique slug ID
+  name: 'Block Hunt'    # Human-readable name
+  type: "minigame"      # the type can be anything (e.g. minigame, adventure) it's just a way to group blueprints
+
+# World configuration
+world:
+  name: "Block Hunt"                # World name
+  authors: "Protoxon"               # World authors OPTIONAL
+  path: "minigames/block_hunt"      # Path under worlds root directory
+
+# Server configuration
+server:
+  software: "Paper"
+  version: "1.18.2"                          # Minecraft server version
+  image: "ghcr.io/pterodactyl/yolks:java_21" # Docker image to use
+  path: "paper/1.18.2"                 # Path under servers root directory
+
+  # Resource limits (defaults used if omitted) OPTIONAL
+  limits:
+
+    # The total amount of memory in mebibyte's that this server is allowed to use
+    # Setting this to 0 will allow unlimited memory in a container.
+    memory_limit: 4096      # in MiB
+
+    # The amount of additional swap space to be provided to a container instance.
+    # Setting this to 0 will disable swap space on this server. Setting to -1 will allow unlimited swap.
+    swap: 1024              # in MiB
+
+    # The relative weight for IO operations in a container. This is relative to other
+    # containers on the system and should be a value between 10 and 1000.
+    io_weight: 500
+
+    # The percentage of CPU that this instance is allowed to consume relative to
+    # the host. A value of 200% represents complete utilization of two cores. This
+    # should be a value between 1 and THREAD_COUNT * 100.
+    # If you do not want to limit CPU usage, set the value to 0
+    cpu_limit: 200           # 200% = 2 cores
+
+    # The amount of disk space in megabytes that a server is allowed to use.
+    # Set to 0 to allow unlimited disk usage.
+    disk_space: 10000       # in MB
+
+    # Sets which CPU threads can be used by the docker instance.
+    threads: ""             # CPU threads
+
+    # Disables the Out-Of-Memory (OOM) killer
+    oom_disabled: false
+
+  # File-level configs to patch when building the server OPTIONAL
+  configs:
+    # Vanilla server.properties file
+    server.properties:
+      parser: properties
+      find:
+        motd: "Block Hunt Server"
+
+    # Spigot config
+    spigot.yml:
+      parser: yaml
+      find:
+        settings.bungeecord: true
+        messages.restart: "Server restarting..."
+
+    # Paper config
+    paper.yml:
+      parser: yaml
+      find:
+        timings.enabled: false
+
+  # Optional content bundled with this blueprint (e.g., plugins, datapacks, mods)
+  # Content is placed at the root of the servers volume.
+  # To place a plugins in the server's plugins folder,
+  # you need to create a folder called "plugins" and place the plugins file inside it.
+  # The source path should point to the folder containing the "plugins" folder you just made.
+  # For example, to place worldedit.jar in the server's "plugins" folder,
+  # the path inside the content folder should be something like:
+  # plugins/worldedit/plugins/worldedit.jar
+  # And the source path you specify here would be: plugins/worldedit
+  # OverlayFS will combine folders with the same path automatically
+  content:
+    - name: "WorldEdit"
+      source: "plugins/bukkit/worldedit"   # Relative path under the content directory
+
+    - name: "Terralith"
+      source: "datapacks/terralith"
+
+    - name: "Distant Horizons"
+      source: "mods/fabric/distant_horizons"
+
+
+# Settings for saving server and world data for instances of this blueprint.
+# If this is false the container and server volume will be deleted when the server stops
+# If true the server container and volume will be saved and the server can be re-started using the servers id
+# OPTIONAL (default false)
+saving:
+  enabled: false
+
+# Custom annotations: arbitrary metadata for external tools or custom logic
+annotations:
+  resource_pack: "block_hunt" # Handled by the SlimePacks plugin
+  allowed_clients: "1.12..1.15, !1.13, 1.20" # Example: external systems can fetch this value via API and use it for custom logic
+  authors: "Protoxon"
+  maintainer: "Protoxon"
+  tags: ["hide n seek", "pvp"]
