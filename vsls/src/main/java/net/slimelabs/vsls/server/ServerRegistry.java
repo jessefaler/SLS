@@ -3,14 +3,10 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.SLSClient;
-import com.protoxon.S4J.entites.Blueprint;
-import com.protoxon.S4J.entites.S4J;
-import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 public class ServerRegistry implements ServerProvider {
 
@@ -76,7 +72,11 @@ public class ServerRegistry implements ServerProvider {
      */
     public void unRegister(String id) {
         Server server = servers.get(id);
-        server.onUnregistration();
+        server.handleUnregistration();
+        // Notify Listeners
+        for (Listener listener : server.listeners) {
+            listener.onUnregistration();
+        }
         servers.remove(id);
         Log.debug("Server " + id + " unregistered");
     }

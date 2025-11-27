@@ -25,25 +25,45 @@ public class Events {
             Server server = provider.getServer(id);
 
             if (event instanceof StatusUpdateEvent statusEvent) {
+
+                // ================================
+                // Status Change Event
+                // ================================
                 Log.debug("Server {} changed status to {}", statusEvent.getServerId(), statusEvent.getStatus());
                 if(server == null) return;
-                // Handle server status updates
                 ServerStatus status = statusEvent.getStatus();
+                // Update the servers status
                 server.status = status;
-                server.onStatusChange(status);
+                // Call the servers status change handler
+                server.handleStatusChange(status);
+                // Notify Listeners
+                server.fireStatusChange(status);
+
             } else if (event instanceof ServerCrashEvent crashEvent) {
+
+                // ================================
+                // Crash Event
+                // ================================
                 if(server == null) return;
-                // Handle server crashes
-                server.onCrash(crashEvent);
+                // Call the servers crash handler
+                server.handleCrash(crashEvent);
+                // Notify Listeners
+                server.fireCrash(crashEvent);
                 Log.info("Server " + id + " crashed:");
                 Log.info("  Reason: " + crashEvent.getReason());
                 Log.info("  Exit Code: " + crashEvent.getExitCode());
                 Log.info("  Timestamp: " + crashEvent.getTimestamp());
+
             } else if (event instanceof ServerDeletedEvent) {
+
+                // ================================
+                // Deletion Event
+                // ================================
                 if(server == null) return;
                 // Handle server deletion events
-                server.onDeletion();
+                server.handleDeletion();
                 Log.info("Server {} was deleted", id);
+
             }
         });
 

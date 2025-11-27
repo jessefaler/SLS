@@ -4,14 +4,13 @@ import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
-import com.protoxon.S4J.client.entites.ServerDeletedEvent;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
-public class Server {
+public class Server extends Listener {
 
     public String id;
     // The servers api client
@@ -47,7 +46,8 @@ public class Server {
         });
     }
 
-    public void onStatusChange(ServerStatus status) {
+    // Internal
+    public void handleStatusChange(ServerStatus status) {
         Log.info("Server " + id + " changed status to " + status);
         Player source = SLS.proxy.getPlayer("protoxon").get();
         ProtoMessage.chat()
@@ -60,10 +60,11 @@ public class Server {
                 .sendMessage(source);
     }
 
-    public void onCrash(ServerCrashEvent crashEvent) {
+    public void handleCrash(ServerCrashEvent crashEvent) {
+
     }
 
-    public void onUnregistration() {
+    public void handleUnregistration() {
         Player source = SLS.proxy.getPlayer("protoxon").get();
         ProtoMessage.chat()
                 .add("Server ", NamedTextColor.GRAY)
@@ -74,7 +75,7 @@ public class Server {
                 .sendMessage(source);
     }
 
-    public void onDeletion() {
+    public void handleDeletion() {
 
     }
 
