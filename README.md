@@ -7,8 +7,6 @@ SLS runs every game server inside its own **Docker container**, keeping environm
 
 SLS is **free and open-source** software licensed under the **AGPL-3.0**.
 
----
-
 ## Components
 
 ### **Protocube**
@@ -23,8 +21,6 @@ The server control plane for SLS. Each daemon runs containers, handles world mou
 
 A Java wrapper for the Protocube API, providing a clean interface for plugins and external tools.
 
----
-
 ## Extras
 
 ### **vSLS**
@@ -35,8 +31,6 @@ A Velocity proxy plugin that lets you manage SLS servers directly through in-gam
 
 A resource-pack management system with automatic routing and versioning logic.
 
----
-
 ## Blueprints
 
 Blueprints are **declarative specifications** describing *exactly* how a game server should run:
@@ -46,7 +40,7 @@ Below is a full example Blueprint.
 
 ```yaml
 # Blueprint metadata
-metadata:
+blueprint:
   id: 'block_hunt'               # Unique slug ID
   name: 'Block Hunt'             # Human-readable name
   type: 'minigame'               # Arbitrary grouping tag
@@ -102,8 +96,6 @@ annotations:
   maintainer: "Protoxon"
   tags: ["hide n seek", "pvp"]
 ```
-
----
 
 ## Development Status
 
