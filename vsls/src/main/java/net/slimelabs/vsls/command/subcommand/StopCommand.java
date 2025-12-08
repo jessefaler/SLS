@@ -1,0 +1,174 @@
+package net.slimelabs.vsls.command.subcommand;
+
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.velocitypowered.api.command.CommandSource;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.message.MessageFormatter;
+import net.slimelabs.vsls.utils.message.MessagePreset;
+import net.slimelabs.vsls.utils.message.ProtoMessage;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+
+import java.util.Objects;
+
+public class StopCommand {
+
+    public static LiteralArgumentBuilder<CommandSource> register() {
+        return LiteralArgumentBuilder.<CommandSource>literal("stop")
+                .requires(source -> source.hasPermission("sls.command.admin"))
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls shutdown", "server"))
+                            .sendMessage(source);
+                    return 1;
+                })
+                .then(server());
+    }
+
+    private static RequiredArgumentBuilder<CommandSource, String> server() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("all");
+                    SLS.servers.getIds().forEach(builder::suggest);
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "server");
+                    if(id.equals("all")) {
+                        if(SLS.servers.getAll().isEmpty()) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("No servers are running.", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 1;
+                        }
+                        SLS.servers.getAll().forEach(server ->
+                                server.stop().executeAsync(
+                                        success -> {},
+                                        failure -> Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage())
+                                )
+                        );
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Stopping all servers.", NamedTextColor.GRAY)
+                                .sendMessage(source);
+                        return 1;
+                    }
+                    // Shutdown server
+                    Server server = SLS.servers.getServer(id);
+                    if (server != null) {
+                        server.stop().executeAsync(
+                                success -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Shutdown " + id, NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                },
+                                failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                }
+                        );
+                    } else {
+                        // No such server exists
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("No such server " + id, NamedTextColor.RED)
+                                .sendMessage(source);
+                    }
+                    return 0;
+                }).then(force());
+    }
+
+    /**
+     * Unregisters the server regardless of whether it shut down successfully.
+     */
+    private static RequiredArgumentBuilder<CommandSource, String> force() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("force", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("force");
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "server");
+                    String force = StringArgumentType.getString(context, "force");
+                    if(!Objects.equals(force, "force")) {
+                        ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
+                        ProtoMessage.chat()
+                                .add(MessageFormatter.commandUsage("/sls stop " + id, "force"))
+                                .sendMessage(source);
+                        return 0;
+                    }
+
+                    if(id.equals("all")) {
+                        if(SLS.servers.getAll().isEmpty()) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("No servers are running.", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 1;
+                        }
+                        SLS.servers.getAll().forEach(server ->
+                                server.stop().executeAsync(
+                                        success -> {
+                                            // Ensure the server is unregistered
+                                            if(SLS.servers.getServer(id) != null) {
+                                                SLS.servers.unRegister(server.id);
+                                            }
+                                        },
+                                        failure -> {
+                                            Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                            SLS.servers.unRegister(server.id);
+                                        }
+                                )
+                        );
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Stopping all servers.", NamedTextColor.GRAY)
+                                .sendMessage(source);
+                        return 1;
+                    }
+                    Server server = SLS.servers.getServer(id);
+                    if (server != null) {
+                        server.stop().executeAsync(
+                                success -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Shutdown " + id, NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    // Ensure the server is unregistered
+                                    if(SLS.servers.getServer(id) != null) {
+                                        SLS.servers.unRegister(server.id);
+                                    }
+                                },
+                                failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                    SLS.servers.unRegister(server.id);
+                                }
+                        );
+                    } else {
+                        // No such server exists
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("No such server " + id, NamedTextColor.RED)
+                                .sendMessage(source);
+                    }
+                    return 0;
+                });
+    }
+
+}
