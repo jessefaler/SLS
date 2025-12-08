@@ -78,7 +78,7 @@ func run(cmd *cobra.Command, _ []string) {
 	log.WithField("root", config.Get().Blueprints.Root).Infof("Initialized blueprint registry. Loaded %d blueprints", len(blueprints))
 
 	// =========================================================
-	// Configure and run the api
+	// Configure the api
 	// =========================================================
 	apiInstance := api.New(&router.Resources{
 		ServerManager:     serverManager,

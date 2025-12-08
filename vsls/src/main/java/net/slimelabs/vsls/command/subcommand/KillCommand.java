@@ -12,6 +12,8 @@ import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.util.Objects;
+
 public class KillCommand {
 
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -74,6 +76,88 @@ public class KillCommand {
                                             .add("Failed to kill server " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                     Log.warn("Failed to kill server " + server.getId() + " reason: " + failure.getMessage());
+                                }
+                        );
+                    } else {
+                        // No such server exists
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("No such server " + id, NamedTextColor.RED)
+                                .sendMessage(source);
+                    }
+                    return 0;
+                }).then(force());
+    }
+
+    /**
+     * Unregisters the server regardless of whether it was killed successfully.
+     */
+    private static RequiredArgumentBuilder<CommandSource, String> force() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("force", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("force");
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "server");
+                    String force = StringArgumentType.getString(context, "force");
+                    if(!Objects.equals(force, "force")) {
+                        ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
+                        ProtoMessage.chat()
+                                .add(MessageFormatter.commandUsage("/sls kill " + id, "force"))
+                                .sendMessage(source);
+                        return 0;
+                    }
+
+                    if(id.equals("all")) {
+                        if(SLS.servers.getAll().isEmpty()) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("No servers are running.", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 1;
+                        }
+                        SLS.servers.getAll().forEach(server ->
+                                server.kill().executeAsync(
+                                        success -> {
+                                            // Ensure the server is unregistered
+                                            if(SLS.servers.getServer(id) != null) {
+                                                SLS.servers.unRegister(server.id);
+                                            }
+                                        },
+                                        failure -> {
+                                            Log.warn("Failed to kill server " + server.getId() + " reason: " + failure.getMessage());
+                                            SLS.servers.unRegister(server.id);
+                                        }
+                                )
+                        );
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Stopping all servers.", NamedTextColor.GRAY)
+                                .sendMessage(source);
+                        return 1;
+                    }
+                    Server server = SLS.servers.getServer(id);
+                    if (server != null) {
+                        server.stop().executeAsync(
+                                success -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Shutdown " + id, NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    // Ensure the server is unregistered
+                                    if(SLS.servers.getServer(id) != null) {
+                                        SLS.servers.unRegister(server.id);
+                                    }
+                                },
+                                failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                    SLS.servers.unRegister(server.id);
                                 }
                         );
                     } else {

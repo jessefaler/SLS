@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"plugin"
 
-	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/blueprint"
@@ -72,10 +71,7 @@ func LoadPlugins(sls *SLS) error {
 
 		return nil
 	})
-	if err != nil {
-		return errors.Wrap(err, "An error has occurred while loading plugins")
-	}
-	return nil
+	return err
 }
 
 func DisableAll() {

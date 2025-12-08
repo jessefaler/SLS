@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-const length = 3
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const length = 6
+const charset = "abcdefhikmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var randGen = rand.New(rand.NewSource(time.Now().UnixNano()))
 

@@ -116,6 +116,12 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			return ErrIsRunning
 		}
 
+		// Sync server configuration to environment before starting to ensure
+		// containers are created with the latest limits and settings.
+		if err := s.SyncConfigurationToEnvironment(); err != nil {
+			return errors.Wrap(err, "failed to sync configuration to environment")
+		}
+
 		return s.Environment.Start(s.Context())
 	case PowerActionStop:
 		fallthrough
@@ -136,6 +142,12 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 
 		if action == PowerActionStop {
 			return nil
+		}
+
+		// Sync server configuration to environment before restarting to ensure
+		// containers are created with the latest limits and settings.
+		if err := s.SyncConfigurationToEnvironment(); err != nil {
+			return errors.Wrap(err, "failed to sync configuration to environment")
 		}
 
 		return s.Environment.Start(s.Context())

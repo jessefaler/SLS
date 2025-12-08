@@ -72,12 +72,12 @@ func BuildServerVolume(id string, serverPath string, worldPath string, content [
 
 	serverOverlay, err := BuildServerOverlay(overlayRoot, serverPath, content)
 	if err != nil {
-		return "", errors.WrapIf(err, "failed to build server overlay")
+		return "", err
 	}
 
 	worldOverlay, err := BuildWorldOverlay(overlayRoot, worldPath)
 	if err != nil {
-		return "", errors.WrapIf(err, "failed to build world overlay")
+		return "", err
 	}
 
 	worldTarget := filepath.Join(serverOverlay, "world")

@@ -23,7 +23,7 @@ func init() {
 	rootCommand.AddCommand(versionCommand)
 }
 
-// initEnvironment sets up config, logging, and registries.
+// initEnvironment sets up the config and logging
 func initEnvironment(cmd *cobra.Command) {
 	config.InitConfig()
 
@@ -48,6 +48,6 @@ var versionCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the current executable version and exits.",
 	Run: func(cmd *cobra.Command, _ []string) {
-		fmt.Printf("SLS v%s\nCopyright © 2020 - %d %s\n", system.Version, time.Now().Year(), system.Authors)
+		fmt.Printf("SLS v%s\nCopyright © 2025 - %d %s\n", system.Version, time.Now().Year(), system.Authors)
 	},
 }
