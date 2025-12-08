@@ -15,9 +15,9 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 public class StartCommand {
 
-
     public static LiteralArgumentBuilder<CommandSource> register() {
         return LiteralArgumentBuilder.<CommandSource>literal("start")
+                .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
@@ -59,11 +59,7 @@ public class StartCommand {
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
 
-                    SLS.servers.CreateServer(blueprint).executeAsync(server -> {
-                        ProtoMessage.chat()
-                                .add("Id: " + server.client.getId())
-                                .sendMessage(source);
-                    }, failure -> {
+                    SLS.servers.CreateServer(blueprint).executeAsync(server -> {}, failure -> {
                         ProtoMessage.chat()
                                 .add("Failed to start server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
                                 .sendMessage(source);

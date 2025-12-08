@@ -35,6 +35,12 @@ public class Log {
         }
     }
 
+    private static void sendProtoMessageToPlayers(ProtoMessage message) {
+        for (UUID uuid : debugPlayers) {
+            SLS.proxy.getPlayer(uuid).ifPresent(message::sendMessage);
+        }
+    }
+
     /* -----------------  Helper: Format for Players ------------------- */
 
     private static String formatForPlayer(String level, String msg) {
@@ -154,6 +160,87 @@ public class Log {
         public void debug(String msg) {
             Log.debug(formatFields() + msg);
         }
+
+        public void info(String msg, Object... args) {
+            Log.info(formatFields() + msg, args);
+        }
+
+        public void warn(String msg, Object... args) {
+            Log.warn(formatFields() + msg, args);
+        }
+
+        public void error(String msg, Object... args) {
+            Log.error(formatFields() + msg, args);
+        }
+
+        public void debug(String msg, Object... args) {
+            Log.debug(formatFields() + msg, args);
+        }
+
+    }
+
+    /* Logging to a specific target */
+
+    /**
+     * Logs to a single target
+     * @param target the target to log to
+     * @return the target logger
+     */
+    public static TargetedLogger target(Target target) {
+        return new TargetedLogger(target);
+    }
+
+    public static class TargetedLogger {
+        private final Target target;
+
+        public TargetedLogger(Target target) {
+            this.target = target;
+        }
+
+        private void send(String level, String msg, Object... args) {
+            String formatted = args.length == 0
+                    ? msg
+                    : MessageFormatter.arrayFormat(msg, args).getMessage();
+
+            switch (target) {
+                case CONSOLE -> {
+                    switch (level) {
+                        case "INFO" -> logger.info(formatted);
+                        case "WARN" -> logger.warn(formatted);
+                        case "ERROR" -> logger.error(formatted);
+                        case "DEBUG" -> logger.debug(formatted);
+                    }
+                }
+                case PLAYER -> {
+                    logPlayer(formatForPlayer(level, formatted));
+                }
+            }
+        }
+
+        public void info(String msg, Object... args)  { send("INFO", msg, args); }
+        public void warn(String msg, Object... args)  { send("WARN", msg, args); }
+        public void error(String msg, Object... args) { send("ERROR", msg, args); }
+        public void debug(String msg, Object... args) { send("DEBUG", msg, args); }
+
+        /**
+         * Sends a ProtoMessage to the target.
+         * If the target is PLAYER, sends the message to all debug players.
+         * If the target is CONSOLE, logs the plain text representation of the message.
+         *
+         * @param message The ProtoMessage to send
+         */
+        public void sendMessage(ProtoMessage message) {
+            switch (target) {
+                case PLAYER -> {
+                    sendProtoMessageToPlayers(message);
+                }
+                case CONSOLE -> {
+                    // Convert Component to plain text for console logging
+                    String plainText = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(message.asComponent());
+                    logger.info(plainText);
+                }
+            }
+        }
     }
 
     /* -----------------  Timestamp ------------------- */
@@ -165,5 +252,10 @@ public class Log {
 
     public static Set<UUID> getDebugPlayers() {
         return debugPlayers;
+    }
+
+    public enum Target {
+        PLAYER,
+        CONSOLE;
     }
 }

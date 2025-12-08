@@ -2,15 +2,11 @@ package net.slimelabs.vsls.config;
 
 import net.slimelabs.vsls.SLS;
 import org.yaml.snakeyaml.Yaml;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.yaml.snakeyaml.constructor.Constructor;
-
-
-
 
 public class Config {
 
@@ -67,7 +63,6 @@ public class Config {
         Path targetPath = Path.of(path);
 
         if (!Files.exists(targetPath)) {
-            SLS.logger.warn("Config file missing - recreating default config...");
             createDefault(targetPath);
         }
 

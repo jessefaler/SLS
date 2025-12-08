@@ -15,6 +15,7 @@ public class StatusCommand {
 
     public static LiteralArgumentBuilder<CommandSource> register() {
         return LiteralArgumentBuilder.<CommandSource>literal("status")
+                .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
@@ -54,7 +55,7 @@ public class StatusCommand {
                 .then(remote());
     }
 
-    // Remote fetches the status from the api
+    // Remote fetches the status from sls daemon via the api
     private static RequiredArgumentBuilder<CommandSource, String> remote() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("remote", StringArgumentType.string())
                 .suggests((context, builder) -> {

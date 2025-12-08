@@ -4,6 +4,7 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.PluginDescription;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.utils.ColorString;
+import net.slimelabs.vsls.utils.PluginInfo;
 
 import java.util.Optional;
 
@@ -21,23 +22,7 @@ public class Message {
                         "[light_blue]This software is made available under the terms of the [magenta]APGL-3.0[light_blue] license.\n" +
                         "[light_blue]The above copyright notice and this permission notice shall be included\n" +
                         "[light_blue]in all copies or substantial portions of the Software.\n"
-        )) + "%n", getVersion(), java.time.LocalDate.now().getYear(), getAuthors());
-    }
-
-    public static String getVersion() {
-        Optional<PluginContainer> pluginContainer = SLS.proxy.getPluginManager().getPlugin("vsls");
-        if (pluginContainer.isPresent()) {
-            PluginDescription description = pluginContainer.get().getDescription();
-            return description.getVersion().orElse("unknown");
-        }
-        return "unknown";
-    }
-
-    public static String getAuthors() {
-        return SLS.proxy.getPluginManager()
-                .getPlugin("vsls")
-                .map(plugin -> String.join(", ", plugin.getDescription().getAuthors()))
-                .orElse("unknown");
+        )) + "%n", PluginInfo.getVersion(), java.time.LocalDate.now().getYear(), PluginInfo.getAuthors());
     }
 
 }
