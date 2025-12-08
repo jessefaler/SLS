@@ -96,7 +96,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 	}
 
 	// Request server creation on the remote node
-	err = node.CreateServer(ctx, nodeReq)
+	resp, err := node.CreateServer(ctx, nodeReq)
 	if err != nil {
 		return nil, err
 	}
@@ -109,9 +109,13 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		id:           nodeReq.ID,
 		sc:           serverClient,
 		GlobalEvents: m.Events,
+		Allocations:  resp.Allocation,
 	}
 
 	// Add the server to the manager
 	m.Add(server)
+
+	// Write the server to the database
+
 	return server, nil
 }

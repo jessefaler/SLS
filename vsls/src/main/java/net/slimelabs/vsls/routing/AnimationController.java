@@ -1,0 +1,65 @@
+package net.slimelabs.vsls.routing;
+
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
+import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
+import net.kyori.adventure.text.Component;
+import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.packets.ChatPackets;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
+public class AnimationController {
+
+    private final LoadingIcon icon = new LoadingIcon();
+    private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
+
+    /** Start animating a loading bar for a player */
+    public void start(Player player) {
+        UUID id = player.getUniqueId();
+
+        if (tasks.containsKey(id)) return; // already animating
+
+        final int[] frame = {0};
+
+        // Disable actionbar packets for this player
+        // so servers cant display anything over the loading icon
+        ChatPackets.disableActionBarPackets(player.getUniqueId());
+
+        PluginContainer plugin = SLS.proxy.getPluginManager().fromInstance(SLS.plugin).orElse(null);
+        if (plugin == null) {
+            Log.error("Plugin instance not found while scheduling loading animation for player {}", player.getUsername());
+            ChatPackets.enableActionBarPackets(player.getUniqueId());
+            return;
+        }
+
+        ScheduledTask task = SLS.proxy.getScheduler()
+                .buildTask(plugin, () -> {
+                    ChatPackets.sendSilentActionBarMessage(icon.getFrame(frame[0]++), player);
+                }).repeat(72, TimeUnit.MILLISECONDS).schedule();
+
+        tasks.put(id, task);
+    }
+
+    public void stop(UUID playerId) {
+        ScheduledTask task = tasks.remove(playerId);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    @Subscribe
+    // Stop animating for a player who disconnected
+    public void onPlayerDisconnect(DisconnectEvent event) {
+        Player player = event.getPlayer();
+        stop(player.getUniqueId());
+    }
+}

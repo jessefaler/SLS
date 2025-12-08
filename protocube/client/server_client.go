@@ -18,7 +18,7 @@ type ServerClient interface {
 
 type serverClient struct {
 	node *nodeClient
-	id   string
+	id   string // Servers id
 }
 
 func (sc *serverClient) Power(ctx context.Context, action models.PowerAction) error {

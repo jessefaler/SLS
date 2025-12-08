@@ -11,7 +11,9 @@ type PowerAction struct {
 }
 
 type ServerData struct {
-	Id string `json:"id"`
+	Id   string `json:"id"`
+	Ip   string `json:"ip"`
+	Port int    `json:"port"`
 }
 
 type NodeCreateServerRequest struct {
@@ -27,4 +29,8 @@ type NodeCreateServerRequest struct {
 
 type CreateServerRequest struct {
 	BlueprintID string `json:"blueprint_id"`
+}
+
+type CreateServerResponse struct {
+	Allocation enviroment.Allocations `json:"allocations"`
 }
