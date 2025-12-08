@@ -2,6 +2,7 @@ package remote
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // A generic type allowing for easy binding use when making requests to API
@@ -49,4 +50,10 @@ type NodeRegistration struct {
 }
 
 type HeartBeat struct {
+}
+
+type CrashData struct {
+	Reason    string    `json:"reason"`
+	ExitCode  int32     `json:"exit_code"`
+	Timestamp time.Time `json:"timestamp"`
 }

@@ -3,16 +3,20 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.SLSClient;
+import com.velocitypowered.api.proxy.server.ServerInfo;
+import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.utils.ViaVersion;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ServerRegistry implements ServerProvider {
 
-    HashMap<String, Server> servers = new HashMap<>();
+    ConcurrentHashMap<String, Server> servers = new ConcurrentHashMap<>();
     private SLSClient api;
-    private Events events;
+    public Events events;
 
     public ServerRegistry(SLSClient api) {
         this.api = api;
@@ -36,18 +40,34 @@ public class ServerRegistry implements ServerProvider {
     /**
      * Initiates the creation of a new server using the specified blueprint id.
      *
-     * @param blueprint the ID of the blueprint to base the server on
+     * @param blueprint the id of the blueprint to use
      * @return an SLSAction that, when executed, creates the server and registers it
      */
     public SLSAction<Server> CreateServer(String blueprint) {
         SLSAction<ClientServer> action = api.createServer().setBlueprintId(blueprint);
         // Map the ClientServer to a vSLS Server, and register it
         return action.map(clientServer -> {
-            Server server = new Server(clientServer, () -> unRegister(clientServer.getId()));
-            // Add the server to the registry using the client server's ID
-            servers.put(clientServer.getId(), server);
+            String name = SLS.blueprints.getBlueprint(blueprint).getName();
+            Server server = new Server(name, clientServer, blueprint, () -> unRegister(clientServer.getId()));
+            register(server);
             return server;
         });
+    }
+
+    /**
+     * Adds the server to the server registry
+     * and registers the server with velocity
+     * and registers the server with viaversion
+     * @param server the server to register
+     */
+    public void register(Server server) {
+        servers.put(server.id, server);
+        // Register the server with velocity
+        InetSocketAddress address = new InetSocketAddress(server.getIp(), server.getPort()); // Create socket address
+        ServerInfo serverInfo = new ServerInfo(server.id, address);
+        SLS.proxy.registerServer(serverInfo);
+        // Register the server with ViaVersion
+        ViaVersion.register(server);
     }
 
     /**
@@ -72,18 +92,20 @@ public class ServerRegistry implements ServerProvider {
      */
     public void unRegister(String id) {
         Server server = servers.get(id);
-        server.handleUnregistration();
-        // Notify Listeners
-        for (Listener listener : server.listeners) {
-            listener.onUnregistration();
-        }
         servers.remove(id);
+        if(server != null) {
+            server.handleUnregistration();
+            server.clearListeners();
+        }
+        // Unregister the server in velocity
+        SLS.proxy.getServer(id).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
+        ViaVersion.unregister(id);
         Log.debug("Server " + id + " unregistered");
     }
 
     /**
      * Returns the event listener
-     * @return An event listener
+     * @return The event listener
      */
     public Events getEvents() {
         return events;

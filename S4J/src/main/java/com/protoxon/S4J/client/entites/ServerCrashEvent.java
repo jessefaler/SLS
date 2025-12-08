@@ -12,9 +12,9 @@ public class ServerCrashEvent implements ServerEvent {
 
     public ServerCrashEvent(String serverId, JSONObject payload) {
         this.serverId = serverId;
-        this.reason = payload.optString("Reason");
-        this.exitCode = payload.optInt("ExitCode");
-        String timestampValue = payload.optString("Timestamp");
+        this.reason = payload.optString("reason");
+        this.exitCode = payload.optInt("exit_code");
+        String timestampValue = payload.optString("timestamp");
         this.timestamp = timestampValue.isEmpty() ? Instant.now() : Instant.parse(timestampValue);
     }
 

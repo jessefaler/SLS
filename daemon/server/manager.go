@@ -3,12 +3,10 @@ package server
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
 	"emperror.dev/errors"
-	"github.com/apex/log"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/environment/docker"
@@ -69,7 +67,6 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 
 	// Add the server to this manager instance
 	manager.Add(s)
-	log.Info("================" + strconv.FormatInt(req.Limits.DiskSpace, 10))
 	s.Config().Limits = req.Limits
 	// Create an allocation for the server
 	alloc := environment.NewAllocation()

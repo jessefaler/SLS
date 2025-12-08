@@ -79,3 +79,8 @@ func getServerStatus(c *gin.Context) {
 		"status": s.Environment.State(),
 	})
 }
+
+func getServerStats(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	c.JSON(http.StatusOK, s.Proc().Stats)
+}

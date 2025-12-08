@@ -3,6 +3,7 @@ package com.protoxon.S4J.client.entites;
 
 import com.protoxon.S4J.PowerAction;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 
 import java.util.function.Consumer;
@@ -26,6 +27,24 @@ public interface ClientServer {
      * @return ServerStatus
      */
     SLSAction<ServerStatus> getStatus();
+
+    /**
+     * Retrieves the servers status
+     * @return ServerStatus
+     */
+    SLSAction<ServerStats> getStats();
+
+    /**
+     * Retrieves the servers ip
+     * @return the servers ip
+     */
+    String getIp();
+
+    /**
+     * Retrieves the servers port
+     * @return the servers port number
+     */
+    int getPort();
 
     default SLSAction<Void> stop() {
         return setPower(PowerAction.STOP);

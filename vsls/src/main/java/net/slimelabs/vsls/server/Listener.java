@@ -4,13 +4,18 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Listener {
 
-    private final List<StatusChangeListener> statusListeners = new ArrayList<>();
-    private final List<Listener.CrashListener> crashListeners = new ArrayList<>();
+    private final List<StatusChangeListener> statusListeners = new CopyOnWriteArrayList<>();
+    private final List<ListenerEntry<StatusChangeListenerWithHandle>> statusListenersWithHandle = new CopyOnWriteArrayList<>();
+    private final List<CrashListener> crashListeners = new CopyOnWriteArrayList<>();
+    private final List<ListenerEntry<CrashListenerWithHandle>> crashListenersWithHandle = new CopyOnWriteArrayList<>();
+
+    // Helper record to store listener with its handle
+    private record ListenerEntry<T>(T listener, Handle handle) {}
 
     @FunctionalInterface
     public interface StatusChangeListener {
@@ -22,25 +27,138 @@ public class Listener {
         void onCrash(ServerCrashEvent crash);
     }
 
-    public void onStatusChange(Listener.StatusChangeListener listener) {
-        statusListeners.add(listener);
+    /**
+     * Status change listener that receives its handle,
+     * allowing it to unregister itself from within the callback.
+     */
+    @FunctionalInterface
+    public interface StatusChangeListenerWithHandle {
+        void onStatusChange(ServerStatus status, Handle handle);
     }
 
-    public void onCrash(Listener.CrashListener listener) {
+    /**
+     * Crash listener that receives its handle,
+     * allowing it to unregister itself from within the callback.
+     */
+    @FunctionalInterface
+    public interface CrashListenerWithHandle {
+        void onCrash(ServerCrashEvent crash, Handle handle);
+    }
+
+    /**
+     * Registers a listener that is invoked whenever the server's status changes.
+     *
+     * @param listener the listener to notify on status updates
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onStatusChange(StatusChangeListener listener) {
+        statusListeners.add(listener);
+        return new Handle(() -> {
+            statusListeners.remove(listener);
+        });
+    }
+
+    /**
+     * Registers a listener that is invoked whenever the server's status changes.
+     * The listener receives its handle, allowing it to unregister itself.
+     *
+     * @param listener the listener to notify on status updates
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onStatusChange(StatusChangeListenerWithHandle listener) {
+        Handle handle = new Handle(() -> {
+            statusListenersWithHandle.removeIf(entry -> entry.listener == listener);
+        });
+        statusListenersWithHandle.add(new ListenerEntry<>(listener, handle));
+        return handle;
+    }
+
+    /**
+     * Registers a listener that is invoked whenever the server crashes.
+     *
+     * @param listener the listener to notify on crash events
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onCrash(CrashListener listener) {
         crashListeners.add(listener);
+        return new Handle(() -> {
+            crashListeners.remove(listener);
+        });
+    }
+
+    /**
+     * Registers a listener that is invoked whenever the server crashes.
+     * The listener receives its handle, allowing it to unregister itself.
+     *
+     * @param listener the listener to notify on crash events
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onCrash(CrashListenerWithHandle listener) {
+        Handle handle = new Handle(() -> {
+            crashListenersWithHandle.removeIf(entry -> entry.listener == listener);
+        });
+        crashListenersWithHandle.add(new ListenerEntry<>(listener, handle));
+        return handle;
     }
 
     protected void fireStatusChange(ServerStatus status) {
+        // Fire regular listeners
         for (StatusChangeListener l : statusListeners) {
             l.onStatusChange(status);
+        }
+        // Fire self-unregistering listeners with their stored handle
+        for (ListenerEntry<StatusChangeListenerWithHandle> entry : statusListenersWithHandle) {
+            entry.listener.onStatusChange(status, entry.handle);
         }
     }
 
     protected void fireCrash(ServerCrashEvent crash) {
+        // Fire regular listeners
         for (CrashListener l : crashListeners) {
             l.onCrash(crash);
+        }
+        // Fire self-unregistering listeners with their stored handle
+        for (ListenerEntry<CrashListenerWithHandle> entry : crashListenersWithHandle) {
+            entry.listener.onCrash(crash, entry.handle);
+        }
+    }
+
+    /**
+     * Clears all listeners for the server
+     * This is called when a server is unregistered to
+     * prevent memory leaks
+     */
+    public void clearListeners() {
+        statusListeners.clear();
+        statusListenersWithHandle.clear();
+        crashListeners.clear();
+        crashListenersWithHandle.clear();
+    }
+
+    public class Handle {
+
+        Runnable remove;
+
+        public Handle(Runnable remove) {
+            this.remove = remove;
+        }
+
+        // Removes this listener handle
+        public void remove() {
+            remove.run();
         }
     }
 
 }
-

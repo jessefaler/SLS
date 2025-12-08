@@ -1,27 +1,36 @@
 package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
+import com.protoxon.S4J.entites.Blueprint;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.time.Instant;
+
 public class Server extends Listener {
 
     public String id;
+    public String name;
     // The servers api client
     public ClientServer client;
+    // The id of the blueprint this server was created from
+    public String blueprintId;
     // Runnable that removes this server from the registry when executed
     private final Runnable unregister;
     // Servers last updated status
     public ServerStatus status = ServerStatus.UNKNOWN;
 
-    public Server(ClientServer client, Runnable unregister) {
+    public Server(String name, ClientServer client, String blueprintId, Runnable unregister) {
+        this.name = name;
         this.client = client;
+        this.blueprintId = blueprintId;
         this.id = client.getId();
         this.unregister = unregister;
     }
@@ -46,18 +55,20 @@ public class Server extends Listener {
         });
     }
 
+    public int getPort() {
+        return client.getPort();
+    }
+
+    public String getIp() {
+        return client.getIp();
+    }
+
+    public SLSAction<ServerStats> getStats() {
+        return client.getStats();
+    }
+
     // Internal
     public void handleStatusChange(ServerStatus status) {
-        Log.info("Server " + id + " changed status to " + status);
-        Player source = SLS.proxy.getPlayer("protoxon").get();
-        ProtoMessage.chat()
-                .add("Server ", NamedTextColor.GRAY)
-                .add("(", NamedTextColor.DARK_GRAY)
-                .add(id, NamedTextColor.RED)
-                .add(")", NamedTextColor.DARK_GRAY)
-                .add(" changed status to: ", NamedTextColor.GRAY)
-                .add(status.getStatus(), NamedTextColor.RED)
-                .sendMessage(source);
     }
 
     public void handleCrash(ServerCrashEvent crashEvent) {
@@ -65,14 +76,6 @@ public class Server extends Listener {
     }
 
     public void handleUnregistration() {
-        Player source = SLS.proxy.getPlayer("protoxon").get();
-        ProtoMessage.chat()
-                .add("Server ", NamedTextColor.GRAY)
-                .add("(", NamedTextColor.DARK_GRAY)
-                .add(id, NamedTextColor.RED)
-                .add(")", NamedTextColor.DARK_GRAY)
-                .add(" unregistered ", NamedTextColor.GRAY)
-                .sendMessage(source);
     }
 
     public void handleDeletion() {

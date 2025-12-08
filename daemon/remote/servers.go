@@ -19,6 +19,11 @@ func (c *client) StatusUpdate(ctx context.Context, status string, id string) err
 	return err
 }
 
+func (c *client) CrashReport(ctx context.Context, data CrashData, id string) error {
+	_, err := Post[d](c, ctx, "/event/servers/"+id+"/crash", data)
+	return err
+}
+
 // GetServers returns all the servers that are present on the Node making
 // parallel API calls to the endpoint if more than one page of servers is
 // returned.

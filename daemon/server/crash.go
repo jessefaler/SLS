@@ -5,7 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/apex/log"
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/remote"
 )
 
 type CrashHandler struct {
@@ -56,4 +58,21 @@ func (s *Server) handleServerCrash() {
 	s.PublishConsoleOutputFromDaemon("---------- Detected server process in a crashed state! ----------")
 	s.PublishConsoleOutputFromDaemon(fmt.Sprintf("Exit code: %d", exitCode))
 	s.PublishConsoleOutputFromDaemon(fmt.Sprintf("Out of memory: %t", oomKilled))
+
+	// Build crash reason
+	reason := fmt.Sprintf("Server process exited with code %d", exitCode)
+	if oomKilled {
+		reason = "Server process was killed due to out of memory"
+	}
+
+	// Send crash report to protocube
+	crashData := remote.CrashData{
+		Reason:    reason,
+		ExitCode:  int32(exitCode),
+		Timestamp: time.Now(),
+	}
+
+	if err := s.client.CrashReport(s.ctx, crashData, s.id); err != nil {
+		log.WithError(err).Warnf("Failed to send crash report for server %s", s.ID())
+	}
 }

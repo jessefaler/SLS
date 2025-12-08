@@ -36,6 +36,7 @@ func (r *Router) Configure() *gin.Engine {
 		//server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)
 		server.GET("/status", getServerStatus)
+		server.GET("/stats", getServerStats)
 		//server.POST("/commands", postServerCommands)
 		//server.POST("/install", postServerInstall)
 		//server.POST("/reinstall", postServerReinstall)

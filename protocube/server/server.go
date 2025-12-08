@@ -31,6 +31,8 @@ type Server struct {
 	// sc is the dedicated client used to interact with server-specific API endpoints.
 	// A server client can only access its own endpoints and control itself.
 	sc client.ServerClient
+
+	Allocations enviroment.Allocations
 }
 
 func (s *Server) Id() string {
@@ -80,7 +82,11 @@ func (s *Server) GetRemoteStatus(ctx context.Context) (gin.H, error) {
 
 // ServerData returns the ServerData model for this server.
 func (s *Server) ServerData() models.ServerData {
-	return models.ServerData{Id: s.id}
+	return models.ServerData{
+		Id:   s.id,
+		Ip:   s.Allocations.DefaultMapping.Ip,
+		Port: s.Allocations.DefaultMapping.Port,
+	}
 }
 
 func (s *Server) Log() *log.Entry {

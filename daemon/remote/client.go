@@ -11,6 +11,7 @@ type Client interface {
 	Heartbeat(ctx context.Context)
 	Disconnect(ctx context.Context)
 	StatusUpdate(ctx context.Context, status string, id string) error // Sends a server status update
+	CrashReport(ctx context.Context, data CrashData, id string) error  // Sends a server crash report
 }
 
 type client struct {

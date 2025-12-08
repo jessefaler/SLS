@@ -102,7 +102,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, server.ServerData())
+	c.JSON(http.StatusAccepted, server.ServerData())
 }
 
 func (r *Router) postReloadSoftware(c *gin.Context) {

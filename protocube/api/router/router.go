@@ -33,7 +33,7 @@ func (r *Router) Configure() *gin.Engine {
 		protected.GET("/events/ws", r.getServerWebsocket)
 	}
 
-	// Define routes for the node api
+	// Routes for the node api
 	// These require that the request be authorized with a node api key
 	// The node api is used by nodes to make requests to protocube
 	node := router.Group("/api/node")
@@ -65,6 +65,7 @@ func (r *Router) Configure() *gin.Engine {
 		//server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)
 		server.GET("/status", getServerStatus)
+		server.GET("/stats", getServerStats)
 		//server.POST("/commands", postServerCommands)
 		//server.POST("/install", postServerInstall)
 		//server.POST("/reinstall", postServerReinstall)

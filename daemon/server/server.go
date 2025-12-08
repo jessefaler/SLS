@@ -128,6 +128,41 @@ func (s *Server) IsRunning() bool {
 	return st == environment.ProcessRunningState || st == environment.ProcessStartingState
 }
 
+// SyncConfigurationToEnvironment syncs the server's configuration (limits, mounts, etc.)
+// to the environment configuration. This ensures that when containers are created or
+// updated, they use the latest configuration from the server.
+//
+// If the container is already running, this will also attempt to update the container's
+// resource limits in place using InSituUpdate.
+func (s *Server) SyncConfigurationToEnvironment() error {
+	if s.Environment == nil {
+		return nil
+	}
+
+	s.cfg.mu.RLock()
+	settings := environment.Settings{
+		Mounts:      s.Mounts(),
+		Allocations: s.cfg.Allocations,
+		Limits:      s.cfg.Limits,
+		Labels:      s.cfg.Labels,
+	}
+	s.cfg.mu.RUnlock()
+
+	s.Environment.Config().SetSettings(settings)
+	s.Environment.Config().SetEnvironmentVariables(s.GetEnvironmentVariables())
+
+	// If the container is already running, try to update its limits in place.
+	// This allows limits to be changed without restarting the container.
+	if s.IsRunning() {
+		if err := s.Environment.InSituUpdate(); err != nil {
+			s.Log().WithError(err).Warn("failed to update container limits in place, limits will be applied on next restart")
+			// Don't return the error - we'll apply limits on next restart
+		}
+	}
+
+	return nil
+}
+
 /*
 func New(bp blueprint.Blueprint) (*Server, error) {
 

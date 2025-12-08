@@ -12,3 +12,7 @@ type CreateServerRequest struct {
 	WorldFolder          string                `json:"world-folder"`
 	Content              []Content             `json:"content,omitempty"`
 }
+
+type CreateServerResponse struct {
+	Allocation environment.Allocations `json:"allocations"`
+}

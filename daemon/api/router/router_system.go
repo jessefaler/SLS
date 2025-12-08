@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net"
 	"net/http"
 	"os"
 
@@ -12,8 +13,6 @@ import (
 )
 
 func (r *Router) postCreateServer(c *gin.Context) {
-	log.Info("postCreateServer")
-
 	// Parse incoming JSON body
 	var req models.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -47,8 +46,18 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		return
 	}
 
+	// todo handle allocations differently
+	// this just returns the computers ipv4 address which will only work for local network connections
+	Alloc := server.Config().Allocations
+	Alloc.DefaultMapping.Ip, err = GetLocalIPv4()
+	if err != nil {
+		Alloc.DefaultMapping.Ip = "unknown"
+	}
+
 	// At this point respond with a status accepted
-	c.Status(http.StatusAccepted)
+	c.JSON(http.StatusAccepted, models.CreateServerResponse{
+		Allocation: Alloc,
+	})
 
 	// Start the server
 	go func() {
@@ -56,4 +65,33 @@ func (r *Router) postCreateServer(c *gin.Context) {
 			log.WithError(err).Error("failed to start server container")
 		}
 	}()
+}
+
+// GetLocalIPv4 returns the first non-loopback IPv4 address of the computer
+func GetLocalIPv4() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, addr := range addrs {
+		var ip net.IP
+
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+
+		if ip == nil || ip.IsLoopback() {
+			continue
+		}
+
+		if ip = ip.To4(); ip != nil {
+			return ip.String(), nil
+		}
+	}
+
+	return "", errors.New("no non-loopback IPv4 address found")
 }

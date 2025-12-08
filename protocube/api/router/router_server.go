@@ -41,3 +41,13 @@ func getServerStatus(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, status)
 }
+
+func getServerStats(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	stats, err := s.Stats(c.Request.Context())
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
