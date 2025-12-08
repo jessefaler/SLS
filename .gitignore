@@ -1,0 +1,38 @@
+# IntelliJ IDEA
+.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store
+
+# Build artifacts
+**/target/
+target/
+*.class
+*.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+dependency-reduced-pom.xml
+**/dependency-reduced-pom.xml
+
+# Compiled binaries
+SlimePacks/SlimePacks.so
+*.so
+daemon/sls
+protocube/protocube
+
