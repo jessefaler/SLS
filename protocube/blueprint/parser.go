@@ -95,13 +95,13 @@ func (bp *Blueprint) String() (string, error) {
 		return "", errors.New("blueprint is nil")
 	}
 
-	// Create a YAML node_old to enable nicer formatting
+	// Create a YAML node to enable nicer formatting
 	node := yaml.Node{}
 	if err := node.Encode(bp); err != nil {
 		return "", errors.Wrap(err, "failed to encode blueprint to YAML")
 	}
 
-	// Marshal the node_old with indentation
+	// Marshal the node with indentation
 	data, err := yaml.Marshal(&node)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to marshal blueprint to YAML")
@@ -231,8 +231,10 @@ func (s *Server) Validate() error {
 		return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
 	}
 
-	// Verify Limits
-	s.Limits = &enviroment.Limits{}
+	// Verify Limits - only create new Limits if not already set from blueprint
+	if s.Limits == nil {
+		s.Limits = &enviroment.Limits{}
+	}
 	if err := Validate(s.Limits); err != nil {
 		return errors.Wrap(err, "server.limits")
 	}

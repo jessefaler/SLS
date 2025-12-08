@@ -23,7 +23,7 @@ func (registry *Registry) Register(blueprint *Blueprint) {
 	registry.blueprints[blueprint.Meta.ID] = blueprint
 }
 
-// RegisterAll adds a slice of blueprint to the registry
+// RegisterAll adds a slice of blueprints to the registry
 func (registry *Registry) RegisterAll(blueprints []*Blueprint) {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()

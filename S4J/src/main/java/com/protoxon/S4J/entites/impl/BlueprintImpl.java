@@ -29,6 +29,12 @@ public class BlueprintImpl implements Blueprint {
     }
 
     @Override
+    public String getServerVersion() {
+        JSONObject server = json.optJSONObject("server");
+        return server != null ? server.optString("version", null) : null;
+    }
+
+    @Override
     public String getType() {
         return meta.optString("type");
     }
@@ -37,6 +43,11 @@ public class BlueprintImpl implements Blueprint {
     public Map<String, Object> getAnnotations() {
         JSONObject obj = json.optJSONObject("annotations");
         return obj.toMap();
+    }
+
+    @Override
+    public JSONObject getRawJson() {
+        return json;
     }
 
 }

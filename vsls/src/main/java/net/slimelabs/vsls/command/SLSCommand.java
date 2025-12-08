@@ -29,17 +29,19 @@ public class SLSCommand {
         root.executes(SLSCommand::handleRootCommand); // Handle the execution of /sls when no arguments are given
 
         // Register subcommands
-        //root.then(JoinCommand.register());     // JOIN
+        root.then(JoinCommand.register());       // JOIN
         root.then(StartCommand.register());      // START
         root.then(DebugCommand.register());      // DEBUG
-        root.then(ShutdownCommand.register());   // SHUTDOWN
+        root.then(StopCommand.register());       // SHUTDOWN
         root.then(KillCommand.register());       // KILL
         root.then(ReloadCommand.register());     // RELOAD
         root.then(StatusCommand.register());     // STATUS
+        root.then(StatsCommand.register());      // STATS
         //root.then(DeleteCommand.register());   // DELETE
         //root.then(ConsoleCommand.register());  // CONSOLE
         //root.then(DequeueCommand.register());  // DEQUEUE
-        //root.then(VersionCommand.register());  // VERSION
+        root.then(BlueprintCommand.register());  // BLUEPRINT
+        root.then(VersionCommand.register());    // VERSION
         //root.then(FlagsCommand.register());    // FLAGS
         //root.then(MonitorCommand.register());  // MONITOR
         //root.then(ResetCommand.register());    // RESET

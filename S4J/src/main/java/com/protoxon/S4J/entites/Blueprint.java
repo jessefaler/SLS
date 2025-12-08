@@ -1,5 +1,7 @@
 package com.protoxon.S4J.entites;
 
+import org.json.JSONObject;
+
 import java.util.Map;
 
 public interface Blueprint {
@@ -17,6 +19,12 @@ public interface Blueprint {
     String getName();
 
     /**
+     * Gets the servers version from the blueprint
+     * @return Never-null String containing the server version
+     */
+    String getServerVersion();
+
+    /**
      * Gets the blueprints type
      * @return Never-null String containing the blueprints type
      */
@@ -27,5 +35,7 @@ public interface Blueprint {
      * @return Map containing annotation keys and their associated values
      */
     Map<String, Object> getAnnotations();
+
+    JSONObject getRawJson();
 
 }

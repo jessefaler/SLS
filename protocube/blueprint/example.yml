@@ -6,7 +6,7 @@
 # world information, and server configuration into a single definition.
 
 # Blueprint metadata
-metadata:
+blueprint:
   id: 'block_hunt'      # Unique slug ID
   name: 'Block Hunt'    # Human-readable name
   type: "minigame"      # the type can be anything (e.g. minigame, adventure) it's just a way to group blueprints
