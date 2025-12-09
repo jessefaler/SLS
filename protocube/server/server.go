@@ -80,6 +80,11 @@ func (s *Server) GetRemoteStatus(ctx context.Context) (gin.H, error) {
 	return s.Client().Status(ctx)
 }
 
+// SendCommands sends an array of commands to the remote node.
+func (s *Server) SendCommands(ctx context.Context, commands []string) error {
+	return s.Client().Commands(ctx, commands)
+}
+
 // ServerData returns the ServerData model for this server.
 func (s *Server) ServerData() models.ServerData {
 	return models.ServerData{

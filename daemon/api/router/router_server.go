@@ -84,3 +84,34 @@ func getServerStats(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	c.JSON(http.StatusOK, s.Proc().Stats)
 }
+
+// Sends an array of commands to a running server instance.
+func postServerCommands(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	if running, err := s.Environment.IsRunning(c.Request.Context()); err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	} else if !running {
+		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{
+			"error": "Cannot send commands to a stopped server instance.",
+		})
+		return
+	}
+
+	var data struct {
+		Commands []string `json:"commands"`
+	}
+	// BindJSON sends 400 if the request fails, all we need to do is return
+	if err := c.BindJSON(&data); err != nil {
+		return
+	}
+
+	for _, command := range data.Commands {
+		if err := s.Environment.SendCommand(command); err != nil {
+			s.Log().WithFields(log.Fields{"command": command, "error": err}).Warn("failed to send command to server instance")
+		}
+	}
+
+	c.Status(http.StatusNoContent)
+}

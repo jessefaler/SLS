@@ -21,6 +21,7 @@ public class Route {
         public static final Route SET_POWER = new Route(POST, "servers/{server_id}/power");
         public static final Route STATUS = new Route(GET, "servers/{server_id}/status");
         public static final Route STATS = new Route(GET, "servers/{server_id}/stats");
+        public static final Route COMMANDS = new Route(POST, "servers/{server_id}/commands");
 
     }
 

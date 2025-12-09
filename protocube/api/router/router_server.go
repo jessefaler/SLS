@@ -51,3 +51,25 @@ func getServerStats(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, stats)
 }
+
+func postServerCommands(c *gin.Context) {
+	server := middleware.ExtractServer(c)
+
+	var data struct {
+		Commands []string `json:"commands"`
+	}
+	if err := c.BindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to bind json"})
+		return
+	}
+
+	// Make the request
+	err := server.SendCommands(c.Request.Context(), data.Commands)
+	// Handle any errors
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	// Respond with 204 No Content if success
+	c.Status(http.StatusNoContent)
+}

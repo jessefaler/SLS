@@ -7,7 +7,10 @@ import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
+import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.util.List;
 
 public class ClientServerImpl implements ClientServer {
 
@@ -57,6 +60,35 @@ public class ClientServerImpl implements ClientServer {
     @Override
     public int getPort() {
         return json.getInt("port");
+    }
+
+    @Override
+    public SLSAction<Void> sendCommand(String command) {
+        return sendCommands(command);
+    }
+
+    @Override
+    public SLSAction<Void> sendCommands(String... commands) {
+        JSONObject obj = new JSONObject();
+        JSONArray commandsArray = new JSONArray();
+        for (String command : commands) {
+            commandsArray.put(command);
+        }
+        obj.put("commands", commandsArray);
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.COMMANDS.compile(getId()), SLSActionImpl.getRequestBody(obj));
+    }
+
+    @Override
+    public SLSAction<Void> sendCommands(List<String> commands) {
+        JSONObject obj = new JSONObject();
+        JSONArray commandsArray = new JSONArray();
+        for (String command : commands) {
+            commandsArray.put(command);
+        }
+        obj.put("commands", commandsArray);
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.COMMANDS.compile(getId()), SLSActionImpl.getRequestBody(obj));
     }
 
 }

@@ -82,6 +82,10 @@ public class Server extends Listener {
 
     }
 
+    public SLSAction<Void> sendCommand(String command) {
+        return client.sendCommand(command);
+    }
+
     public SLSAction<ServerStatus> getRemoteStatus() {
         return client.getStatus();
     }

@@ -6,7 +6,7 @@ import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 
-import java.util.function.Consumer;
+import java.util.List;
 
 /**
  * Represents a server instance
@@ -53,5 +53,26 @@ public interface ClientServer {
     default SLSAction<Void> kill() {
         return setPower(PowerAction.KILL);
     }
+
+    /**
+     * Sends a single command to the server
+     * @param command The command to send
+     * @return SLSAction that completes when the command is sent
+     */
+    SLSAction<Void> sendCommand(String command);
+
+    /**
+     * Sends multiple commands to the server
+     * @param commands The commands to send
+     * @return SLSAction that completes when the commands are sent
+     */
+    SLSAction<Void> sendCommands(String... commands);
+
+    /**
+     * Sends multiple commands to the server
+     * @param commands The list of commands to send
+     * @return SLSAction that completes when the commands are sent
+     */
+    SLSAction<Void> sendCommands(List<String> commands);
 
 }

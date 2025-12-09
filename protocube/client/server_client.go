@@ -14,6 +14,7 @@ type ServerClient interface {
 	Stats(ctx context.Context) (enviroment.Stats, error)
 	Status(ctx context.Context) (gin.H, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
+	Commands(ctx context.Context, commands []string) error
 }
 
 type serverClient struct {
@@ -39,4 +40,14 @@ func (sc *serverClient) Status(ctx context.Context) (gin.H, error) {
 // GetServer fetches the servers data from the remote node.
 func (sc *serverClient) GetServer(ctx context.Context) (models.ServerData, error) {
 	return Get[models.ServerData](sc, ctx, "/", nil)
+}
+
+// Commands sends an array of commands to the remote node.
+func (sc *serverClient) Commands(ctx context.Context, commands []string) error {
+	var data struct {
+		Commands []string `json:"commands"`
+	}
+	data.Commands = commands
+	_, err := sc.Post(ctx, "/commands", data)
+	return err
 }
