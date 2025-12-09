@@ -26,6 +26,23 @@ public class QueueManager {
         queue.dequeue(player);
     }
 
+    public Queue getQueue(Player player) {
+        for(Queue queue : queues.values()) {
+            if(queue.players.contains(player)) {
+                return queue;
+            }
+        }
+        return null;
+    }
+
+    public boolean dequeue(Player player) {
+        for(Queue queue : queues.values()) {
+            boolean success = queue.dequeue(player);
+            if(success) return true;
+        }
+        return false;
+    }
+
     public void remove(String id) {
         queues.remove(id);
     }

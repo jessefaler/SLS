@@ -16,7 +16,7 @@ public class Queue {
 
     private final int TIMEOUT = 40; // Seconds
 
-    Server server;
+    public Server server;
     ArrayList<Player> players = new ArrayList<>();
     private final AnimationController loadingIcon = new AnimationController();
     Runnable remove;
@@ -46,10 +46,11 @@ public class Queue {
         ProtoMessage.chat().add(MessagePreset.SLS).add("In queue for " + server.name, NamedTextColor.DARK_AQUA).sendMessage(player);
     }
 
-    public void dequeue(Player player) {
-        if(player == null) return;
-        players.remove(player);
+    public boolean dequeue(Player player) {
+        if(player == null) return false;
         ChatPackets.enableActionBarPackets(player.getUniqueId());
+        loadingIcon.stop(player.getUniqueId());
+        return players.remove(player);
     }
 
     public void flushQueue() {
