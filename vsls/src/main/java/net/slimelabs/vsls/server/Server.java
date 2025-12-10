@@ -7,12 +7,15 @@ import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
 import com.protoxon.S4J.entites.Blueprint;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 
 public class Server extends Listener {
 
@@ -84,6 +87,20 @@ public class Server extends Listener {
 
     public SLSAction<Void> sendCommand(String command) {
         return client.sendCommand(command);
+    }
+
+    public int getPlayerCount() {
+        return SLS.proxy.getServer(id)
+                .map(rs -> rs.getPlayersConnected().size())
+                .orElse(0);
+    }
+
+    public SLSAction<List<String>> getLogs() {
+        return client.getLogs();
+    }
+
+    public SLSAction<List<String>> getLogs(int size) {
+        return client.getLogs(size);
     }
 
     public SLSAction<ServerStatus> getRemoteStatus() {

@@ -10,6 +10,7 @@ import com.protoxon.S4J.requests.SLSActionImpl;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ClientServerImpl implements ClientServer {
@@ -89,6 +90,37 @@ public class ClientServerImpl implements ClientServer {
         obj.put("commands", commandsArray);
         return SLSActionImpl.onRequestExecute(
                 impl.getS4J(), Route.Server.COMMANDS.compile(getId()), SLSActionImpl.getRequestBody(obj));
+    }
+
+    @Override
+    public SLSAction<List<String>> getLogs(int size) {
+        // Validate and clamp size parameter (1-100, default 100)
+        if (size <= 0) {
+            size = 100;
+        } else if (size > 100) {
+            size = 100;
+        }
+
+        Route.CompiledRoute route = Route.Server.LOGS.compile(getId())
+                .withQueryParams("size", String.valueOf(size));
+
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(),
+                route,
+                (response, request) -> {
+                    JSONObject responseObj = response.getObject();
+                    JSONArray dataArray = responseObj.optJSONArray("data");
+                    
+                    if (dataArray == null) {
+                        return new ArrayList<>();
+                    }
+                    
+                    List<String> logs = new ArrayList<>();
+                    for (int i = 0; i < dataArray.length(); i++) {
+                        logs.add(dataArray.getString(i));
+                    }
+                    return logs;
+                });
     }
 
 }

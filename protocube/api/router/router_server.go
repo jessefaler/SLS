@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/api/router/middleware"
@@ -72,4 +73,26 @@ func postServerCommands(c *gin.Context) {
 	}
 	// Respond with 204 No Content if success
 	c.Status(http.StatusNoContent)
+}
+
+func getServerLogs(c *gin.Context) {
+	server := middleware.ExtractServer(c)
+
+	// Parse the size query parameter, defaulting to 100
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
+	if size <= 0 {
+		size = 100
+	} else if size > 100 {
+		size = 100
+	}
+
+	// Make the request to the daemon
+	logs, err := server.GetLogs(c.Request.Context(), size)
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+
+	// Return the logs response
+	c.JSON(http.StatusOK, logs)
 }

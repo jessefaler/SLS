@@ -286,8 +286,7 @@ public class Requester {
 
             @Override
             public void onFailure(WebSocket webSocket, Throwable t, okhttp3.Response response) {
-                String errorMessage = (t != null && t.getMessage() != null) ? t.getMessage() : "Unknown WebSocket error";
-                REQUESTER_LOG.error("WebSocket failure: {}", errorMessage);
+                // Error logging is handled by the caller (e.g., WSAction) to avoid duplicate logs
                 onError.accept(t);
             }
         };

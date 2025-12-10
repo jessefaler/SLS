@@ -3,6 +3,10 @@ package router
 import (
 	"context"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"unicode"
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
@@ -114,4 +118,62 @@ func postServerCommands(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// ANSI escape code regex pattern to strip formatting codes from log lines
+var stripAnsiRegex = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+// Returns the logs for a given server instance.
+func getServerLogs(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	l, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
+	if l <= 0 {
+		l = 100
+	} else if l > 100 {
+		l = 100
+	}
+
+	out, err := s.ReadLogfile(l)
+	if err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+
+	// Strip ANSI formatting codes and other formatting from each log line
+	stripped := make([]string, len(out))
+	for i, line := range out {
+		// Strip ANSI escape codes
+		cleaned := stripAnsiRegex.ReplaceAllString(line, "")
+		
+		// Remove "> " prefix if present
+		cleaned = strings.TrimPrefix(cleaned, "> ")
+		
+		// Remove carriage return characters
+		cleaned = strings.ReplaceAll(cleaned, "\r", "")
+		
+		// Remove box-drawing and box characters (common Unicode box characters)
+		cleaned = strings.Map(func(r rune) rune {
+			// Remove box-drawing characters (U+2500 to U+257F)
+			if r >= 0x2500 && r <= 0x257F {
+				return -1
+			}
+			// Remove block elements (U+2580 to U+259F)
+			if r >= 0x2580 && r <= 0x259F {
+				return -1
+			}
+			// Remove other control characters except newline and tab
+			if unicode.IsControl(r) && r != '\n' && r != '\t' {
+				return -1
+			}
+			return r
+		}, cleaned)
+		
+		// Trim leading/trailing whitespace
+		cleaned = strings.TrimSpace(cleaned)
+		
+		stripped[i] = cleaned
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": stripped})
 }

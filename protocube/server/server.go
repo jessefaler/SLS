@@ -85,6 +85,11 @@ func (s *Server) SendCommands(ctx context.Context, commands []string) error {
 	return s.Client().Commands(ctx, commands)
 }
 
+// GetLogs fetches server logs from the remote node.
+func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
+	return s.Client().Logs(ctx, size)
+}
+
 // ServerData returns the ServerData model for this server.
 func (s *Server) ServerData() models.ServerData {
 	return models.ServerData{

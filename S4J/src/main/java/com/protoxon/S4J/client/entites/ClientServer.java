@@ -75,4 +75,19 @@ public interface ClientServer {
      */
     SLSAction<Void> sendCommands(List<String> commands);
 
+    /**
+     * Retrieves the server logs
+     * @param size The number of log lines to retrieve (defaults to 100, max 100, min 1)
+     * @return SLSAction that returns a list of log lines
+     */
+    SLSAction<List<String>> getLogs(int size);
+
+    /**
+     * Retrieves the server logs with default size of 100
+     * @return SLSAction that returns a list of log lines
+     */
+    default SLSAction<List<String>> getLogs() {
+        return getLogs(100);
+    }
+
 }

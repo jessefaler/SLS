@@ -42,10 +42,11 @@ public class SLSCommand {
         root.then(DequeueCommand.register());    // DEQUEUE
         root.then(BlueprintCommand.register());  // BLUEPRINT
         root.then(VersionCommand.register());    // VERSION
+        root.then(LogsCommand.register());       // LOGS
         //root.then(FlagsCommand.register());    // FLAGS
         //root.then(MonitorCommand.register());  // MONITOR
         //root.then(ResetCommand.register());    // RESET
-        //root.then(InfoCommand.register());     // INFO
+        root.then(InfoCommand.register());       // INFO
         //root.then(ConfigCommand.register());   // CONFIG
 
         // Create the Brigadier command

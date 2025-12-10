@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class WSAction<T> extends SLSActionImpl<T> {
@@ -25,6 +26,9 @@ public abstract class WSAction<T> extends SLSActionImpl<T> {
     private long currentDelayMs = initialDelayMs;
 
     private volatile boolean manualStop = false;
+    
+    // Track if we've already logged a connection failure to avoid spam
+    private final AtomicBoolean hasLoggedFailure = new AtomicBoolean(false);
 
     // ScheduledExecutorService to handle reconnections
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -84,12 +88,41 @@ public abstract class WSAction<T> extends SLSActionImpl<T> {
                         WebSocketEvent ev = WebSocketEvent.parse(message);
                         onEvent(ev);
                         currentDelayMs = initialDelayMs; // reset backoff on success
+                        // Reset failure log flag when we successfully receive a message
+                        hasLoggedFailure.set(false);
 
                     } catch (Throwable t) {
                         onError(t);
                     }
                 },
-                this::onError
+                error -> {
+                    // Check if this is a normal closure that shouldn't be logged as an error
+                    boolean isNormalClosure = false;
+                    if (error instanceof EOFException) {
+                        isNormalClosure = true;
+                    } else if (error instanceof IOException && error.getMessage() != null) {
+                        String msg = error.getMessage();
+                        // Normal closure messages from onClosed handler
+                        if (msg.contains("WebSocket closed: 1000") || msg.contains("closed normally")) {
+                            isNormalClosure = true;
+                        }
+                    } else if (error == null) {
+                        // Null error might indicate a normal closure
+                        isNormalClosure = true;
+                    }
+                    
+                    // Only log actual connection failures, not normal closures
+                    // Only log the first failure, suppress subsequent ones until connection is re-established
+                    if (!isNormalClosure && hasLoggedFailure.compareAndSet(false, true)) {
+                        String errorMessage = (error != null && error.getMessage() != null) 
+                            ? error.getMessage() 
+                            : (error != null ? error.getClass().getSimpleName() : "Unknown WebSocket error");
+                        // Use Requester logger to match original log format
+                        org.slf4j.Logger requesterLog = com.protoxon.S4J.utils.S4JLogger.getLogger(com.protoxon.S4J.requests.Requester.class);
+                        requesterLog.error("WebSocket failure: {}", errorMessage);
+                    }
+                    onError(error);
+                }
         );
 
         activeWebSocket.set(webSocket);

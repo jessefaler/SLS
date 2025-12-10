@@ -233,7 +233,7 @@ public class ServerStats {
 
     /**
      * Automatically formats bytes into the most appropriate unit (KB, MB, GB, or TB)
-     * based on the size, similar to Docker's format.
+     * based on the size.
      *
      * @param bytes the number of bytes to format
      * @return a formatted string representing the bytes with automatically selected unit

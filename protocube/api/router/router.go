@@ -62,7 +62,7 @@ func (r *Router) Configure() *gin.Engine {
 		server.GET("", getServer)
 		//server.DELETE("", deleteServer)
 
-		//server.GET("/logs", getServerLogs)
+		server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)
 		server.GET("/status", getServerStatus)
 		server.GET("/stats", getServerStats)

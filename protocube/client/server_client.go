@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/enviroment"
@@ -10,7 +11,7 @@ import (
 
 type ServerClient interface {
 	Power(ctx context.Context, action models.PowerAction) error
-	//Logs(ctx context.Context) ([]LogEntry, error)
+	Logs(ctx context.Context, size int) (gin.H, error)
 	Stats(ctx context.Context) (enviroment.Stats, error)
 	Status(ctx context.Context) (gin.H, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
@@ -50,4 +51,12 @@ func (sc *serverClient) Commands(ctx context.Context, commands []string) error {
 	data.Commands = commands
 	_, err := sc.Post(ctx, "/commands", data)
 	return err
+}
+
+// Logs fetches server logs from the remote node.
+func (sc *serverClient) Logs(ctx context.Context, size int) (gin.H, error) {
+	query := q{
+		"size": strconv.Itoa(size),
+	}
+	return Get[gin.H](sc, ctx, "/logs", query)
 }

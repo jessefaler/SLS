@@ -186,6 +186,11 @@ func New(bp blueprint.Blueprint) (*Server, error) {
 }
 */
 
+// Reads the log file for a server up to a specified number of bytes.
+func (s *Server) ReadLogfile(len int) ([]string, error) {
+	return s.Environment.Readlog(len)
+}
+
 // Filesystem returns an instance of the mounts for this server.
 func (s *Server) Filesystem() *filesystem.Filesystem {
 	return s.filesystem
