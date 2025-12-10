@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.ServerStats;
+import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -20,13 +21,38 @@ public class InfoCommand {
 
     public static LiteralArgumentBuilder<CommandSource> register() {
         return LiteralArgumentBuilder.<CommandSource>literal("info")
-                .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
-                    ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls info", "server"))
-                            .sendMessage(source);
+                    ProtoMessage message = ProtoMessage.chat();
+                    message.addMiniMessage("<dark_gray><b><st>－－－－－</st></b> INFO <b><st>－－－－－\n</st></b></dark_gray>");
+                    if(SLS.servers.getAll().isEmpty()) {
+                        ProtoMessage.chat().add(MessagePreset.SLS).add("No servers are currently online.", NamedTextColor.RED).sendMessage(source);
+                        return 1;
+                    }
+
+                    for(Server server : SLS.servers.getAll()) {
+                        message.add(" - ", NamedTextColor.GOLD);
+                        NamedTextColor color = NamedTextColor.YELLOW;
+                        if(server.status == ServerStatus.RUNNING) {
+                            color = NamedTextColor.GREEN;
+                        } else if (server.status == ServerStatus.STOPPING) {
+                            color = NamedTextColor.RED;
+                        } else if (server.status == ServerStatus.OFFLINE) {
+                            color = NamedTextColor.DARK_RED;
+                        }
+                        message.add(server.id, color);
+                        message.add(": ", NamedTextColor.WHITE);
+                        int count = server.getPlayerCount();
+                        message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'>" + count + "</hover></dark_aqua>");
+                        if(count == 1) {
+                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'> player</hover></dark_aqua>");
+                        } else {
+                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'> players</hover></dark_aqua>");
+                        }
+                        message.add("\n");
+                    }
+                    message.addMiniMessage("<dark_gray><b><st>－－－－－－－－－－－－－</st></b></dark_gray>");
+                    message.sendMessage(source);
                     return 1;
                 })
                 .then(server());
@@ -34,6 +60,7 @@ public class InfoCommand {
 
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
+                .requires(source -> source.hasPermission("sls.command.admin"))
                 .suggests((context, builder) -> {
                     SLS.servers.getIds().forEach(builder::suggest);
                     return builder.buildFuture();

@@ -18,8 +18,10 @@ public class ReloadCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    SLS.blueprints.reload();
                     ProtoMessage.chat().add(MessagePreset.SLS).add("Reloading", NamedTextColor.GRAY).sendMessage(source);
+                    SLS.config.reload();
+                    reloadSoftware(source);
+                    reloadBlueprints(source);
                     return 1;
                 })
                 .then(type());

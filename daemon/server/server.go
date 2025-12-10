@@ -191,6 +191,11 @@ func (s *Server) ReadLogfile(len int) ([]string, error) {
 	return s.Environment.Readlog(len)
 }
 
+// Checks if the server is marked as being suspended or not on the system.
+func (s *Server) IsSuspended() bool {
+	return s.Config().Suspended
+}
+
 // Filesystem returns an instance of the mounts for this server.
 func (s *Server) Filesystem() *filesystem.Filesystem {
 	return s.filesystem

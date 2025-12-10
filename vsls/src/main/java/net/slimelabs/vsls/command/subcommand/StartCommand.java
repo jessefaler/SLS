@@ -21,9 +21,9 @@ public class StartCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
-                    //ProtoMessage.chat()
-                    //        .add(MessageFormatter.commandUsage("/sls start", SLS.REGISTRY_MANAGER.getRegistryNames()))
-                    //        .sendMessage(source);
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls start","blueprint"))
+                            .sendMessage(source);
                     return 1;
                 })
                 .then(type());
@@ -59,7 +59,15 @@ public class StartCommand {
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
 
-                    SLS.servers.CreateServer(blueprint).executeAsync(server -> {}, failure -> {
+                    SLS.servers.CreateServer(blueprint).executeAsync(server -> {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Starting " + blueprint, NamedTextColor.GREEN)
+                                .add(" (", NamedTextColor.GRAY)
+                                .add(server.id, NamedTextColor.DARK_GRAY)
+                                .add(")", NamedTextColor.GRAY)
+                                .sendMessage(source);
+                    }, failure -> {
                         ProtoMessage.chat()
                                 .add("Failed to start server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
                                 .sendMessage(source);

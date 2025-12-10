@@ -12,6 +12,9 @@ import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.util.Objects;
+import java.util.Optional;
+
 public class JoinCommand {
 
     public static LiteralArgumentBuilder<CommandSource> register() {
@@ -19,9 +22,9 @@ public class JoinCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
-                    //ProtoMessage.chat()
-                    //        .add(MessageFormatter.commandUsage("/sls start", SLS.REGISTRY_MANAGER.getRegistryNames()))
-                    //        .sendMessage(source);
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls join", "blueprint"))
+                            .sendMessage(source);
                     return 1;
                 })
                 .then(type());
@@ -58,6 +61,50 @@ public class JoinCommand {
 
                     Connector.join((Player) source, blueprint);
 
+                    return 0;
+                }).then(player());
+    }
+
+    private static RequiredArgumentBuilder<CommandSource, String> player() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("player", StringArgumentType.string())
+                .requires(source -> source.hasPermission("sls.command.admin"))
+                .suggests((context, builder) -> {
+                    builder.suggest("all");
+                    builder.suggest("local");
+                    for(Player player : SLS.proxy.getAllPlayers()) {
+                        builder.suggest(player.getUsername());
+                    }
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String type = StringArgumentType.getString(context, "type");
+                    String blueprint = StringArgumentType.getString(context, "blueprint");
+                    String playerName = StringArgumentType.getString(context, "player");
+
+                    if(playerName.equals("all")) {
+                        for (Player player : SLS.proxy.getAllPlayers()) {
+                            Connector.join(player, blueprint);
+                        }
+                        return 1;
+                    }
+
+                    if(playerName.equals("local")) {
+                        Player player = (Player) source;
+                        String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
+                        for (Player targetPlayer : Objects.requireNonNull(SLS.proxy.getServer(serverName).orElse(null)).getPlayersConnected()) {
+                            Connector.join(targetPlayer, blueprint);
+                        }
+                        return 1;
+                    }
+
+                    Optional<Player> player = SLS.proxy.getPlayer(playerName);
+                    if(player.isPresent()) {
+                        ProtoMessage.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + blueprint, NamedTextColor.DARK_AQUA).sendMessage(source);
+                        Connector.join(player.get(), blueprint);
+                        return 1;
+                    }
+                    ProtoMessage.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
                     return 0;
                 });
     }

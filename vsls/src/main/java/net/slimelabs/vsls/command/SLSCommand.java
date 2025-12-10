@@ -44,10 +44,9 @@ public class SLSCommand {
         root.then(VersionCommand.register());    // VERSION
         root.then(LogsCommand.register());       // LOGS
         //root.then(FlagsCommand.register());    // FLAGS
-        //root.then(MonitorCommand.register());  // MONITOR
         //root.then(ResetCommand.register());    // RESET
         root.then(InfoCommand.register());       // INFO
-        //root.then(ConfigCommand.register());   // CONFIG
+        //root.then(TailCommand.register());     // TAIL
 
         // Create the Brigadier command
         BrigadierCommand brigadierCommand = new BrigadierCommand(root);

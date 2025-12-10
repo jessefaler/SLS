@@ -12,6 +12,7 @@ import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -47,12 +48,26 @@ public class BlueprintCommand {
                         return 0;
                     }
                     ProtoMessage message = ProtoMessage.chat();
-                    message.add(blueprint.getName() + " Blueprint: ", NamedTextColor.BLUE);
-                    message.addMiniMessage("<dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>");
+                    String header = getHeader(blueprint);
+                    message.addMiniMessage(header);
                     formatBlueprintAsYaml(message, blueprint.getRawJson());
                     message.addMiniMessage("<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
                     return 0;
                 });
+    }
+
+    // Returns a header and varies the number of dashes depending on the length of the blueprints name
+    private static @NonNull String getHeader(Blueprint blueprint) {
+        String name = blueprint.getName();
+        int nameLength = name.length();
+        int totalWidth = 25;
+        int dashCount = (totalWidth - nameLength - 2) / 2;
+        dashCount = Math.max(1, dashCount);
+        String dashes = "－".repeat(dashCount);
+        String msg = "<dark_gray><b><st>\n" +
+                dashes + "</st><blue> " + name + " </blue><st>" + dashes +
+                "\n</st></b></dark_gray>";
+        return msg;
     }
 
     /**

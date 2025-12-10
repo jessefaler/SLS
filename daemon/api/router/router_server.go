@@ -48,7 +48,7 @@ func postServerPower(c *gin.Context) {
 	//
 	// We don't really care about any of the other actions at this point, they'll all result
 	// in the process being stopped, which should have happened anyways if the server is suspended.
-	if data.Action == server.PowerActionStart || data.Action == server.PowerActionRestart {
+	if (data.Action == server.PowerActionStart || data.Action == server.PowerActionRestart) && s.IsSuspended() {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": "Cannot start or restart a server that is suspended.",
 		})
@@ -145,13 +145,13 @@ func getServerLogs(c *gin.Context) {
 	for i, line := range out {
 		// Strip ANSI escape codes
 		cleaned := stripAnsiRegex.ReplaceAllString(line, "")
-		
+
 		// Remove "> " prefix if present
 		cleaned = strings.TrimPrefix(cleaned, "> ")
-		
+
 		// Remove carriage return characters
 		cleaned = strings.ReplaceAll(cleaned, "\r", "")
-		
+
 		// Remove box-drawing and box characters (common Unicode box characters)
 		cleaned = strings.Map(func(r rune) rune {
 			// Remove box-drawing characters (U+2500 to U+257F)
@@ -168,10 +168,10 @@ func getServerLogs(c *gin.Context) {
 			}
 			return r
 		}, cleaned)
-		
+
 		// Trim leading/trailing whitespace
 		cleaned = strings.TrimSpace(cleaned)
-		
+
 		stripped[i] = cleaned
 	}
 
