@@ -106,7 +106,7 @@ func run(cmd *cobra.Command, _ []string) {
 func handleShutdown(apiInstance *api.Api, client remote.Client) {
 	// Create a channel to receive OS signals
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	<-sigChan // Wait for termination
 
 	log.Info("Shutting down.")
