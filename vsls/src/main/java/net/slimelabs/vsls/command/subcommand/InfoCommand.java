@@ -80,7 +80,7 @@ public class InfoCommand {
                                     " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + SLS.blueprints.getBlueprint(server.blueprintId).getType() + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Stats:</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Ram:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                                    "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() +
