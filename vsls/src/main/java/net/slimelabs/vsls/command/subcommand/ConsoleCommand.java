@@ -64,17 +64,8 @@ public class ConsoleCommand {
                                     .add(MessagePreset.SLS)
                                     .add("Command executed successfully", NamedTextColor.GRAY)
                                     .sendMessage(source);
-                            // Wait a bit for the command output to appear in logs
-                            SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-                                getCommandOutput(server, finalCommand).executeAsync(output -> {
-                                    output.sendMessage(source);
-                                }, failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to get command output reason: " + failure.getMessage(), NamedTextColor.RED)
-                                            .sendMessage(source);
-                                });
-                            }).delay(100, TimeUnit.MILLISECONDS).schedule();
+                            // Try multiple times with increasing delays and log line counts
+                            tryCaptureOutput(server, finalCommand, source, 0);
                         }, failure -> {
                             ProtoMessage.chat()
                                     .add(MessagePreset.SLS)
@@ -93,19 +84,177 @@ public class ConsoleCommand {
     }
 
     /**
-     * Attempts to capture the output of a command that was executed on a server's console.
-     * It fetches the last 20 log lines, finds the line containing the command, and returns
-     * the line immediately following it as the command's output.
+     * Attempts to capture console output with increasing delays.
      * <p>
-     * This may fail if more than 15 log lines are produced between sending the command and
-     * fetching the logs, but this is unlikely unless the server is heavily spamming output.
+     * Attempts:
+     *   100 ms → read 8 lines
+     *   800 ms → read 12 lines
+     *   3000 ms → read 25 lines
+     * <p>
+     * Some commands take longer to produce console output due to internal
+     * processing or external dependencies, so multiple checks are required.
+     * <p>
+     * If no output is found after all 3 attempts (total wait ~3.9 seconds),
+     * a "No output found" message is sent.
+     */
+    private static void tryCaptureOutput(Server server, String command, CommandSource source, int attempt) {
+        int[] delays = {100, 800, 3000};
+        int[] logLines = {8, 12, 25};
+        
+        if (attempt >= delays.length) {
+            // All attempts failed, show "No output found"
+            ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    + server.name
+                    + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>No output found</gray>")
+                    .sendMessage(source);
+            return;
+        }
+        
+        long delay = delays[attempt];
+        int lines = logLines[attempt];
+        
+        SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
+            server.getLogs(lines).executeAsync(logs -> {
+                String foundOutput = findCommandOutputInLogs(logs, command);
+                if (foundOutput != null) {
+                    // Found output, format and send it
+                    ProtoMessage output = formatCommandOutput(server, foundOutput, logs, findCommandIndex(logs, command));
+                    output.sendMessage(source);
+                } else {
+                    // No output found, try next attempt
+                    tryCaptureOutput(server, command, source, attempt + 1);
+                }
+            }, failure -> {
+                // On failure, try next attempt
+                tryCaptureOutput(server, command, source, attempt + 1);
+            });
+        }).delay(delay, TimeUnit.MILLISECONDS).schedule();
+    }
+    
+    /**
+     * Finds command output in logs. Returns the output string if found, null otherwise.
+     */
+    private static String findCommandOutputInLogs(List<String> logs, String command) {
+        int commandIndex = findCommandIndex(logs, command);
+        if (commandIndex == -1 || commandIndex >= logs.size() - 1) {
+            return null;
+        }
+        
+        String outputLine = logs.get(commandIndex + 1);
+        if (outputLine == null) {
+            return null;
+        }
+        
+        outputLine = outputLine.trim();
+        if (outputLine.startsWith(">")) {
+            outputLine = outputLine.substring(1).trim();
+        }
+        
+        if (outputLine.isEmpty() || outputLine.equals(">")) {
+            if (commandIndex + 2 < logs.size()) {
+                String nextLine = logs.get(commandIndex + 2);
+                if (nextLine != null) {
+                    nextLine = nextLine.trim();
+                    if (nextLine.startsWith(">")) {
+                        nextLine = nextLine.substring(1).trim();
+                    }
+                    if (!nextLine.isEmpty() && !nextLine.equals(">")) {
+                        return nextLine;
+                    }
+                }
+            }
+            return null;
+        }
+        
+        return outputLine;
+    }
+    
+    /**
+     * Finds the index of the command in the logs.
+     */
+    private static int findCommandIndex(List<String> logs, String command) {
+        for (int i = logs.size() - 1; i >= 0; i--) {
+            String line = logs.get(i);
+            if (line == null) continue;
+            
+            String trimmedLine = line.trim();
+            boolean matches = false;
+            
+            if (trimmedLine.startsWith(">")) {
+                String afterPrefix = trimmedLine.substring(1).trim();
+                if (afterPrefix.equals(command) || afterPrefix.startsWith(command + " ")) {
+                    matches = true;
+                }
+            } else {
+                if (!trimmedLine.startsWith("[")) {
+                    if (trimmedLine.equals(command) || trimmedLine.startsWith(command + " ")) {
+                        matches = true;
+                    }
+                }
+            }
+            
+            if (matches) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Formats the command output into a ProtoMessage.
+     */
+    private static ProtoMessage formatCommandOutput(Server server, String outputLine, List<String> logs, int commandIndex) {
+        // Check for special two-line error case: "Unknown or incomplete command" followed by line with "<--[HERE]"
+        if (outputLine.contains("Unknown or incomplete command") && commandIndex + 2 < logs.size()) {
+            String nextLine = logs.get(commandIndex + 2);
+            if (nextLine != null && nextLine.contains("<--[HERE]")) {
+                nextLine = nextLine.trim();
+                if (nextLine.startsWith(">")) {
+                    nextLine = nextLine.substring(1).trim();
+                }
+                String combinedOutput = stripLegacyFormatting(outputLine) + "\n" + stripLegacyFormatting(nextLine);
+                return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                        + server.name
+                        + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
+                        + combinedOutput + "</red>");
+            }
+        }
+        
+        // Check for "Unknown or incomplete command"
+        if (outputLine.contains("Unknown or incomplete command")) {
+            return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    + server.name
+                    + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
+                    + stripLegacyFormatting(outputLine) + "</red>");
+        }
+        
+        // Check for "<--[HERE]" error indicator
+        if (outputLine.contains("<--[HERE]")) {
+            return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                    + server.name
+                    + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
+                    + stripLegacyFormatting(outputLine) + "</red>");
+        }
+        
+        // Normal output
+        return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
+                + server.name
+                + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>"
+                + stripLegacyFormatting(outputLine) + "</gray>");
+    }
+
+    /**
+     * Attempts to capture the output of a command that was executed on a server's console.
+     * It fetches the specified number of log lines, finds the line containing the command, and returns
+     * the line immediately following it as the command's output.
      *
      * @param server  the target server
      * @param command the exact command string that was sent
+     * @param logLineCount the number of log lines to fetch
      * @return mapped action containing the detected command output
      */
-    public static SLSAction<ProtoMessage> getCommandOutput(Server server, String command) {
-        return server.getLogs(20).map(logs -> {
+    public static SLSAction<ProtoMessage> getCommandOutput(Server server, String command, int logLineCount) {
+        return server.getLogs(logLineCount).map(logs -> {
             // Search backwards through logs to find the command.
             // Commands can appear in two formats:
             // - Legacy servers: ">command" (with ">" prefix)
@@ -128,7 +277,7 @@ public class ConsoleCommand {
                     }
                 } else {
                     // Check newer format: "command" (no prefix)
-                    // Make sure it's not a log line (which would start with "[" timestamp)
+                    // Make sure it's not a log line (which would start with "[tamp)" times
                     if (!trimmedLine.startsWith("[")) {
                         // Check if it matches our command exactly or starts with it
                         if (trimmedLine.equals(command) || trimmedLine.startsWith(command + " ")) {
