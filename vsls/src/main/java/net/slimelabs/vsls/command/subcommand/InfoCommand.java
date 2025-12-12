@@ -5,6 +5,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.entites.Blueprint;
+import com.protoxon.S4J.entites.impl.BlueprintImpl;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -72,12 +74,17 @@ public class InfoCommand {
                     Server server = SLS.servers.getServer(id);
                     if (server != null) {
                         server.getStats().executeAsync(stats -> {
+                            Blueprint blueprint = SLS.blueprints.getBlueprint(server.blueprintId);
+                            String type        = blueprint != null ? blueprint.getType() : "Unknown";
+                            String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
+                            String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
                             ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.id + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                                     " <hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
                                     " <gold>-</gold> <dark_gray>Status:</dark_gray> <green>" + server.status.getStatus() + "</green>\n" +
                                     " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><blue> " + server.blueprintId + "</blue>\n" +
-                                    " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + SLS.blueprints.getBlueprint(server.blueprintId).getType() + "</blue>\n" +
+                                    " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
+                                    " <gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Stats:</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +

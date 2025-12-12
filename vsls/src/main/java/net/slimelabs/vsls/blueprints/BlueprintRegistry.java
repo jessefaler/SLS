@@ -1,5 +1,6 @@
 package net.slimelabs.vsls.blueprints;
 
+import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.entites.Blueprint;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -97,13 +98,17 @@ public class BlueprintRegistry {
      * Fetches all blueprints asynchronously from the API and updates the registry.
      * Any errors encountered during the fetch are logged.
      */
-    public void reload() {
-        SLS.api.getBlueprints().limit(70).executeAsync(blueprints -> {
-            this.setBlueprints(blueprints);
-            Log.info("Reloaded blueprint registry. Loaded {} blueprints", blueprints.size());
-        }, failure -> {
-            SLS.logger.warn("Failed to reload load blueprints: {}", failure.getMessage());
-        });
+    public SLSAction<Void> reload() {
+        return SLS.api.getBlueprints().limit(70)
+                .map(loadedBlueprints -> {
+                    setBlueprints(loadedBlueprints);
+                    Log.info("Reloaded blueprint registry. Loaded {} blueprints", loadedBlueprints.size());
+                    return (Void) null;
+                })
+                .onErrorMap((Throwable failure) -> {
+                    SLS.logger.warn("Failed to reload blueprints: {}", failure.getMessage());
+                    return (Void) null;
+                });
     }
 
     /**

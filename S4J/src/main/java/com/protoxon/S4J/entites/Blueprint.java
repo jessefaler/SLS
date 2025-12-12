@@ -25,6 +25,12 @@ public interface Blueprint {
     String getServerVersion();
 
     /**
+     * Gets the servers software from the blueprint
+     * @return Never-null String containing the server software
+     */
+    String getServerSoftware();
+
+    /**
      * Gets the blueprints type
      * @return Never-null String containing the blueprints type
      */

@@ -35,6 +35,12 @@ public class BlueprintImpl implements Blueprint {
     }
 
     @Override
+    public String getServerSoftware() {
+        JSONObject server = json.optJSONObject("server");
+        return server != null ? server.optString("software", null) : null;
+    }
+
+    @Override
     public String getType() {
         return meta.optString("type");
     }

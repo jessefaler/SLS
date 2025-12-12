@@ -71,19 +71,20 @@ public class ReloadCommand {
 
     public static void reloadBlueprints(CommandSource source) {
         // Make a request to the protocube api to tell it to reload its blueprints
-        SLS.api.reloadBlueprints().executeAsync(success -> {
-            // Fetch blueprints from protocube and reload local cache
-            SLS.blueprints.reload();
-            int num = SLS.blueprints.getAll().size();
-            ProtoMessage.chat()
-                    .add(MessagePreset.SLS)
-                    .add("Loaded " + num + " blueprints", NamedTextColor.GRAY)
-                    .sendMessage(source);
-        }, failure -> {
-            ProtoMessage.chat().add(MessagePreset.SLS)
-                    .add("Failed to reload blueprints. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                    .sendMessage(source);
-        });
+        // Then fetch blueprints from protocube and reload local cache
+        SLS.api.reloadBlueprints()
+                .flatMap(v -> SLS.blueprints.reload())
+                .executeAsync(v -> {
+                    int num = SLS.blueprints.getAll().size();
+                    ProtoMessage.chat()
+                            .add(MessagePreset.SLS)
+                            .add("Loaded " + num + " blueprints", NamedTextColor.GRAY)
+                            .sendMessage(source);
+                }, failure -> {
+                    ProtoMessage.chat().add(MessagePreset.SLS)
+                            .add("Failed to reload blueprints. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                            .sendMessage(source);
+                });
     }
 
     public static void reloadSoftware(CommandSource source) {
