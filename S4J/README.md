@@ -55,6 +55,58 @@ public class BlueprintRetriever
 }
 ```
 
+**Using WebSocket Event Stream**:
+```java
+public class EventStreamListener
+{
+    public static void main(String[] args)
+    {
+        SLSClient api = SLSBuilder.createClient("https://127.0.0.1", "xyz321");
+        
+        WebSocketEventStream eventStream = api.getEventStream();
+        
+        // Handle parsed server events (StatusUpdateEvent, ServerCrashEvent, etc.)
+        eventStream.onServerEvent((event) -> {
+            String serverId = event.getServerId();
+            
+            if (event instanceof StatusUpdateEvent) {
+                StatusUpdateEvent statusEvent = (StatusUpdateEvent) event;
+                System.out.println("Server " + serverId + " status changed to: " + statusEvent.getStatus());
+            } else if (event instanceof ServerCrashEvent) {
+                ServerCrashEvent crashEvent = (ServerCrashEvent) event;
+                System.out.println("Server " + serverId + " crashed: " + crashEvent.getReason() + " (exit code: " + crashEvent.getExitCode() + ")");
+            }
+        });
+        
+        // Handle raw WebSocket events
+        eventStream.onEvent((event) -> {
+            System.out.println("Received event on topic: " + event.topic);
+            System.out.println("Event data: " + event.dataAsJson().toString());
+        });
+        
+        // Handle errors
+        eventStream.onError((error) -> {
+            System.err.println("WebSocket error: " + error.getMessage());
+            error.printStackTrace();
+        });
+        
+        // Start the event stream
+        eventStream.start();
+        
+        // Keep the program running to receive events
+        // In a real application, you might want to add shutdown hooks
+        try {
+            Thread.sleep(60000); // Listen for 60 seconds
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+        // Stop the event stream when done
+        eventStream.stop();
+    }
+}
+```
+
 ### SLSAction
 
 SLSAction is designed 
