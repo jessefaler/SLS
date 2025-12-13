@@ -94,22 +94,22 @@ public class BlueprintRegistry {
                 .orElse(null);
     }
 
-//    /**
-//     * Fetches all blueprints asynchronously from the API and updates the registry.
-//     * Any errors encountered during the fetch are logged.
-//     */
-//    public SLSAction<Void> reload() {
-//        return SLS.api.getBlueprints().limit(70)
-//                .map(loadedBlueprints -> {
-//                    setBlueprints(loadedBlueprints);
-//                    Log.info("Reloaded blueprint registry. Loaded {} blueprints", loadedBlueprints.size());
-//                    return (Void) null;
-//                })
-//                .onErrorMap((Throwable failure) -> {
-//                    SLS.logger.warn("Failed to reload blueprints: {}", failure.getMessage());
-//                    return (Void) null;
-//                });
-//    }
+    /**
+     * Fetches all blueprints asynchronously from the API and updates the registry.
+     * Any errors encountered during the fetch are logged.
+     */
+    public SLSAction<Void> reload() {
+        return SLS.api.getBlueprints().limit(70)
+                .map(loadedBlueprints -> {
+                    setBlueprints(loadedBlueprints);
+                    Log.info("Reloaded blueprint registry. Loaded {} blueprints", loadedBlueprints.size());
+                    return (Void) null;
+                })
+                .onErrorMap((Throwable failure) -> {
+                    SLS.logger.warn("Failed to reload blueprints: {}", failure.getMessage());
+                    return (Void) null;
+                });
+    }
 
     /**
      * Initializes the blueprint registry.
