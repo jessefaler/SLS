@@ -23,7 +23,7 @@ public class JoinCommand {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls join", "blueprint"))
+                            .add(MessageFormatter.commandUsage("/sls join", "type"))
                             .sendMessage(source);
                     return 1;
                 })
@@ -40,7 +40,7 @@ public class JoinCommand {
                     CommandSource source = context.getSource();
                     String type = StringArgumentType.getString(context, "type");
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls join " + type, "world"))
+                            .add(MessageFormatter.commandUsage("/sls join " + type, "blueprint"))
                             .sendMessage(source);
                     return 0;
                 })

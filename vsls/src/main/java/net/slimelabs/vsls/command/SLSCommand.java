@@ -29,6 +29,7 @@ public class SLSCommand {
         root.executes(SLSCommand::handleRootCommand); // Handle the execution of /sls when no arguments are given
 
         // Register subcommands
+        root.then(CreateCommand.register());     // CREATE
         root.then(JoinCommand.register());       // JOIN
         root.then(StartCommand.register());      // START
         root.then(DebugCommand.register());      // DEBUG

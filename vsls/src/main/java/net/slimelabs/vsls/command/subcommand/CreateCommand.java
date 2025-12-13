@@ -3,26 +3,22 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.client.entites.ClientServer;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
-public class StartCommand {
-
+public class CreateCommand {
     public static LiteralArgumentBuilder<CommandSource> register() {
-        return LiteralArgumentBuilder.<CommandSource>literal("start")
+        return LiteralArgumentBuilder.<CommandSource>literal("create")
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls start","type"))
+                            .add(MessageFormatter.commandUsage("/sls create","type"))
                             .sendMessage(source);
                     return 1;
                 })
@@ -40,7 +36,7 @@ public class StartCommand {
                     CommandSource source = context.getSource();
                     String type = StringArgumentType.getString(context, "type");
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls start " + type, "blueprint"))
+                            .add(MessageFormatter.commandUsage("/sls create " + type, "blueprint"))
                             .sendMessage(source);
                     return 0;
                 })
@@ -62,14 +58,14 @@ public class StartCommand {
                     SLS.servers.CreateServer(blueprint).executeAsync(server -> {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
-                                .add("Starting " + blueprint, NamedTextColor.GREEN)
+                                .add("Created " + blueprint, NamedTextColor.GREEN)
                                 .add(" (", NamedTextColor.GRAY)
                                 .add(server.id, NamedTextColor.DARK_GRAY)
                                 .add(")", NamedTextColor.GRAY)
                                 .sendMessage(source);
                     }, failure -> {
                         ProtoMessage.chat()
-                                .add("Failed to start server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
                                 .sendMessage(source);
                     });
 
