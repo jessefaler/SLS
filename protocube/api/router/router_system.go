@@ -17,8 +17,8 @@ import (
 
 func (r *Router) getAllBlueprints(c *gin.Context) {
 	// Parse page & limit
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "20"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 
 	if page < 1 {
 		page = 1
