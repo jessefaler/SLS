@@ -87,6 +87,8 @@ public class Server extends Listener {
     }
 
     public void handleUnregistration() {
+        // Notify Listeners
+        fireUnregistration();
     }
 
     public void handleDeletion() {

@@ -13,6 +13,8 @@ public class Listener {
     private final List<ListenerEntry<StatusChangeListenerWithHandle>> statusListenersWithHandle = new CopyOnWriteArrayList<>();
     private final List<CrashListener> crashListeners = new CopyOnWriteArrayList<>();
     private final List<ListenerEntry<CrashListenerWithHandle>> crashListenersWithHandle = new CopyOnWriteArrayList<>();
+    private final List<UnregistrationListener> unregistrationListeners = new CopyOnWriteArrayList<>();
+    private final List<ListenerEntry<UnregistrationListenerWithHandle>> unregistrationListenersWithHandle = new CopyOnWriteArrayList<>();
 
     // Helper record to store listener with its handle
     private record ListenerEntry<T>(T listener, Handle handle) {}
@@ -25,6 +27,11 @@ public class Listener {
     @FunctionalInterface
     public interface CrashListener {
         void onCrash(ServerCrashEvent crash);
+    }
+
+    @FunctionalInterface
+    public interface UnregistrationListener {
+        void onUnregistration();
     }
 
     /**
@@ -43,6 +50,15 @@ public class Listener {
     @FunctionalInterface
     public interface CrashListenerWithHandle {
         void onCrash(ServerCrashEvent crash, Handle handle);
+    }
+
+    /**
+     * Unregistration listener that receives its handle,
+     * allowing it to unregister itself from within the callback.
+     */
+    @FunctionalInterface
+    public interface UnregistrationListenerWithHandle {
+        void onUnregistration(Handle handle);
     }
 
     /**
@@ -113,6 +129,40 @@ public class Listener {
         return handle;
     }
 
+    /**
+     * Registers a listener that is invoked whenever the server is unregistered.
+     *
+     * @param listener the listener to notify on unregistration
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onUnregistration(UnregistrationListener listener) {
+        unregistrationListeners.add(listener);
+        return new Handle(() -> {
+            unregistrationListeners.remove(listener);
+        });
+    }
+
+    /**
+     * Registers a listener that is invoked whenever the server is unregistered.
+     * The listener receives its handle, allowing it to unregister itself.
+     *
+     * @param listener the listener to notify on unregistration
+     * @return a handle that can be used to unregister the listener.
+     *         The handle may be safely ignored if you intend for the listener
+     *         to remain for the lifetime of the server, as it will be removed
+     *         automatically when the server is unregistered.
+     */
+    public Handle onUnregistration(UnregistrationListenerWithHandle listener) {
+        Handle handle = new Handle(() -> {
+            unregistrationListenersWithHandle.removeIf(entry -> entry.listener == listener);
+        });
+        unregistrationListenersWithHandle.add(new ListenerEntry<>(listener, handle));
+        return handle;
+    }
+
     protected void fireStatusChange(ServerStatus status) {
         // Fire regular listeners
         for (StatusChangeListener l : statusListeners) {
@@ -135,6 +185,17 @@ public class Listener {
         }
     }
 
+    protected void fireUnregistration() {
+        // Fire regular listeners
+        for (UnregistrationListener l : unregistrationListeners) {
+            l.onUnregistration();
+        }
+        // Fire self-unregistering listeners with their stored handle
+        for (ListenerEntry<UnregistrationListenerWithHandle> entry : unregistrationListenersWithHandle) {
+            entry.listener.onUnregistration(entry.handle);
+        }
+    }
+
     /**
      * Clears all listeners for the server
      * This is called when a server is unregistered to
@@ -145,6 +206,8 @@ public class Listener {
         statusListenersWithHandle.clear();
         crashListeners.clear();
         crashListenersWithHandle.clear();
+        unregistrationListeners.clear();
+        unregistrationListenersWithHandle.clear();
     }
 
     public class Handle {

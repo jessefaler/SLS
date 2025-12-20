@@ -38,6 +38,10 @@ public class Queue {
                 flushQueueWithError();
             }
         }));
+        server.onUnregistration(handle -> {
+            handle.remove();
+            flushQueueWithError();
+        });
     }
 
     public void enqueue(Player player) {
