@@ -201,8 +201,9 @@ func (s *Server) Validate() error {
 	if s.Software == "" {
 		return errors.New("missing required field: server.software")
 	}
+	// Sets Path to "<Software>/<Version>" if it is not specified
 	if s.Path == "" {
-		return errors.New("missing required field: server.path")
+		s.Path = filepath.Join(s.Software, s.Version)
 	}
 
 	// Make the software name all lowercase
