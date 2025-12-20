@@ -41,6 +41,11 @@ public interface ClientServer {
     String getIp();
 
     /**
+     * Deletes the server
+     */
+    SLSAction<Void> delete();
+
+    /**
      * Retrieves the servers port
      * @return the servers port number
      */

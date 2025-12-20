@@ -33,6 +33,16 @@ func getServer(c *gin.Context) {
 	c.JSON(http.StatusOK, server.ServerData())
 }
 
+func deleteServer(c *gin.Context) {
+	server := middleware.ExtractServer(c)
+	err := server.Delete(c.Request.Context())
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func getServerStatus(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	status, err := s.GetRemoteStatus(c.Request.Context())

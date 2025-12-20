@@ -120,6 +120,16 @@ func postServerCommands(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Deletes a server from the daemon and dissociate its objects.
+func (r *Router) deleteServer(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	if err := s.Delete(); err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 // ANSI escape code regex pattern to strip formatting codes from log lines
 var stripAnsiRegex = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
 

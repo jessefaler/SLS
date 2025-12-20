@@ -118,7 +118,7 @@ func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Meta        *Meta                  `yaml:"blueprint"`
 		World       *World                 `yaml:"world"`
 		Server      *Server                `yaml:"server"`
-		Saving      *Saving                `yaml:"saving"`
+		Save        bool                   `yaml:"save"`
 		Annotations map[string]interface{} `yaml:"annotations"`
 	}
 
@@ -155,7 +155,7 @@ func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	bp.Meta = *raw.Meta
 	bp.World = raw.World
 	bp.Server = raw.Server
-	bp.Saving = raw.Saving
+	bp.Save = raw.Save
 	bp.Annotations = raw.Annotations
 
 	return nil

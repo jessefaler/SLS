@@ -25,6 +25,9 @@ type Server struct {
 	GlobalEvents func() *events.Bus
 	sinks        map[system.SinkName]*system.SinkPool
 
+	// Removes the server from the manager
+	Remove func()
+
 	// The crash handler for this server instance.
 	crasher CrashHandler
 
@@ -70,6 +73,11 @@ func (s *Server) Kill(ctx context.Context) error {
 	return s.Power(ctx, models.PowerAction{Action: "kill"})
 }
 
+// Delete deletes the server from the daemon
+func (s *Server) Delete(ctx context.Context) error {
+	return s.Client().DeleteServer(ctx)
+}
+
 // GetStatus returns the server's most recently reported power status.
 func (s *Server) GetStatus() Status {
 	return s.status
@@ -101,4 +109,13 @@ func (s *Server) ServerData() models.ServerData {
 
 func (s *Server) Log() *log.Entry {
 	return log.WithField("server", s.Id())
+}
+
+func (s *Server) CleanupForDestroy() {
+	// Notify event listeners
+	s.PublishEvent(DeletedEvent, nil)
+	s.Events().Destroy()
+	s.DestroyAllSinks()
+	// Remove the server from the manager
+	s.Remove()
 }

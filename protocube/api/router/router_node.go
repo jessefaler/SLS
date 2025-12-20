@@ -93,3 +93,9 @@ func (r *Router) postEventServerCrash(c *gin.Context) {
 	s.HandleServerCrash(crash)
 	c.Status(http.StatusOK)
 }
+
+func (r *Router) postEventServerDeleted(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	s.CleanupForDestroy()
+	c.Status(http.StatusOK)
+}

@@ -47,55 +47,55 @@ func (o *OverlayDirs) AddLower(path string) {
 //
 // The function finally exposes the server overlay through a dedicated container volume
 // (bind-mounted), which can be used as the root filesystem for the container.
-func BuildServerVolume(id string, serverPath string, worldPath string, content []models.Content) (string, error) {
+func BuildServerVolume(id string, serverPath string, worldPath string, content []models.Content) (string, string, error) {
 	cfg := config.Get()
 	volumeRoot := filepath.Join(cfg.System.RootDirectory, "volumes")
 	overlayRoot := filepath.Join(cfg.System.RootDirectory, "internal", "overlay2", id)
 	volume := filepath.Join(volumeRoot, id)
 
 	if err := ensureTreeOwned(serverPath); err != nil {
-		return "", errors.Wrap(err, "failed to chown server files")
+		return "", "", errors.Wrap(err, "failed to chown server files")
 	}
 	if err := ensureTreeOwned(worldPath); err != nil {
-		return "", errors.Wrap(err, "failed to chown world files")
+		return "", "", errors.Wrap(err, "failed to chown world files")
 	}
 
 	if err := ensureDirectoryOwned(volumeRoot); err != nil {
-		return "", errors.Wrapf(err, "failed to create volumes directory %s", filepath.Join(config.Get().System.RootDirectory, "volumes"))
+		return "", "", errors.Wrapf(err, "failed to create volumes directory %s", filepath.Join(config.Get().System.RootDirectory, "volumes"))
 	}
 	if err := ensureDirectoryOwned(volume); err != nil {
-		return "", errors.Wrap(err, "failed to create container volume directory")
+		return "", "", errors.Wrap(err, "failed to create container volume directory")
 	}
 	if err := ensureDirectoryOwned(overlayRoot); err != nil {
-		return "", errors.Wrapf(err, "failed to prepare overlay root %s", overlayRoot)
+		return "", "", errors.Wrapf(err, "failed to prepare overlay root %s", overlayRoot)
 	}
 
 	serverOverlay, err := BuildServerOverlay(overlayRoot, serverPath, content)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	worldOverlay, err := BuildWorldOverlay(overlayRoot, worldPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	worldTarget := filepath.Join(serverOverlay, "world")
 	if err := ensureDirectoryOwned(worldTarget); err != nil {
-		return "", errors.Wrap(err, "failed to create world mountpoint inside server overlay")
+		return "", "", errors.Wrap(err, "failed to create world mountpoint inside server overlay")
 	}
 
 	// Mount the contents of the server directory into the lowerdir of the overlay filesystem
 	if err := unix.Mount(worldOverlay, filepath.Join(serverOverlay, "world"), "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
-		return "", errors.Wrap(err, "failed to mount the world overlay to the server overlay")
+		return "", "", errors.Wrap(err, "failed to mount the world overlay to the server overlay")
 	}
 
 	// Mount the contents of the server directory into the lowerdir of the overlay filesystem
 	if err := unix.Mount(serverOverlay, volume, "", unix.MS_BIND|unix.MS_REC, ""); err != nil {
-		return "", errors.Wrap(err, "failed to mount the server overlay to the container volume")
+		return "", "", errors.Wrap(err, "failed to mount the server overlay to the container volume")
 	}
 
-	return volume, nil
+	return volume, overlayRoot, nil
 }
 
 func BuildWorldOverlay(root string, worldPath string) (string, error) {

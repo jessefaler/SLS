@@ -25,6 +25,7 @@ type NodeCreateServerRequest struct {
 	ServerFolder         string                `json:"server-folder"`
 	WorldFolder          string                `json:"world-folder"`
 	Content              []blueprint.Content   `json:"content,omitempty"`
+	Save                 bool                  `json:"save"`
 }
 
 type CreateServerRequest struct {

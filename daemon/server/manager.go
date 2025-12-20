@@ -58,7 +58,14 @@ func (manager *Manager) Find(filter func(match *Server) bool) *Server {
 	return nil
 }
 
-// Create creates and starts a new server
+// Remove removes a server from the collection by its ID.
+func (manager *Manager) Remove(id string) {
+	manager.mutex.Lock()
+	defer manager.mutex.Unlock()
+	delete(manager.servers, id)
+}
+
+// Create creates a new server
 func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) {
 	s, err := New(manager.client)
 	if err != nil {
@@ -67,6 +74,10 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 
 	// Add the server to this manager instance
 	manager.Add(s)
+	s.save = req.Save
+	s.Remove = func() {
+		manager.Remove(s.id)
+	}
 	s.Config().Limits = req.Limits
 	// Create an allocation for the server
 	alloc := environment.NewAllocation()
@@ -86,13 +97,13 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 	// Create the servers volume
 	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
 	worldFolder := filepath.Join(config.Get().Worlds.Root, req.WorldFolder)
-	volume, err := BuildServerVolume(s.id, serverFolder, worldFolder, req.Content)
+	volume, overlay, err := BuildServerVolume(s.id, serverFolder, worldFolder, req.Content)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build server volume")
 	}
 
 	// Create the servers filesystem abstraction
-	s.filesystem, err = filesystem.New(volume)
+	s.filesystem, err = filesystem.New(volume, overlay)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create filesystem")
 	}

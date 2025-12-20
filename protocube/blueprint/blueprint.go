@@ -11,7 +11,7 @@ type Blueprint struct {
 	Meta        Meta                   `yaml:"metadata" json:"metadata"`
 	World       *World                 `yaml:"world" json:"world"`
 	Server      *Server                `yaml:"server" json:"server"`
-	Saving      *Saving                `yaml:"saving,omitempty" json:"saving,omitempty"`
+	Save        bool                   `yaml:"save,omitempty" json:"save,omitempty"`
 	Annotations map[string]interface{} `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 }
 
@@ -47,11 +47,6 @@ type ConfigFile struct {
 type Content struct {
 	Name   string `yaml:"name" json:"name"`
 	Source string `yaml:"source" json:"source"` // The source path relative to the root content folder
-}
-
-type Saving struct {
-	Enabled     bool         `yaml:"enabled" json:"enabled"`
-	Compression *Compression `yaml:"compression,omitempty" json:"compression,omitempty"`
 }
 
 type Compression struct {

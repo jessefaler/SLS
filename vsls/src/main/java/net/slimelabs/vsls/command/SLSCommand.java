@@ -38,7 +38,7 @@ public class SLSCommand {
         root.then(ReloadCommand.register());     // RELOAD
         root.then(StatusCommand.register());     // STATUS
         root.then(StatsCommand.register());      // STATS
-        //root.then(DeleteCommand.register());   // DELETE
+        root.then(DeleteCommand.register());     // DELETE
         root.then(ConsoleCommand.register());    // CONSOLE
         root.then(DequeueCommand.register());    // DEQUEUE
         root.then(BlueprintCommand.register());  // BLUEPRINT

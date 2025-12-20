@@ -24,6 +24,11 @@ func (c *client) CrashReport(ctx context.Context, data CrashData, id string) err
 	return err
 }
 
+func (c *client) ServerDeleted(ctx context.Context, id string) error {
+	_, err := Post[d](c, ctx, "/event/servers/"+id+"/deleted", nil)
+	return err
+}
+
 // GetServers returns all the servers that are present on the Node making
 // parallel API calls to the endpoint if more than one page of servers is
 // returned.

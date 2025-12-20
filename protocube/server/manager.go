@@ -39,6 +39,13 @@ func (m *Manager) Add(server *Server) {
 	m.servers[server.id] = server
 }
 
+// Remove removes a server from the collection by its ID.
+func (m *Manager) Remove(id string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	delete(m.servers, id)
+}
+
 // Find returns a single element from the collection matching the filter. If
 // nothing is found, a nil result is returned.
 func (m *Manager) Find(filter func(match *Server) bool) *Server {
@@ -93,6 +100,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		ServerFolder:         blueprint.Server.Path,
 		WorldFolder:          blueprint.World.Path,
 		Content:              blueprint.Server.Content,
+		Save:                 blueprint.Save,
 	}
 
 	// Request server creation on the remote node
@@ -110,6 +118,9 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		sc:           serverClient,
 		GlobalEvents: m.Events,
 		Allocations:  resp.Allocation,
+		Remove: func() {
+			m.Remove(nodeReq.ID)
+		},
 	}
 
 	// Add the server to the manager

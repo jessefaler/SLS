@@ -36,6 +36,12 @@ type Server struct {
 	// The unique identifier for the server
 	id string
 
+	// Weather to save this server when its shutdown
+	save bool
+
+	// Removes the server from the manager
+	Remove func()
+
 	emitterLock sync.Mutex
 
 	sinks map[system.SinkName]*system.SinkPool
@@ -163,29 +169,6 @@ func (s *Server) SyncConfigurationToEnvironment() error {
 	return nil
 }
 
-/*
-func New(bp blueprint.Blueprint) (*Server, error) {
-
-	/*
-		// Get an allocation
-		allocation, err := environment.Get().Allocations.Allocate()
-		if err != nil {
-			return nil, errors.Wrap(err, "server: failed to retrieve an allocation")
-		}
-
-		server := Server{
-			Uuid:       uuid.New(),
-			Allocation: allocation,
-			blueprint:  bp,
-			State:      Offline,
-		}
-
-	var server = new(Server)
-	server.Uuid = uuid.New()
-	return server, nil
-}
-*/
-
 // Reads the log file for a server up to a specified number of bytes.
 func (s *Server) ReadLogfile(len int) ([]string, error) {
 	return s.Environment.Readlog(len)
@@ -251,6 +234,80 @@ func (s *Server) OnStateChange() {
 
 		s.handleServerCrash()
 	}
+
+	// If server was running/starting and is now offline, and saving is false, delete it
+	// Only delete if there's no active power action (to avoid deleting during restart/stop actions)
+	// This handles crashes, console stop commands, disk space limiter, and other edge cases
+	if st == environment.ProcessOfflineState {
+		if (prevState == environment.ProcessStartingState || prevState == environment.ProcessRunningState) && !s.save && !s.ExecutingPowerAction() {
+			go s.Delete()
+			return
+		}
+	}
+}
+
+// Cancels the context assigned to this server instance. Assuming background tasks
+// are using this server's context for things, all of the background tasks will be
+// stopped as a result.
+func (s *Server) CtxCancel() {
+	if s.ctxCancel != nil {
+		(*s.ctxCancel)()
+	}
+}
+
+// CleanupForDestroy stops all running background tasks for this server that are
+// using the context on the server struct. This will cancel any running install
+// processes for the server as well.
+func (s *Server) CleanupForDestroy() {
+	s.CtxCancel()
+	s.Events().Destroy()
+	s.DestroyAllSinks()
+	// per-server websockets are not implemented yet
+	// this will be needed when they are implemented
+	//s.Websockets().CancelAll()
+	s.powerLock.Destroy()
+	if err := s.client.ServerDeleted(s.ctx, s.id); err != nil {
+		log.WithError(err).Warnf("Failed to send deletion event for server %s", s.ID())
+	}
+}
+
+// Delete Deletes a server from the daemon and dissociate its objects.
+func (s *Server) Delete() error {
+
+	// Immediately suspend the server to prevent a user from attempting
+	// to start it while this process is running.
+	s.Config().SetSuspended(true)
+
+	// Notify all websocket clients that the server is being deleted.
+	s.Events().Publish(DeletedEvent, nil)
+
+	s.CleanupForDestroy()
+
+	// Destroy the environment; in Docker this will handle a running container and
+	// forcibly terminate it before removing the container, so we do not need to handle
+	// that here.
+	if err := s.Environment.Destroy(); err != nil {
+		return err
+	}
+
+	// Once the environment is terminated, remove the server files from the system. This is
+	// done in a separate process since failure is not the end of the world and can be
+	// manually cleaned up after the fact.
+	//
+	// In addition, servers with large amounts of files can take some time to finish deleting,
+	// so we don't want to block the HTTP call while waiting on this.
+	go func() {
+		fs := s.Filesystem()
+		if fs != nil {
+			if err := fs.Delete(); err != nil {
+				log.WithField("error", err).Warn("failed to delete server filesystem")
+			}
+		}
+	}()
+
+	// Remove the server from the manager
+	s.Remove()
+	return nil
 }
 
 // Context Returns a context instance for the server. This should be used to allow background

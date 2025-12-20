@@ -123,4 +123,10 @@ public class ClientServerImpl implements ClientServer {
                 });
     }
 
+    @Override
+    public SLSAction<Void> delete() {
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.DELETE.compile(getId()));
+    }
+
 }

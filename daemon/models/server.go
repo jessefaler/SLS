@@ -11,6 +11,7 @@ type CreateServerRequest struct {
 	ServerFolder         string                `json:"server-folder"`
 	WorldFolder          string                `json:"world-folder"`
 	Content              []Content             `json:"content,omitempty"`
+	Save                 bool                  `json:"save"`
 }
 
 type CreateServerResponse struct {

@@ -16,6 +16,7 @@ type ServerClient interface {
 	Status(ctx context.Context) (gin.H, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
 	Commands(ctx context.Context, commands []string) error
+	DeleteServer(ctx context.Context) error
 }
 
 type serverClient struct {
@@ -41,6 +42,11 @@ func (sc *serverClient) Status(ctx context.Context) (gin.H, error) {
 // GetServer fetches the servers data from the remote node.
 func (sc *serverClient) GetServer(ctx context.Context) (models.ServerData, error) {
 	return Get[models.ServerData](sc, ctx, "/", nil)
+}
+
+func (sc *serverClient) DeleteServer(ctx context.Context) error {
+	_, err := sc.Delete(ctx, "/")
+	return err
 }
 
 // Commands sends an array of commands to the remote node.

@@ -85,6 +85,14 @@ func (sc *serverClient) Post(ctx context.Context, path string, data interface{})
 	return sc.node.Post(ctx, route, data)
 }
 
+// Delete performs a scoped HTTP DELETE request to the node's API for this specific server.
+// It automatically prefixes the provided path with "/servers/{id}" so callers only
+// need to specify the server-relative endpoint.
+func (sc *serverClient) Delete(ctx context.Context, path string) (*Response, error) {
+	route := fmt.Sprintf("/servers/%s%s", sc.id, path)
+	return sc.node.Delete(ctx, route)
+}
+
 // Post executes an HTTP POST request.
 func (nc *nodeClient) Post(ctx context.Context, path string, data interface{}) (*Response, error) {
 	path = "/api" + path // Prepend the api route to the path
@@ -93,6 +101,12 @@ func (nc *nodeClient) Post(ctx context.Context, path string, data interface{}) (
 		return nil, err
 	}
 	return nc.request(ctx, http.MethodPost, path, bytes.NewBuffer(b))
+}
+
+// Delete executes an HTTP DELETE request.
+func (nc *nodeClient) Delete(ctx context.Context, path string) (*Response, error) {
+	path = "/api" + path // Prepend the api route to the path
+	return nc.request(ctx, http.MethodDelete, path, nil)
 }
 
 // requestOnce creates a http request and executes it once. Prefer request()

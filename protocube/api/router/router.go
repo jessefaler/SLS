@@ -51,6 +51,7 @@ func (r *Router) Configure() *gin.Engine {
 		{
 			event.POST("/status", r.postNodeServerStatus)
 			event.POST("/crash", r.postEventServerCrash)
+			event.POST("/deleted", r.postEventServerDeleted)
 		}
 	}
 
@@ -60,7 +61,7 @@ func (r *Router) Configure() *gin.Engine {
 	server.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.ServerExists(r.ServerManager))
 	{
 		server.GET("", getServer)
-		//server.DELETE("", deleteServer)
+		server.DELETE("", deleteServer)
 
 		server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)

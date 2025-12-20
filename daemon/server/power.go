@@ -122,7 +122,12 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			return errors.Wrap(err, "failed to sync configuration to environment")
 		}
 
-		return s.Environment.Start(s.Context())
+		err := s.Environment.Start(s.Context())
+		// If the server failed to start and saving is disabled delete the server
+		if err != nil && !s.save {
+			go s.Delete()
+		}
+		return err
 	case PowerActionStop:
 		fallthrough
 	case PowerActionRestart:
@@ -141,6 +146,10 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 		}
 
 		if action == PowerActionStop {
+			// delete the server if saving is disabled
+			if !s.save {
+				go s.Delete()
+			}
 			return nil
 		}
 
@@ -150,9 +159,19 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			return errors.Wrap(err, "failed to sync configuration to environment")
 		}
 
-		return s.Environment.Start(s.Context())
+		err := s.Environment.Start(s.Context())
+		// If restart failed and saving is disabled delete the server
+		if err != nil && !s.save {
+			go s.Delete()
+		}
+		return err
 	case PowerActionTerminate:
-		return s.Environment.Terminate(s.Context(), "SIGKILL")
+		err := s.Environment.Terminate(s.Context(), "SIGKILL")
+		// If saving is disabled delete the server after termination
+		if err == nil && !s.save {
+			go s.Delete()
+		}
+		return err
 	}
 
 	return errors.New("attempting to handle unknown power action")

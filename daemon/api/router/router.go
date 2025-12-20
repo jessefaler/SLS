@@ -31,7 +31,7 @@ func (r *Router) Configure() *gin.Engine {
 	server.Use(middleware.RequireAuthorization(r.VerifyToken), middleware.ServerExists(r.ServerManager))
 	{
 		//server.GET("", getServer)
-		//server.DELETE("", deleteServer)
+		server.DELETE("", r.deleteServer)
 
 		server.GET("/logs", getServerLogs)
 		server.POST("/power", postServerPower)

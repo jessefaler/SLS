@@ -58,6 +58,14 @@ public class Server extends Listener {
         });
     }
 
+    public SLSAction<Void> delete() {
+        SLSAction<Void> action = client.delete();
+        return action.map(v -> {
+            unregister.run();
+            return v;
+        });
+    }
+
     public int getPort() {
         return client.getPort();
     }
