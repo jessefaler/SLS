@@ -2,10 +2,8 @@ package net.slimelabs.vsls.routing;
 
 import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.proxy.Player;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.packets.ChatPackets;
-import net.slimelabs.vsls.server.Listener;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -28,20 +26,22 @@ public class Queue {
     }
 
     public void initListeners() {
+        var unRegistration = server.onUnregistration(handle -> {
+            handle.remove();
+            flushQueueWithError();
+        });
         server.onStatusChange(((status, handle) -> {
             if(status == ServerStatus.RUNNING) {
+                unRegistration.remove();
                 handle.remove();
                 flushQueue();
             }
             if(status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
+                unRegistration.remove();
                 handle.remove();
                 flushQueueWithError();
             }
         }));
-        server.onUnregistration(handle -> {
-            handle.remove();
-            flushQueueWithError();
-        });
     }
 
     public void enqueue(Player player) {
