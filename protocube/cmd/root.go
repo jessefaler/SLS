@@ -16,7 +16,6 @@ import (
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/internal/database"
-	"protoxon.com/sls/protocube/internal/message"
 	"protoxon.com/sls/protocube/node"
 	"protoxon.com/sls/protocube/plugins"
 	"protoxon.com/sls/protocube/server"
@@ -24,7 +23,6 @@ import (
 )
 
 func Execute() {
-	message.Start()
 	if err := rootCommand.Execute(); err != nil {
 		log2.Fatalf("failed to execute command: %s", err)
 	}
