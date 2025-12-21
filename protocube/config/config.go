@@ -21,8 +21,6 @@ var (
 )
 
 type Configuration struct {
-	// A unique identifier for this node_old.
-	Uuid string `yaml:"uuid"`
 
 	// Determines if sls should be running in debug mode. This value is ignored
 	// if the debug flag is passed through the command line arguments.
