@@ -86,7 +86,7 @@ server:
 
 # Whether to persist servers created from this blueprint.
 # If false, the server is removed on shutdown.
-saving: false
+save: false
 
 # Arbitrary metadata for external systems
 annotations:
