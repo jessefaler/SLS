@@ -101,8 +101,7 @@ server:
 # If this is false the container and server volume will be deleted when the server stops
 # If true the server container and volume will be saved and the server can be re-started using the servers id
 # OPTIONAL (default false)
-saving:
-  enabled: false
+save: false
 
 # Custom annotations: arbitrary metadata for external tools or custom logic
 annotations:
