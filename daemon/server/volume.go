@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sys/unix"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/models"
+	"protoxon.com/sls/daemon/server/filesystem"
 )
 
 type OverlayDirs struct {
@@ -239,4 +240,10 @@ func ensureTreeOwned(root string) error {
 		}
 		return chownToDaemon(path)
 	})
+}
+
+// CleanupServerVolume is a wrapper that calls the filesystem package's CleanupServerVolume function.
+// This allows the server package to clean up volumes without duplicating code.
+func CleanupServerVolume(volumePath string, overlayRoot string) error {
+	return filesystem.CleanupServerVolume(volumePath, overlayRoot)
 }

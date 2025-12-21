@@ -53,9 +53,7 @@ public class DeleteCommand {
                                     .add("Deleting all servers.", NamedTextColor.GRAY)
                                     .sendMessage(source);
                             for(ClientServer server : servers) {
-                                server.delete().executeAsync(success -> {
-                                    Log.info("Deleted server " + server.getId());
-                                }, failure -> {
+                                server.delete().executeAsync(success -> {}, failure -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
                                             .add("Failed to delete server " + server.getId() + " reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);

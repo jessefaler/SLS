@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"emperror.dev/errors"
+	"github.com/apex/log"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/environment/docker"
@@ -83,8 +84,6 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 		return nil, err
 	}
 
-	// Add the server to this manager instance
-	manager.Add(s)
 	s.save = req.Save
 	s.Remove = func() {
 		manager.Remove(s.id)
@@ -108,14 +107,29 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 	// Create the servers volume
 	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
 	worldFolder := filepath.Join(config.Get().Worlds.Root, req.WorldFolder)
+	
+	// Construct volume and overlay paths before building, so we can clean them up on failure
+	cfg := config.Get()
+	overlayRoot := filepath.Join(cfg.System.RootDirectory, "internal", "overlay2", s.id)
+	volumePath := filepath.Join(cfg.System.RootDirectory, "volumes", s.id)
+	
 	volume, overlay, err := BuildServerVolume(s.id, serverFolder, worldFolder, req.Content)
 	if err != nil {
+		// Clean up the volume and overlay that may have been created before the error
+		// Use the pre-constructed paths since BuildServerVolume returns empty strings on error
+		if cleanupErr := CleanupServerVolume(volumePath, overlayRoot); cleanupErr != nil {
+			log.WithError(cleanupErr).Warnf("Failed to cleanup volume and overlay after volume creation failure for server %s", s.id)
+		}
 		return nil, errors.Wrap(err, "failed to build server volume")
 	}
 
 	// Create the servers filesystem abstraction
 	s.filesystem, err = filesystem.New(volume, overlay)
 	if err != nil {
+		// Clean up the volume and overlay that were created
+		if cleanupErr := CleanupServerVolume(volume, overlay); cleanupErr != nil {
+			log.WithError(cleanupErr).Warnf("Failed to cleanup volume and overlay after filesystem creation failure for server %s", s.id)
+		}
 		return nil, errors.Wrap(err, "failed to create filesystem")
 	}
 
@@ -133,11 +147,17 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 	}
 
 	if env, err := docker.New(s.id, &meta, envCfg); err != nil {
+		// Clean up the volume and overlay that were created
+		if cleanupErr := CleanupServerVolume(volume, overlay); cleanupErr != nil {
+			log.WithError(cleanupErr).Warnf("Failed to cleanup volume and overlay for server %s", s.id)
+		}
 		return nil, err
 	} else {
 		s.Environment = env
 		s.StartEventListeners()
 	}
 
+	// Add the server to this manager instance
+	manager.Add(s)
 	return s, nil
 }

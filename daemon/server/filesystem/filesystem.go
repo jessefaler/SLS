@@ -55,9 +55,15 @@ func chownPath(path string) error {
 // If unmount operations fail, it will attempt forced unmounts and continue
 // with deletion regardless of unmount errors.
 func (s *Filesystem) Delete() error {
-	overlayRoot := s.overlay
-	volumePath := s.path
+	return CleanupServerVolume(s.path, s.overlay)
+}
 
+// CleanupServerVolume removes all mounts and directories created by BuildServerVolume.
+// It unmounts all overlay filesystems and bind mounts in the correct order,
+// then deletes the overlay directory and volume directory.
+// This function is used by Filesystem.Delete() and can also be called directly
+// from the server package if volume creation succeeds but subsequent steps fail.
+func CleanupServerVolume(volumePath string, overlayRoot string) error {
 	// Define paths for unmounting
 	serverOverlayMerged := filepath.Join(overlayRoot, "server", "merged")
 	serverOverlayWorld := filepath.Join(serverOverlayMerged, "world")
@@ -70,32 +76,32 @@ func (s *Filesystem) Delete() error {
 	// Unmount in reverse order of mounting (innermost to outermost)
 	// Collect errors but continue processing all mounts
 
-	// 1. Unmount the volume (bind mount from serverOverlay to volume)
+	// Unmount the volume (bind mount from serverOverlay to volume)
 	if err := unmountIfMounted(volumePath); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount volume"))
 	}
 
-	// 2. Unmount the world overlay from serverOverlay/world (bind mount)
+	// Unmount the world overlay from serverOverlay/world (bind mount)
 	if err := unmountIfMounted(serverOverlayWorld); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world overlay from server overlay"))
 	}
 
-	// 3. Unmount the server overlay filesystem
+	// Unmount the server overlay filesystem
 	if err := unmountIfMounted(serverOverlayMerged); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount server overlay filesystem"))
 	}
 
-	// 4. Unmount the world overlay filesystem
+	// Unmount the world overlay filesystem
 	if err := unmountIfMounted(worldOverlayMerged); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world overlay filesystem"))
 	}
 
-	// 5. Unmount server lowerdir bind mount
+	// Unmount server lowerdir bind mount
 	if err := unmountIfMounted(serverLowerdir); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount server lowerdir"))
 	}
 
-	// 6. Unmount world lowerdir bind mount
+	// Unmount world lowerdir bind mount
 	if err := unmountIfMounted(worldLowerdir); err != nil {
 		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world lowerdir"))
 	}
@@ -103,14 +109,14 @@ func (s *Filesystem) Delete() error {
 	// Continue with deletion even if unmounts failed
 	var deleteErrors []error
 
-	// 7. Delete the overlay root directory
+	// Delete the overlay root directory
 	if overlayRoot != "" {
 		if err := os.RemoveAll(overlayRoot); err != nil {
 			deleteErrors = append(deleteErrors, errors.Wrapf(err, "failed to delete overlay directory %s", overlayRoot))
 		}
 	}
 
-	// 8. Delete the volume directory
+	// Delete the volume directory
 	if volumePath != "" {
 		if err := os.RemoveAll(volumePath); err != nil {
 			deleteErrors = append(deleteErrors, errors.Wrapf(err, "failed to delete volume directory %s", volumePath))
@@ -122,7 +128,7 @@ func (s *Filesystem) Delete() error {
 		var allErrors []error
 		allErrors = append(allErrors, unmountErrors...)
 		allErrors = append(allErrors, deleteErrors...)
-		
+
 		errorMsg := "cleanup completed with errors"
 		if len(unmountErrors) > 0 {
 			errorMsg += fmt.Sprintf(" (%d unmount error(s))", len(unmountErrors))
@@ -130,7 +136,7 @@ func (s *Filesystem) Delete() error {
 		if len(deleteErrors) > 0 {
 			errorMsg += fmt.Sprintf(" (%d delete error(s))", len(deleteErrors))
 		}
-		
+
 		return errors.WithMessage(
 			errors.Combine(allErrors...),
 			errorMsg,
