@@ -32,9 +32,8 @@ func (o *OverlayDirs) AddLower(path string) {
 // BuildServerVolume constructs a unified, copy-on-write server filesystem for a container.
 //
 // This function creates separate OverlayFS instances for:
-//  1. The server files
+//  1. The server files and content
 //  2. The world folder
-//  3. Optional additional content
 //
 // Each overlay has its own upperdir, workdir, and merged directory. The merged directories
 // of the world overlay (and other content overlays) are bind-mounted into the server overlay
@@ -46,7 +45,7 @@ func (o *OverlayDirs) AddLower(path string) {
 // we achieve full copy-on-write functionality without copying all files at container startup,
 // which saves time and disk space.
 //
-// The function finally exposes the server overlay through a dedicated container volume
+// The function exposes the server overlay through a dedicated container volume
 // (bind-mounted), which can be used as the root filesystem for the container.
 func BuildServerVolume(id string, serverPath string, worldPath string, content []models.Content) (string, string, error) {
 	cfg := config.Get()
