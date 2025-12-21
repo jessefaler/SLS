@@ -65,6 +65,27 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	})
 }
 
+// Returns all servers
+func (r *Router) getAllServers(c *gin.Context) {
+	servers := r.ServerManager.All()
+
+	// If ids_only query parameter is set, return only the IDs
+	if c.Query("ids_only") == "true" {
+		ids := make([]string, len(servers))
+		for i, v := range servers {
+			ids[i] = v.Id()
+		}
+		c.JSON(http.StatusOK, ids)
+		return
+	}
+
+	out := make([]models.ServerData, len(servers), len(servers))
+	for i, v := range servers {
+		out[i] = v.ServerData()
+	}
+	c.JSON(http.StatusOK, out)
+}
+
 func (r *Router) postCreateServer(c *gin.Context) {
 	balanced := r.LoadBalancer.PickNode()
 	if balanced == nil {

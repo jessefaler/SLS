@@ -24,7 +24,7 @@ func (r *Router) Configure() *gin.Engine {
 	{
 		protected.GET("/system") //temp
 		//protected.GET("/api/system", getSystemInformation)
-		//protected.GET("/api/servers", getAllServers)
+		protected.GET("/servers", r.getAllServers)
 		protected.POST("/servers", r.postCreateServer)
 		protected.GET("/blueprints", r.getAllBlueprints)
 		protected.POST("/blueprints/reload", r.postReloadBlueprints)

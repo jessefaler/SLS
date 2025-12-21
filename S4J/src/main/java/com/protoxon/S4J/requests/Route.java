@@ -13,11 +13,13 @@ public class Route {
     public static class Servers {
 
         public static final Route CREATE_SERVER = new Route(POST, "servers");
+        public static final Route GET_ALL_SERVERS = new Route(GET, "servers");
 
     }
 
     public static class Server {
 
+        public static final Route GET_SERVER = new Route(GET, "servers/{server_id}");
         public static final Route SET_POWER = new Route(POST, "servers/{server_id}/power");
         public static final Route STATUS = new Route(GET, "servers/{server_id}/status");
         public static final Route STATS = new Route(GET, "servers/{server_id}/stats");

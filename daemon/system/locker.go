@@ -73,12 +73,13 @@ func (l *Locker) Release() {
 // Destroy cleans up the power locker by closing the channel.
 func (l *Locker) Destroy() {
 	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.ch != nil {
 		select {
 		case <-l.ch:
 		default:
 		}
 		close(l.ch)
+		l.ch = nil
 	}
-	l.mu.Unlock()
 }

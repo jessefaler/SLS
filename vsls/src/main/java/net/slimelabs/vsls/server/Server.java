@@ -92,7 +92,7 @@ public class Server extends Listener {
     }
 
     public void handleDeletion() {
-
+        unregister.run();
     }
 
     public SLSAction<Void> sendCommand(String command) {

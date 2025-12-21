@@ -65,6 +65,17 @@ func (manager *Manager) Remove(id string) {
 	delete(manager.servers, id)
 }
 
+// All returns a snapshot of all servers managed by this instance.
+func (manager *Manager) All() []*Server {
+	manager.mutex.RLock()
+	defer manager.mutex.RUnlock()
+	servers := make([]*Server, 0, len(manager.servers))
+	for _, s := range manager.servers {
+		servers = append(servers, s)
+	}
+	return servers
+}
+
 // Create creates a new server
 func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) {
 	s, err := New(manager.client)

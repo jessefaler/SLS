@@ -259,6 +259,9 @@ func (s *Server) CtxCancel() {
 // using the context on the server struct. This will cancel any running install
 // processes for the server as well.
 func (s *Server) CleanupForDestroy() {
+	if err := s.client.ServerDeleted(s.ctx, s.id); err != nil {
+		log.WithError(err).Warnf("Failed to send deletion event for server %s", s.ID())
+	}
 	s.CtxCancel()
 	s.Events().Destroy()
 	s.DestroyAllSinks()
@@ -266,9 +269,6 @@ func (s *Server) CleanupForDestroy() {
 	// this will be needed when they are implemented
 	//s.Websockets().CancelAll()
 	s.powerLock.Destroy()
-	if err := s.client.ServerDeleted(s.ctx, s.id); err != nil {
-		log.WithError(err).Warnf("Failed to send deletion event for server %s", s.ID())
-	}
 }
 
 // Delete Deletes a server from the daemon and dissociate its objects.
@@ -323,4 +323,24 @@ func (s *Server) Log() *log.Entry {
 
 func (s *Server) ID() string {
 	return s.id
+}
+
+// APIResponse is a type returned when requesting details about a single server
+// instance on the daemon.
+type APIResponse struct {
+	State         string        `json:"state"`
+	IsSuspended   bool          `json:"is_suspended"`
+	Utilization   ResourceUsage `json:"utilization"`
+	Configuration Configuration `json:"configuration"`
+}
+
+// ToAPIResponse returns the server struct as an API object that can be consumed
+// by callers.
+func (s *Server) ToAPIResponse() APIResponse {
+	return APIResponse{
+		State:         s.Environment.State(),
+		IsSuspended:   s.IsSuspended(),
+		Utilization:   s.Proc(),
+		Configuration: *s.Config(),
+	}
 }

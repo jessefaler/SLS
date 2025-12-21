@@ -39,6 +39,17 @@ func (m *Manager) Add(server *Server) {
 	m.servers[server.id] = server
 }
 
+// All returns a snapshot of all servers
+func (m *Manager) All() []*Server {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	servers := make([]*Server, 0, len(m.servers))
+	for _, s := range m.servers {
+		servers = append(servers, s)
+	}
+	return servers
+}
+
 // Remove removes a server from the collection by its ID.
 func (m *Manager) Remove(id string) {
 	m.mutex.Lock()

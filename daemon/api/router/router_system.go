@@ -9,6 +9,7 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/daemon/models"
+	"protoxon.com/sls/daemon/server"
 	"protoxon.com/sls/daemon/server/installer"
 )
 
@@ -65,6 +66,17 @@ func (r *Router) postCreateServer(c *gin.Context) {
 			log.WithError(err).Error("failed to start server container")
 		}
 	}()
+}
+
+// Returns all the servers that are registered and configured correctly on
+// this daemon instance.
+func (r *Router) getAllServers(c *gin.Context) {
+	servers := r.ServerManager.All()
+	out := make([]server.APIResponse, len(servers), len(servers))
+	for i, v := range servers {
+		out[i] = v.ToAPIResponse()
+	}
+	c.JSON(http.StatusOK, out)
 }
 
 // GetLocalIPv4 returns the first non-loopback IPv4 address of the computer

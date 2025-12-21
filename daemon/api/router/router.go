@@ -22,7 +22,7 @@ func (r *Router) Configure() *gin.Engine {
 
 	protected.GET("/api/system") //temp
 	//protected.GET("/api/system", getSystemInformation)
-	//protected.GET("/api/servers", getAllServers)
+	protected.GET("/api/servers", r.getAllServers)
 	protected.POST("/api/servers", r.postCreateServer)
 
 	// These are server specific routes, and require that the request be authorized, and
