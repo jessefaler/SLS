@@ -3,6 +3,7 @@ package com.protoxon.S4J.client.entites;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.entites.Blueprint;
+import com.protoxon.S4J.entites.SystemInformation;
 import com.protoxon.S4J.requests.PaginationAction;
 
 import java.util.List;
@@ -36,5 +37,11 @@ public interface SLSClient {
 
     SLSAction<Void> reloadBlueprints();
     SLSAction<Void> reloadSoftwareConfigs();
+
+    /**
+     * Retrieves system information from the protocube API
+     * @return SLSAction that returns system information
+     */
+    SLSAction<SystemInformation> getSystemInformation();
 
 }

@@ -47,6 +47,7 @@ public class SLSCommand {
         //root.then(FlagsCommand.register());    // FLAGS
         //root.then(ResetCommand.register());    // RESET
         root.then(InfoCommand.register());       // INFO
+        root.then(SystemCommand.register());     // SYSTEM
         //root.then(TailCommand.register());     // TAIL
 
         // Create the Brigadier command

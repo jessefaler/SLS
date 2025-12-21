@@ -45,6 +45,10 @@ public class Route {
         public static final Route RELOAD = new Route(POST, "software/reload");
     }
 
+    public static class System {
+        public static final Route GET_SYSTEM_INFORMATION = new Route(GET, "system");
+    }
+
     // ===========================================================
     // Routing Utility Logic
     // ===========================================================

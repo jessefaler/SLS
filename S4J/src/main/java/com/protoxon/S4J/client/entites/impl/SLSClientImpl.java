@@ -7,7 +7,9 @@ import com.protoxon.S4J.client.entites.SLSClient;
 import com.protoxon.S4J.client.entites.WebSocketEventStream;
 import com.protoxon.S4J.entites.Blueprint;
 import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entites.SystemInformation;
 import com.protoxon.S4J.entites.impl.BlueprintImpl;
+import com.protoxon.S4J.entites.impl.SystemInformationImpl;
 import com.protoxon.S4J.requests.PaginationAction;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
@@ -96,5 +98,16 @@ public class SLSClientImpl implements SLSClient {
     @Override
     public SLSAction<Void> reloadSoftwareConfigs() {
         return SLSActionImpl.onRequestExecute(api, Route.Software.RELOAD.compile());
+    }
+
+    @Override
+    public SLSAction<SystemInformation> getSystemInformation() {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.System.GET_SYSTEM_INFORMATION.compile(),
+                (response, request) -> {
+                    JSONObject systemObj = response.getObject();
+                    return new SystemInformationImpl(systemObj);
+                });
     }
 }

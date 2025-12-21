@@ -22,8 +22,7 @@ func (r *Router) Configure() *gin.Engine {
 	protected := router.Group("/api")
 	protected.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application))
 	{
-		protected.GET("/system") //temp
-		//protected.GET("/api/system", getSystemInformation)
+		protected.GET("/system", getSystemInformation)
 		protected.GET("/servers", r.getAllServers)
 		protected.POST("/servers", r.postCreateServer)
 		protected.GET("/blueprints", r.getAllBlueprints)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/config"
@@ -13,6 +14,7 @@ import (
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
 	"protoxon.com/sls/protocube/software"
+	"protoxon.com/sls/protocube/system"
 )
 
 func (r *Router) getAllBlueprints(c *gin.Context) {
@@ -84,6 +86,16 @@ func (r *Router) getAllServers(c *gin.Context) {
 		out[i] = v.ServerData()
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// Returns information about the system that protocube is running on.
+func getSystemInformation(c *gin.Context) {
+	i, err := system.GetSystemInformation()
+	if err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, i)
 }
 
 func (r *Router) postCreateServer(c *gin.Context) {

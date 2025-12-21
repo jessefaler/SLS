@@ -1,8 +1,14 @@
 package system
 
 import (
+	"bufio"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
+
+	"github.com/acobaugh/osrelease"
+	"github.com/docker/docker/pkg/parsers/kernel"
 )
 
 type Information struct {
@@ -27,4 +33,62 @@ func DefaultTCPCC() string {
 		return "unknown"
 	}
 	return strings.TrimSpace(string(data))
+}
+
+// GetTotalMemoryBytes reads the total system memory from /proc/meminfo and returns it in bytes.
+// Returns -1 if the memory information cannot be read or parsed.
+func GetTotalMemoryBytes() int64 {
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return -1
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "MemTotal:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				// Memory is reported in KB, so we need to convert to bytes
+				kb, err := strconv.ParseInt(fields[1], 10, 64)
+				if err != nil {
+					return -1
+				}
+				return kb * 1024
+			}
+		}
+	}
+	return -1
+}
+
+func GetSystemInformation() (*Information, error) {
+	k, err := kernel.GetKernelVersion()
+	if err != nil {
+		return nil, err
+	}
+
+	release, err := osrelease.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var os string
+	if release["PRETTY_NAME"] != "" {
+		os = release["PRETTY_NAME"]
+	} else if release["NAME"] != "" {
+		os = release["NAME"]
+	}
+
+	return &Information{
+		Version: Version,
+		System: System{
+			Architecture:  runtime.GOARCH,
+			CPUThreads:    runtime.NumCPU(),
+			MemoryBytes:   GetTotalMemoryBytes(),
+			KernelVersion: k.String(),
+			OS:            os,
+			OSType:        runtime.GOOS,
+		},
+	}, nil
 }
