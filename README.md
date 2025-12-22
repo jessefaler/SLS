@@ -99,6 +99,4 @@ annotations:
 ## Development Status
 
 > [!WARNING]
-> This version of SLS is **actively in development**.
-> For a production-ready experience, use any release prior to **`4.0.0`**.
-> The source code for previous stable versions is available on the `v3.0.0` branch.
+> This version of SLS is **actively in development** and is not yet ready for use.
