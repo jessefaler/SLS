@@ -27,14 +27,14 @@ func NewManager(client *client.Client, lb balancer.Balancer) *Manager {
 	return m
 }
 
-// Add a server to the collection
+// Add adds a node to the manager
 func (m *Manager) add(node *Node) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.nodes[node.Id()] = node
 }
 
-// Remove Add a server to the collection
+// Remove removes a node from the manager
 func (m *Manager) remove(id string) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
