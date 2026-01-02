@@ -99,7 +99,7 @@ func getSystemInformation(c *gin.Context) {
 }
 
 func (r *Router) postCreateServer(c *gin.Context) {
-	balanced := r.LoadBalancer.PickNode()
+	balanced := r.LoadBalancer.Get().PickNode()
 	if balanced == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no nodes available"})
 		return

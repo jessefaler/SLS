@@ -7,6 +7,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/balancer"
 	"protoxon.com/sls/protocube/blueprint"
 )
 
@@ -20,6 +21,7 @@ type SLS struct {
 	BlueprintRegistry *blueprint.Registry
 	Router            *gin.Engine
 	PluginsDir        string
+	LoadBalancer      *balancer.Provider
 }
 
 type Plugin interface {

@@ -34,8 +34,8 @@ func run(cmd *cobra.Command, _ []string) {
 
 	// Create the server manager
 	serverManager := server.NewManager()
-	// Create the load balancer
-	loadBalancer := balancer.NewRoundRobin()
+	// Create the load balancer provider with the default load balancer
+	loadBalancer := balancer.NewProvider(balancer.NewRoundRobin())
 	// Create the remote client
 	remoteClient := client.New()
 	// Create the node manager

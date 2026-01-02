@@ -11,13 +11,13 @@ import (
 
 type Manager struct {
 	mutex  sync.RWMutex
-	lb     balancer.Balancer
+	lb     *balancer.Provider
 	client *client.Client
 	nodes  map[string]*Node
 }
 
 // NewManager returns a new server manager instance.
-func NewManager(client *client.Client, lb balancer.Balancer) *Manager {
+func NewManager(client *client.Client, lb *balancer.Provider) *Manager {
 	m := &Manager{
 		lb:     lb,
 		client: client,
@@ -57,7 +57,7 @@ func (m *Manager) Register(id string, name string, url string, location string, 
 			Online:   true,
 		},
 	}
-	m.lb.AddNode(n)
+	m.lb.Get().AddNode(n)
 	m.add(n)
 	log.WithFields(log.Fields{
 		"node_id":  n.id,
@@ -69,7 +69,7 @@ func (m *Manager) Register(id string, name string, url string, location string, 
 
 func (m *Manager) Disconnect(node *Node) {
 	node.Online = false
-	m.lb.RemoveNode(node)
+	m.lb.Get().RemoveNode(node)
 	m.remove(node.Id())
 }
 

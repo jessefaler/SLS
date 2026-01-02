@@ -16,7 +16,7 @@ type Resources struct {
 	BlueprintRegistry *blueprint.Registry
 	SoftwareRegistry  *software.Registry
 	NodeManager       *node.Manager
-	LoadBalancer      balancer.Balancer
+	LoadBalancer      *balancer.Provider
 	Client            *client.Client
 	VerifyToken       func(token string, keyType auth.KeyType) (bool, error)
 }
