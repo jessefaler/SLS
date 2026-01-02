@@ -10,6 +10,7 @@ import org.json.JSONObject;
 public class CreateServerImpl extends SLSActionImpl<ClientServer> implements ServerCreationAction {
 
     private String blueprintId;
+    private String nodeId;
 
     private SLSClientImpl impl;
 
@@ -31,9 +32,18 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
     }
 
     @Override
+    public ServerCreationAction setNodeId(String nodeId) {
+        this.nodeId = nodeId;
+        return this;
+    }
+
+    @Override
     protected RequestBody finalizeData() {
         JSONObject obj = new JSONObject()
                 .put("blueprint_id", blueprintId);
+        if (nodeId != null) {
+            obj.put("node_id", nodeId);
+        }
         return getRequestBody(obj);
     }
 

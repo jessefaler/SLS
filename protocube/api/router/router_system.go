@@ -99,18 +99,6 @@ func getSystemInformation(c *gin.Context) {
 }
 
 func (r *Router) postCreateServer(c *gin.Context) {
-	balanced := r.LoadBalancer.Get().PickNode()
-	if balanced == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no nodes available"})
-		return
-	}
-
-	node, ok := balanced.(*node.Node)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected node type"})
-		return
-	}
-
 	var req models.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.WithError(err).Error("Failed to create server")
@@ -122,13 +110,40 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		return
 	}
 
+	var n *node.Node
+	if req.NodeId != "" {
+		// a node id was provided
+		// so try to use the provided node
+		var ok bool
+		n, ok = r.NodeManager.Get(req.NodeId)
+		if !ok || n == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "node not found: " + req.NodeId})
+			return
+		}
+	} else {
+		// The node id was not provided
+		// so use the load balancer to get a node
+		balanced := r.LoadBalancer.Get().PickNode()
+		if balanced == nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no nodes available"})
+			return
+		}
+
+		var ok bool
+		n, ok = balanced.(*node.Node)
+		if !ok || n == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected node type"})
+			return
+		}
+	}
+
 	bp := r.BlueprintRegistry.Get(req.BlueprintID)
 	if bp == nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "No such blueprint with id: " + req.BlueprintID})
 		return
 	}
 
-	server, err := r.ServerManager.CreateServer(c.Request.Context(), node, bp, r.SoftwareRegistry)
+	server, err := r.ServerManager.CreateServer(c.Request.Context(), n, bp, r.SoftwareRegistry)
 	if err != nil {
 		log.WithError(err).Error("Failed to create server")
 		client.HandleError(c, err)

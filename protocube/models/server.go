@@ -30,6 +30,7 @@ type NodeCreateServerRequest struct {
 
 type CreateServerRequest struct {
 	BlueprintID string `json:"blueprint_id"`
+	NodeId      string `json:"node_id,omitempty"`
 }
 
 type CreateServerResponse struct {

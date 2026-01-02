@@ -7,6 +7,6 @@ public interface ServerCreationAction extends SLSAction<ClientServer> {
 
     ServerCreationAction setBlueprintId(String id);
 
-
+    ServerCreationAction setNodeId(String nodeId);
 
 }
