@@ -132,25 +132,16 @@ func ServerExists(manager *server.Manager) gin.HandlerFunc {
 }
 
 // NodeExists ensures that the node making the request exists.
-// The node ID is expected to be provided in the "X-Node-ID" request header.
 // If the node cannot be found, a 404 is returned. If the node is found, it is
 // set into the request context, and the logger is updated to include the node ID.
 func NodeExists(manager *node.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		nodeID := c.GetHeader("X-Node-ID")
-		if nodeID == "" {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"error": "Missing X-Node-ID header",
-			})
-			return
+		var n *node.Node
+		if c.Param("node") != "" {
+			n, _ = manager.Get(c.Param("node"))
 		}
-		n, exists := manager.Get(nodeID)
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusPreconditionFailed, gin.H{
-				"error":  "Unregistered",
-				"reason": "The requested node does not exist on this instance",
-				"info":   "Registration is required to access this resource",
-			})
+		if n == nil {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("node_id", n.Id()))

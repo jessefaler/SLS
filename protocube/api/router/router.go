@@ -22,6 +22,7 @@ func (r *Router) Configure() *gin.Engine {
 	protected := router.Group("/api")
 	protected.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application))
 	{
+		protected.GET("/nodes", r.getAllNodes)
 		protected.GET("/system", getSystemInformation)
 		protected.GET("/servers", r.getAllServers)
 		protected.POST("/servers", r.postCreateServer)
@@ -32,30 +33,8 @@ func (r *Router) Configure() *gin.Engine {
 		protected.GET("/events/ws", r.getServerWebsocket)
 	}
 
-	// Routes for the node api
-	// These require that the request be authorized with a node api key
-	// The node api is used by nodes to make requests to protocube
-	node := router.Group("/api/node")
-	node.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node))
-	node.POST("/register", r.postNodeRegister)
-	// Ensure the node is connected and exists on the system
-	node.Use(middleware.NodeExists(r.NodeManager))
-	{
-		node.POST("/heartbeat", postNodeHeartbeat)
-		node.POST("/disconnect", r.postNodeDisconnect)
-
-		// Node events
-		event := node.Group("/event/servers/:server")
-		event.Use(middleware.ServerExists(r.ServerManager))
-		{
-			event.POST("/status", r.postNodeServerStatus)
-			event.POST("/crash", r.postEventServerCrash)
-			event.POST("/deleted", r.postEventServerDeleted)
-		}
-	}
-
 	// These are server specific routes, and require that the request be authorized, and
-	// that the server exist on the Daemon.
+	// that the server exist.
 	server := router.Group("/api/servers/:server")
 	server.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.ServerExists(r.ServerManager))
 	{
@@ -71,6 +50,36 @@ func (r *Router) Configure() *gin.Engine {
 		//server.POST("/reinstall", postServerReinstall)
 		//server.POST("/sync", postServerSync)
 		//server.POST("/ws/deny", postServerDenyWSTokens)
+	}
+
+	// Node Registration
+	registration := router.Group("/api/nodes/:node")
+	registration.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node))
+	registration.POST("/register", r.postNodeRegister)
+
+	// These are node specific routes, and require that the request be authorized, and
+	// that the node exists.
+	node := router.Group("/api/nodes/:node")
+	node.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.NodeExists(r.NodeManager))
+	{
+		node.GET("", getNode)
+		//node.GET("/servers", getServers)
+		node.GET("/system", getNodeSystemInfo)
+
+		// These are internal routes for nodes to call
+		internal := router.Group("/api/nodes/:node/internal")
+		internal.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node), middleware.NodeExists(r.NodeManager))
+		internal.POST("/heartbeat", postNodeHeartbeat)
+		internal.POST("/disconnect", r.postNodeDisconnect)
+
+		// Node events
+		event := internal.Group("/event/servers/:server")
+		event.Use(middleware.ServerExists(r.ServerManager))
+		{
+			event.POST("/status", r.postNodeServerStatus)
+			event.POST("/crash", r.postEventServerCrash)
+			event.POST("/deleted", r.postEventServerDeleted)
+		}
 	}
 
 	return router

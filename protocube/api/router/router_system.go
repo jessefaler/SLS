@@ -88,6 +88,31 @@ func (r *Router) getAllServers(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
+func (r *Router) getAllNodes(c *gin.Context) {
+	nodes := r.NodeManager.GetNodes()
+
+	// If ids_only query parameter is set, return only the IDs
+	if c.Query("ids_only") == "true" {
+		ids := make([]string, len(nodes))
+		for i, v := range nodes {
+			ids[i] = v.Id()
+		}
+		c.JSON(http.StatusOK, ids)
+		return
+	}
+
+	out := make([]models.NodeData, len(nodes))
+	for i, n := range nodes {
+		out[i] = models.NodeData{
+			ID:       n.Id(),
+			Name:     n.Name(),
+			Location: n.Location(),
+			URL:      n.Url(),
+		}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
 // Returns information about the system that protocube is running on.
 func getSystemInformation(c *gin.Context) {
 	i, err := system.GetSystemInformation()

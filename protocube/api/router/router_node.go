@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/auth"
+	"protoxon.com/sls/protocube/client"
+	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/server"
 	"protoxon.com/sls/protocube/system"
 )
@@ -98,4 +100,27 @@ func (r *Router) postEventServerDeleted(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	s.CleanupForDestroy()
 	c.Status(http.StatusOK)
+}
+
+func getNode(c *gin.Context) {
+	node := middleware.ExtractNode(c)
+	c.JSON(http.StatusOK, models.NodeData{
+		ID:       node.Id(),
+		Name:     node.Name(),
+		Location: node.Location(),
+		URL:      node.Url(),
+	})
+}
+
+func (r *Router) getServers(c *gin.Context) {
+}
+
+func getNodeSystemInfo(c *gin.Context) {
+	node := middleware.ExtractNode(c)
+	info, err := node.GetSystemInformation(c.Request.Context())
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, info)
 }

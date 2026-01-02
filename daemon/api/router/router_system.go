@@ -8,9 +8,11 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/daemon/api/router/middleware"
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/server"
 	"protoxon.com/sls/daemon/server/installer"
+	"protoxon.com/sls/daemon/system"
 )
 
 func (r *Router) postCreateServer(c *gin.Context) {
@@ -106,4 +108,14 @@ func GetLocalIPv4() (string, error) {
 	}
 
 	return "", errors.New("no non-loopback IPv4 address found")
+}
+
+// Returns information about the system that wings is running on.
+func getSystemInformation(c *gin.Context) {
+	i, err := system.GetSystemInformation()
+	if err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, i)
 }

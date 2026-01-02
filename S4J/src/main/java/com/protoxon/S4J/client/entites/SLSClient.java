@@ -2,6 +2,7 @@ package com.protoxon.S4J.client.entites;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
+import com.protoxon.S4J.client.entites.ClientNode;
 import com.protoxon.S4J.entites.Blueprint;
 import com.protoxon.S4J.entites.SystemInformation;
 import com.protoxon.S4J.requests.PaginationAction;
@@ -43,5 +44,24 @@ public interface SLSClient {
      * @return SLSAction that returns system information
      */
     SLSAction<SystemInformation> getSystemInformation();
+
+    /**
+     * Retrieves all nodes
+     * @return SLSAction that returns a list of all nodes
+     */
+    SLSAction<List<ClientNode>> getAllNodes();
+
+    /**
+     * Retrieves only the IDs of all nodes
+     * @return SLSAction that returns a list of node IDs
+     */
+    SLSAction<List<String>> getAllNodeIds();
+
+    /**
+     * Retrieves a single node by its ID
+     * @param id The node ID
+     * @return SLSAction that returns the node with the given ID
+     */
+    SLSAction<ClientNode> getNode(String id);
 
 }

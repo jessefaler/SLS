@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"emperror.dev/errors"
@@ -24,12 +25,13 @@ type Requests interface {
 
 // Post sends a POST request using the provided client,
 // with the given context, path, and data.
-// The path is prepended with protocube's node api endpoint /api/node
+// The path is prepended with protocube's node api endpoint /api/nodes/{nodeId}
 // It then unmarshal's the JSON response into the specified type T.
 // Returns the result and any error encountered during the process.
 func Post[T any](request Requests, ctx context.Context, path string, data interface{}) (T, error) {
 	var zero T
-	path = "/api/node" + path
+	nodeId := config.Get().Uuid
+	path = "/api/nodes/" + nodeId + path
 	res, err := request.Post(ctx, path, data)
 	if err != nil {
 		return zero, err
@@ -44,12 +46,13 @@ func Post[T any](request Requests, ctx context.Context, path string, data interf
 
 // Get sends a GET request using the provided client,
 // with the given context, path, and query parameters.
-// The path is prepended with protocube's node api endpoint /api/node
+// The path is prepended with protocube's node api endpoint /api/nodes/{nodeId}
 // It then unmarshal's the JSON response into the specified type T.
 // Returns the result and any error encountered during the process.
 func Get[T any](client Requests, ctx context.Context, path string, query q) (T, error) {
 	var zero T
-	path = "/api/node" + path
+	nodeId := config.Get().Uuid
+	path = "/api/nodes/" + nodeId + path
 	res, err := client.Get(ctx, path, query)
 	if err != nil {
 		return zero, err
@@ -95,7 +98,6 @@ func (c *client) requestOnce(ctx context.Context, method, path string, body io.R
 	req.Header.Set("Accept", "application/vnd.sls.v1+json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
-	req.Header.Set("X-Node-ID", config.Get().Uuid)
 
 	// Call all opts functions to allow modifying the request
 	for _, o := range opts {
@@ -175,29 +177,42 @@ func (c *client) request(ctx context.Context, method, path string, body *bytes.B
 
 // Checks if the response indicates this node is unregistered
 func isUnregistered(resp *Response) bool {
-	// First, check the status code
-	if resp.StatusCode != http.StatusPreconditionFailed {
-		return false
+	// Check for 412 Precondition Failed (explicit unregistered error)
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		// Read the body into memory
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return false
+		}
+
+		// After reading, reset the Body so it can be read again if needed
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+
+		// Parse JSON
+		var data map[string]interface{}
+		if err := json.Unmarshal(body, &data); err != nil {
+			return false
+		}
+
+		// Check the error field
+		if e, ok := data["error"].(string); ok && e == "Unregistered" {
+			return true
+		}
 	}
 
-	// Read the body into memory
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false
-	}
-
-	// After reading, reset the Body so it can be read again if needed
-	resp.Body = io.NopCloser(bytes.NewReader(body))
-
-	// Parse JSON
-	var data map[string]interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return false
-	}
-
-	// Check the error field
-	if e, ok := data["error"].(string); ok && e == "Unregistered" {
-		return true
+	// Also check for 404 Not Found on node-specific routes, as this indicates
+	// the node doesn't exist and needs to be registered
+	if resp.StatusCode == http.StatusNotFound {
+		// Check if the request path contains "/api/nodes/" which indicates
+		// this is a node-specific route that requires the node to exist
+		if resp.Request != nil && resp.Request.URL != nil {
+			path := resp.Request.URL.Path
+			// If it's a 404 on a node route (but not the register route itself),
+			// treat it as unregistered
+			if strings.Contains(path, "/api/nodes/") && !strings.Contains(path, "/register") {
+				return true
+			}
+		}
 	}
 
 	return false

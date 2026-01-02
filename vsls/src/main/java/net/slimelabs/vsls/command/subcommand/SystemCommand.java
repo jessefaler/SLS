@@ -22,13 +22,12 @@ public class SystemCommand {
                                     .sendMessage(source);
                             return;
                         }
-                        String memoryFormatted = formatBytes(info.getMemoryBytes());
                         ProtoMessage.chat().addMiniMessage(
                                 "<dark_gray><b><st>－－－－－－－－－</st></b><dark_aqua> INFO </dark_aqua><b><st>－－－－－－－－</st></b></dark_gray>\n" +
                                 " <gold>-</gold> <dark_gray>Version:</dark_gray> <red>" + info.getVersion() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>Architecture:</dark_gray> <red>" + info.getArchitecture() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>CPU Threads:</dark_gray> <red>" + info.getCpuThreads() + "</red>\n" +
-                                " <gold>-</gold> <dark_gray>Memory:</dark_gray> <red>" + memoryFormatted + "</red>\n" +
+                                " <gold>-</gold> <dark_gray>Memory:</dark_gray> <red>" + info.getMemoryFormattedAuto() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>Kernel Version:</dark_gray> <red>" + info.getKernelVersion() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>OS:</dark_gray> <red>" + info.getOs() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>OS Type:</dark_gray> <red>" + info.getOsType() + "</red>\n" +
@@ -43,34 +42,5 @@ public class SystemCommand {
 
                     return 1;
                 });
-    }
-
-    /**
-     * Formats bytes into the most appropriate unit (KB, MB, GB, or TB)
-     * based on the size
-     *
-     * @param bytes the number of bytes to format
-     * @return a formatted string representing the bytes with automatically selected unit
-     */
-    private static String formatBytes(long bytes) {
-        if (bytes < 0) {
-            return "Unknown";
-        }
-
-        if (bytes < 1024) {
-            return bytes + " B";
-        } else if (bytes < 1024 * 1024) {
-            double kb = (double) bytes / 1024;
-            return String.format("%.2f KB", kb);
-        } else if (bytes < 1024L * 1024 * 1024) {
-            double mb = (double) bytes / (1024 * 1024);
-            return String.format("%.2f MB", mb);
-        } else if (bytes < 1024L * 1024 * 1024 * 1024) {
-            double gb = (double) bytes / (1024L * 1024 * 1024);
-            return String.format("%.2f GB", gb);
-        } else {
-            double tb = (double) bytes / (1024L * 1024 * 1024 * 1024);
-            return String.format("%.2f TB", tb);
-        }
     }
 }

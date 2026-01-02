@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"golang.org/x/sync/errgroup"
+	"protoxon.com/sls/daemon/config"
 )
 
 const (
@@ -15,17 +16,17 @@ const (
 )
 
 func (c *client) StatusUpdate(ctx context.Context, status string, id string) error {
-	_, err := Post[d](c, ctx, "/event/servers/"+id+"/status", status)
+	_, err := Post[d](c, ctx, "/internal/event/servers/"+id+"/status", status)
 	return err
 }
 
 func (c *client) CrashReport(ctx context.Context, data CrashData, id string) error {
-	_, err := Post[d](c, ctx, "/event/servers/"+id+"/crash", data)
+	_, err := Post[d](c, ctx, "/internal/event/servers/"+id+"/crash", data)
 	return err
 }
 
 func (c *client) ServerDeleted(ctx context.Context, id string) error {
-	_, err := Post[d](c, ctx, "/event/servers/"+id+"/deleted", nil)
+	_, err := Post[d](c, ctx, "/internal/event/servers/"+id+"/deleted", nil)
 	return err
 }
 
@@ -70,7 +71,8 @@ func (c *client) getServersPaged(ctx context.Context, page, limit int) ([]RawSer
 		Meta Pagination      `json:"meta"`
 	}
 
-	res, err := c.Get(ctx, "/servers", q{
+	nodeId := config.Get().Uuid
+	res, err := c.Get(ctx, "/api/nodes/"+nodeId+"/servers", q{
 		"page":     strconv.Itoa(page),
 		"per_page": strconv.Itoa(limit),
 	})
@@ -93,7 +95,8 @@ func (c *client) CreateServer(ctx context.Context, blueprintID string) (CreateSe
 		BlueprintID: blueprintID,
 	}
 
-	res, err := c.Post(ctx, "/servers", body)
+	nodeId := config.Get().Uuid
+	res, err := c.Post(ctx, "/api/nodes/"+nodeId+"/servers", body)
 	if err != nil {
 		return result, err
 	}

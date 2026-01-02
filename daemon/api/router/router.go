@@ -20,8 +20,7 @@ func (r *Router) Configure() *gin.Engine {
 	// and will not be accessible without the correct Authorization header provided.
 	protected := router.Use(middleware.RequireAuthorization(r.VerifyToken))
 
-	protected.GET("/api/system") //temp
-	//protected.GET("/api/system", getSystemInformation)
+	protected.GET("/api/system", getSystemInformation)
 	protected.GET("/api/servers", r.getAllServers)
 	protected.POST("/api/servers", r.postCreateServer)
 

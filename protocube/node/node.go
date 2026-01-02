@@ -46,6 +46,10 @@ func (n *Node) CreateServer(ctx context.Context, request models.NodeCreateServer
 	return n.nc.CreateServer(ctx, request)
 }
 
+func (n *Node) GetSystemInformation(ctx context.Context) (models.Information, error) {
+	return n.nc.GetSystemInformation(ctx)
+}
+
 // Server returns a server-specific client bound to this node.
 func (n *Node) Server(id string) client.ServerClient {
 	return n.nc.Server(id)

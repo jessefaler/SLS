@@ -34,7 +34,8 @@ func (c *client) Register(ctx context.Context) error {
 	}
 
 	// Use requestOnce directly to avoid recursion
-	resp, err := c.requestOnce(ctx, http.MethodPost, "/api/node/register", bytes.NewReader(bodyBytes))
+	nodeId := config.Get().Uuid
+	resp, err := c.requestOnce(ctx, http.MethodPost, "/api/nodes/"+nodeId+"/register", bytes.NewReader(bodyBytes))
 	if err != nil {
 		return errors.Wrap(err, "failed to register")
 	}
@@ -70,7 +71,7 @@ func (c *client) Register(ctx context.Context) error {
 // Logs any errors directly to console
 func (c *client) Heartbeat(ctx context.Context) {
 	heartbeat := HeartBeat{}
-	_, err := Post[d](c, ctx, "/heartbeat", heartbeat)
+	_, err := Post[d](c, ctx, "/internal/heartbeat", heartbeat)
 	if err == nil {
 		if connected == false {
 			connected = true
@@ -88,7 +89,7 @@ func (c *client) Heartbeat(ctx context.Context) {
 func (c *client) Disconnect(ctx context.Context) {
 	c.cancel() // Cancel the clients main context to stop sending heartbeats
 	if connected {
-		_, _ = Post[d](c, ctx, "/disconnect", nil)
+		_, _ = Post[d](c, ctx, "/internal/disconnect", nil)
 	}
 }
 

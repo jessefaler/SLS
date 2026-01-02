@@ -2,6 +2,7 @@ package com.protoxon.S4J.client.entites.impl;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
+import com.protoxon.S4J.client.entites.ClientNode;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.SLSClient;
 import com.protoxon.S4J.client.entites.WebSocketEventStream;
@@ -108,6 +109,48 @@ public class SLSClientImpl implements SLSClient {
                 (response, request) -> {
                     JSONObject systemObj = response.getObject();
                     return new SystemInformationImpl(systemObj);
+                });
+    }
+
+    @Override
+    public SLSAction<List<ClientNode>> getAllNodes() {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.Nodes.GET_ALL_NODES.compile(),
+                (response, request) -> {
+                    JSONArray array = response.getArray();
+                    List<ClientNode> nodes = new ArrayList<>();
+                    for (int i = 0; i < array.length(); i++) {
+                        JSONObject nodeObj = array.getJSONObject(i);
+                        nodes.add(new ClientNodeImpl(nodeObj, this));
+                    }
+                    return nodes;
+                });
+    }
+
+    @Override
+    public SLSAction<List<String>> getAllNodeIds() {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.Nodes.GET_ALL_NODES.compile().withQueryParams("ids_only", "true"),
+                (response, request) -> {
+                    JSONArray array = response.getArray();
+                    List<String> ids = new ArrayList<>();
+                    for (int i = 0; i < array.length(); i++) {
+                        ids.add(array.getString(i));
+                    }
+                    return ids;
+                });
+    }
+
+    @Override
+    public SLSAction<ClientNode> getNode(String id) {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.Node.GET_NODE.compile(id),
+                (response, request) -> {
+                    JSONObject nodeObj = response.getObject();
+                    return new ClientNodeImpl(nodeObj, this);
                 });
     }
 }

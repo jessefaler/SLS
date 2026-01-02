@@ -1,5 +1,6 @@
 package com.protoxon.S4J.entites;
 
+import com.protoxon.S4J.DataType;
 import org.json.JSONObject;
 
 /**
@@ -32,6 +33,22 @@ public interface SystemInformation {
     long getMemoryBytes();
 
     /**
+     * Formats the memory in the specified data type.
+     *
+     * @param dataType the data type to format the memory in
+     * @return a formatted string representing the memory
+     */
+    String getMemoryFormatted(DataType dataType);
+
+    /**
+     * Automatically formats the memory in the most appropriate unit (KB, MB, GB, or TB)
+     * based on the size, similar to Docker's format (e.g., "612.2 MB" or "4.4 GB").
+     *
+     * @return a formatted string representing the memory with automatically selected unit
+     */
+    String getMemoryFormattedAuto();
+
+    /**
      * Gets the kernel version
      * @return String containing the kernel version
      */
@@ -48,6 +65,12 @@ public interface SystemInformation {
      * @return String containing the OS type
      */
     String getOsType();
+
+    /**
+     * Gets the Docker information
+     * @return DockerInformation containing Docker-related information, or null if not available
+     */
+    DockerInformation getDocker();
 
     /**
      * Gets the raw JSON object

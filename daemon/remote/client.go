@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"time"
+
+	"github.com/apex/log"
 )
 
 type Client interface {
@@ -40,6 +42,18 @@ func New(base string, opts ...ClientOption) Client {
 	for _, opt := range opts {
 		opt(&c)
 	}
+	
+	// Attempt to register on startup, but don't block if it fails
+	// Heartbeats will retry registration if needed
+	go func() {
+		registerCtx, registerCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer registerCancel()
+		if err := c.Register(registerCtx); err != nil {
+			// Registration failed, but heartbeats will handle retrying
+			log.WithError(err).Debug("initial registration attempt failed, will retry on heartbeat")
+		}
+	}()
+	
 	c.StartHeartbeats()
 	return &c
 }

@@ -49,6 +49,15 @@ public class Route {
         public static final Route GET_SYSTEM_INFORMATION = new Route(GET, "system");
     }
 
+    public static class Nodes {
+        public static final Route GET_ALL_NODES = new Route(GET, "nodes");
+    }
+
+    public static class Node {
+        public static final Route GET_NODE = new Route(GET, "nodes/{node_id}");
+        public static final Route GET_SYSTEM_INFO = new Route(GET, "nodes/{node_id}/system");
+    }
+
     // ===========================================================
     // Routing Utility Logic
     // ===========================================================

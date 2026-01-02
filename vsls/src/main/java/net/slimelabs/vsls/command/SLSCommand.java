@@ -44,6 +44,7 @@ public class SLSCommand {
         root.then(BlueprintCommand.register());  // BLUEPRINT
         root.then(VersionCommand.register());    // VERSION
         root.then(LogsCommand.register());       // LOGS
+        root.then(NodeCommand.register());       // Node
         //root.then(FlagsCommand.register());    // FLAGS
         //root.then(ResetCommand.register());    // RESET
         root.then(InfoCommand.register());       // INFO
