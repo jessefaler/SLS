@@ -110,8 +110,6 @@ type ApiConfiguration struct {
 	// The port that the messages proto should bind to.
 	Port int `default:"8080" yaml:"port"`
 
-	Reflection bool `yaml:"enable_reflection"`
-
 	// TSL configuration for the daemon.
 	Tls struct {
 		Enabled         bool   `default:"true" yaml:"enabled"`

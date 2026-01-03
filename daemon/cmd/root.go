@@ -70,36 +70,6 @@ func run(cmd *cobra.Command, _ []string) {
 	})
 	apiInstance.Run()
 
-	/*
-		for _, bp := range blueprints {
-			s, err := bp.String()
-			if err != nil {
-				log.WithError(err).Warn("failed to convert blueprint to string")
-				continue
-			}
-			log.Info("\n\n " + s)
-		}
-	*/
-
-	/*
-		bp := blueprintRegistry.Get("makers_wars")
-		if bp == nil {
-			log.Fatal("could not find makers_wars")
-			os.Exit(1)
-		}
-
-		serv, err := manager.Create(bp)
-		if err != nil {
-			log.Fatalf("failed to create manager: %s", err)
-		}
-		log.Info("starting server: " + serv.Uuid.String())
-
-		// Start the server
-		if err := serv.Environment.Start(context.Background()); err != nil {
-			log.WithError(err).Fatal("failed to start server container")
-		}
-	*/
-
 	handleShutdown(apiInstance, client)
 }
 

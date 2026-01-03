@@ -12,7 +12,6 @@ type NodeClient interface {
 	Server(id string) ServerClient
 
 	CreateServer(context context.Context, request models.NodeCreateServerRequest) (models.CreateServerResponse, error)
-	GetServers(context context.Context, perPage int) ([]models.ServerData, error)
 	GetSystemInformation(context context.Context) (models.Information, error)
 }
 
@@ -49,9 +48,4 @@ func (nc *nodeClient) CreateServer(ctx context.Context, create models.NodeCreate
 
 func (nc *nodeClient) GetSystemInformation(ctx context.Context) (models.Information, error) {
 	return Get[models.Information](nc, ctx, "/system", nil)
-}
-
-func (nc *nodeClient) GetServers(ctx context.Context, perPage int) ([]models.ServerData, error) {
-	//TODO implement me
-	panic("implement me")
 }

@@ -63,7 +63,6 @@ func (r *Router) Configure() *gin.Engine {
 	node.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.NodeExists(r.NodeManager))
 	{
 		node.GET("", getNode)
-		//node.GET("/servers", getServers)
 		node.GET("/system", getNodeSystemInfo)
 
 		// These are internal routes for nodes to call

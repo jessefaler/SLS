@@ -26,7 +26,6 @@ func init() {
 // initEnvironment sets up config, logging, and registries.
 func initEnvironment(cmd *cobra.Command) {
 	config.InitConfig()
-	config.InitSoftwareConfig()
 
 	// Override the config Debug if the debug flag was set
 	if cmd.Flags().Changed("debug") {
