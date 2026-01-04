@@ -7,9 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"emperror.dev/errors"
+	"github.com/apex/log"
 	"github.com/mitchellh/colorstring"
+	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,6 +66,27 @@ type Configuration struct {
 	// is only required by users running the daemon without SSL certificates and using messages IP
 	// addresses in order to connect. Most users should NOT enable this setting.
 	AllowCORSPrivateNetwork bool `json:"allow_cors_private_network" yaml:"allow_cors_private_network"`
+}
+
+type Backups struct {
+	// WriteLimit imposes a Disk I/O write limit on backups to the disk, this affects all
+	// backup drivers as the archiver must first write the file to the disk in order to
+	// upload it to any external storage provider.
+	//
+	// If the value is less than 1, the write speed is unlimited,
+	// if the value is greater than 0, the write speed is the value in MiB/s.
+	//
+	// Defaults to 0 (unlimited)
+	WriteLimit int `default:"0" yaml:"write_limit"`
+
+	// CompressionLevel determines how much backups created by wings should be compressed.
+	//
+	// "none" -> no compression will be applied
+	// "best_speed" -> uses gzip level 1 for fast speed
+	// "best_compression" -> uses gzip level 9 for minimal disk space useage
+	//
+	// Defaults to "best_speed" (level 1)
+	CompressionLevel string `default:"best_speed" yaml:"compression_level"`
 }
 
 type RemoteApi struct {
@@ -129,6 +153,16 @@ type SystemConfiguration struct {
 
 	Timezone string `yaml:"timezone"`
 
+	// The amount of time in seconds that can elapse before a server's disk space calculation is
+	// considered stale and a re-check should occur. DANGER: setting this value too low can seriously
+	// impact system performance and cause massive I/O bottlenecks and high CPU usage for the Wings
+	// process.
+	//
+	// Set to 0 to disable disk checking entirely. This will always return 0 for the disk space used
+	// by a server and should only be set in extreme scenarios where performance is critical and
+	// disk usage is not a concern.
+	DiskCheckInterval int64 `default:"150" yaml:"disk_check_interval"`
+
 	// Definitions for the user that gets created to ensure that we can quickly access
 	// this information without constantly having to do a system lookup.
 	User struct {
@@ -149,6 +183,43 @@ type SystemConfiguration struct {
 		Uid int `yaml:"uid"`
 		Gid int `yaml:"gid"`
 	} `yaml:"user"`
+
+	Backups Backups `yaml:"backups"`
+
+	OpenatMode string `default:"auto" yaml:"openat_mode"`
+}
+
+var (
+	openat2    atomic.Bool
+	openat2Set atomic.Bool
+)
+
+func UseOpenat2() bool {
+	if openat2Set.Load() {
+		return openat2.Load()
+	}
+	defer openat2Set.Store(true)
+
+	c := Get()
+	openatMode := c.System.OpenatMode
+	switch openatMode {
+	case "openat2":
+		openat2.Store(true)
+		return true
+	case "openat":
+		openat2.Store(false)
+		return false
+	default:
+		fd, err := unix.Openat2(unix.AT_FDCWD, "/", &unix.OpenHow{})
+		if err != nil {
+			log.WithError(err).Warn("error occurred while checking for openat2 support, falling back to openat")
+			openat2.Store(false)
+			return false
+		}
+		_ = unix.Close(fd)
+		openat2.Store(true)
+		return true
+	}
 }
 
 // InitConfig Reads the configuration from the disk and then sets up the global singleton

@@ -78,6 +78,10 @@ public class Server extends Listener {
         return client.getStats();
     }
 
+    public SLSAction<ServerStats> getStats(boolean update) {
+        return client.getStats(update);
+    }
+
     // Internal
     public void handleStatusChange(ServerStatus status) {
     }

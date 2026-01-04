@@ -190,9 +190,6 @@ func (cfr *ConfigurationFileReplacement) UnmarshalJSON(data []byte) error {
 // Parse parses a given configuration file and updates all the values within
 // as defined in the API response from protocube.
 func (f *ConfigurationFile) Parse(file ufs.File) error {
-	// log.WithField("path", path).WithField("parser", f.Parser.String()).Debug("parsing server configuration file")
-
-	// What the fuck is going on here?
 	if mb, err := json.Marshal(config.Get()); err != nil {
 		return err
 	} else {

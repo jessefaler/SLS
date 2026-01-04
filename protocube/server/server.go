@@ -54,8 +54,8 @@ func (s *Server) Client() client.ServerClient {
 }
 
 // Stats fetches resource stats from the servers remote node.
-func (s *Server) Stats(ctx context.Context) (enviroment.Stats, error) {
-	return s.Client().Stats(ctx)
+func (s *Server) Stats(ctx context.Context, update bool) (models.ResourceUsage, error) {
+	return s.Client().Stats(ctx, update)
 }
 
 // Power sends a power action request to the remote node.

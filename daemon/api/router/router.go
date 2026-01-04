@@ -29,7 +29,6 @@ func (r *Router) Configure() *gin.Engine {
 	server := router.Group("/api/servers/:server")
 	server.Use(middleware.RequireAuthorization(r.VerifyToken), middleware.ServerExists(r.ServerManager))
 	{
-		//server.GET("", getServer)
 		server.DELETE("", r.deleteServer)
 
 		server.GET("/logs", getServerLogs)

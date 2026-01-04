@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.DataType;
+import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
@@ -47,24 +48,32 @@ public class StatsCommand {
                         return 0;
                     }
 
-                    server.getStats().executeAsync(stats -> {
-                        ProtoMessage.chat()
-                                .add("CPU: ", NamedTextColor.DARK_GRAY)
-                                .add(stats.getCpuFormatted() + "\n", NamedTextColor.RED)
-                                .add("MEM: ", NamedTextColor.DARK_GRAY)
-                                .add(stats.getMemoryFormattedAuto(), NamedTextColor.RED)
-                                .add(" / ", NamedTextColor.GRAY)
-                                .add(stats.getMaxMemoryFormattedAuto(), NamedTextColor.RED)
-                                .add(" (", NamedTextColor.GRAY)
-                                .add(stats.getMemoryUsagePercentageFormatted(), NamedTextColor.RED)
-                                .add(")\n", NamedTextColor.GRAY)
-                                .add("Network Inbound: ", NamedTextColor.DARK_GRAY)
-                                .add(stats.getNetworkIngressFormattedAuto() + "\n", NamedTextColor.RED)
-                                .add("Network Outbound: ", NamedTextColor.DARK_GRAY)
-                                .add(stats.getNetworkEgressFormattedAuto() + "\n", NamedTextColor.RED)
-                                .add("Uptime: ", NamedTextColor.DARK_GRAY)
-                                .add(String.valueOf(stats.formatUptime()), NamedTextColor.RED)
-                                .sendMessage(source);
+                    server.getStats(true).executeAsync(stats -> {
+                        ServerStatus state = stats.getState();
+                        String statusColor;
+                        String statusColorClose;
+                        if (state == ServerStatus.RUNNING) {
+                            statusColor = "<green>";
+                            statusColorClose = "</green>";
+                        } else if (state == ServerStatus.STARTING) {
+                            statusColor = "<yellow>";
+                            statusColorClose = "</yellow>";
+                        } else {
+                            statusColor = "<red>";
+                            statusColorClose = "</red>";
+                        }
+                        
+                        ProtoMessage.chat().addMiniMessage("<dark_aqua>Stats</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.id + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
+                                "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
+                                " <gold>-</gold> <dark_gray>Status:</dark_gray> " + statusColor + state.getStatus() + statusColorClose + "\n" +
+                                " <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
+                                " <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                                " <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
+                                " <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
+                                " <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
+                                " <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                                " <gold>-</gold> <dark_gray>Disk (Actual):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red> <dark_gray>(upperdir)</dark_gray>" +
+                                "<dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
                     }, failure -> {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)

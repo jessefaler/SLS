@@ -86,7 +86,10 @@ func getServerStatus(c *gin.Context) {
 
 func getServerStats(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	c.JSON(http.StatusOK, s.Proc().Stats)
+	if c.Query("update_disk_usage") == "true" {
+		s.Filesystem().UpdateCachedDiskUsage()
+	}
+	c.JSON(http.StatusOK, s.Proc())
 }
 
 // Sends an array of commands to a running server instance.

@@ -54,6 +54,18 @@ public class ClientServerImpl implements ClientServer {
     }
 
     @Override
+    public SLSAction<ServerStats> getStats(boolean update) {
+        Route.CompiledRoute route = Route.Server.STATS.compile(getId());
+        if (update) {
+            route = route.withQueryParams("update_disk_usage", "true");
+        }
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(),
+                route,
+                (response, request) -> ServerStats.fromJSON(response.getObject()));
+    }
+
+    @Override
     public String getIp() {
         return json.getString("ip");
     }

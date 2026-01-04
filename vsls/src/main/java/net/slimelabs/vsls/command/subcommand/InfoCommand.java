@@ -73,7 +73,7 @@ public class InfoCommand {
                     // Shutdown server
                     Server server = SLS.servers.getServer(id);
                     if (server != null) {
-                        server.getStats().executeAsync(stats -> {
+                        server.getStats(true).executeAsync(stats -> {
                             Blueprint blueprint = SLS.blueprints.getBlueprint(server.blueprintId);
                             String type        = blueprint != null ? blueprint.getType() : "Unknown";
                             String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
@@ -90,7 +90,9 @@ public class InfoCommand {
                                     "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() +
+                                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "\n" +
+                                    "   <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                                    "   <gold>-</gold> <dark_gray>Disk (Actual):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red> <dark_gray>(upperdir)</dark_gray>" +
                                     "</red><dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
                         },  failure -> {
                             ProtoMessage.chat()

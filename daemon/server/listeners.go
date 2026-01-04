@@ -32,7 +32,7 @@ func (dsl *diskSpaceLimiter) Reset() {
 }
 
 // Trigger the disk space limiter which will attempt to stop a running server instance within
-// 15 seconds, and terminate it forcefully if it does not stop.
+// 1 minute, and terminate it forcefully if it does not stop.
 //
 // This function is only executed one time, so whenever a server is marked as booting the limiter
 // should be reset, so it can properly be triggered as needed.
@@ -98,6 +98,15 @@ func (s *Server) StartEventListeners() {
 							}
 							s.resources.UpdateStats(stats.Data)
 							s.Events().Publish(StatsEvent, s.Proc())
+
+							// Check disk space limit if server is running and has a disk limit configured
+							if s.IsRunning() && s.Filesystem().MaxDisk() > 0 {
+								// Use allowStaleValue=true to avoid blocking on expensive disk checks
+								// This is a monitoring check, so a slightly stale value is acceptable
+								if !s.Filesystem().HasSpaceAvailable(true) {
+									limit.Trigger()
+								}
+							}
 						}
 					case environment.StateChangeEvent:
 						{

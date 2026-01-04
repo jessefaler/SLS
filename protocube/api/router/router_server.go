@@ -55,7 +55,11 @@ func getServerStatus(c *gin.Context) {
 
 func getServerStats(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	stats, err := s.Stats(c.Request.Context())
+	var update = false
+	if c.Query("update_disk_usage") == "true" {
+		update = true
+	}
+	stats, err := s.Stats(c.Request.Context(), update)
 	if err != nil {
 		client.HandleError(c, err)
 		return

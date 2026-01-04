@@ -8,6 +8,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/google/uuid"
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/environment/docker"
 )
 
 type PowerAction string
@@ -116,10 +117,9 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			return ErrIsRunning
 		}
 
-		// Sync server configuration to environment before starting to ensure
-		// containers are created with the latest limits and settings.
-		if err := s.SyncConfigurationToEnvironment(); err != nil {
-			return errors.Wrap(err, "failed to sync configuration to environment")
+		// Run the pre-boot logic for the server before processing the environment start.
+		if err := s.onBeforeStart(); err != nil {
+			return err
 		}
 
 		err := s.Environment.Start(s.Context())
@@ -153,10 +153,9 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			return nil
 		}
 
-		// Sync server configuration to environment before restarting to ensure
-		// containers are created with the latest limits and settings.
-		if err := s.SyncConfigurationToEnvironment(); err != nil {
-			return errors.Wrap(err, "failed to sync configuration to environment")
+		// Now actually try to start the process by executing the normal pre-boot logic.
+		if err := s.onBeforeStart(); err != nil {
+			return err
 		}
 
 		err := s.Environment.Start(s.Context())
@@ -175,4 +174,113 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 	}
 
 	return errors.New("attempting to handle unknown power action")
+}
+
+// Execute a few functions before actually calling the environment start commands. This ensures
+// that everything is ready to go for environment booting, and that the server can even be started.
+func (s *Server) onBeforeStart() error {
+	s.Log().Info("syncing server configuration with protocube")
+	//todo implement this
+	//if err := s.Sync(); err != nil {
+	//	return errors.WithMessage(err, "unable to sync server data from Panel instance")
+	//}
+
+	// Disallow start & restart if the server is suspended. Do this check after performing a sync
+	// action with the Panel to ensure that we have the most up-to-date information for that server.
+	if s.IsSuspended() {
+		return ErrSuspended
+	}
+
+	// Ensure we sync the server information with the environment so that any new environment variables
+	// and process resource limits are correctly applied.
+	s.SyncWithEnvironment()
+
+	// Update the configuration files defined for the server before beginning the boot process.
+	// This process executes a bunch of parallel updates, so we just block until that process
+	// is complete. Any errors as a result of this will just be bubbled out in the logger,
+	// we don't need to actively do anything about it at this point, worse comes to worst the
+	// server starts in a weird state and the user can manually adjust.
+	s.PublishConsoleOutputFromDaemon("Updating process configuration files...")
+	s.Log().Debug("updating server configuration files...")
+	s.UpdateConfigurationFiles()
+	s.Log().Debug("updated server configuration files")
+
+	s.Log().Info("completed server preflight, starting boot process...")
+
+	// Check a servers disk space asynchronously that way we can start the server up as fast as possible
+	go func() {
+		// If a server has unlimited disk space, we don't care enough to block the startup to check remaining.
+		// However, we should trigger a size anyway, as it'd be good to kick it off for other processes.
+		if s.DiskSpace() <= 0 {
+			s.Filesystem().HasSpaceAvailable(true)
+		} else {
+			s.PublishConsoleOutputFromDaemon("Checking server disk space usage, this could take a few seconds...")
+			if err := s.Filesystem().HasSpaceErr(false); err != nil {
+				s.PublishConsoleOutputFromDaemon("Disk space error: " + err.Error())
+			}
+		}
+	}()
+
+	return nil
+}
+
+// SyncWithEnvironment updates the environment for the server to match any of
+// the changed data. This pushes new settings and environment variables to the
+// environment. In addition, the in-situ update method is called on the
+// environment which will allow environments that make use of it (such as Docker)
+// to immediately apply some settings without having to wait on a server to
+// restart.
+//
+// This functionality allows a server's resources limits to be modified on the
+// fly and have them apply right away allowing for dynamic resource allocation
+// and responses to abusive server processes.
+func (s *Server) SyncWithEnvironment() {
+	s.Log().Debug("syncing server settings with environment")
+
+	cfg := s.Config()
+
+	// Update the environment settings using the new information from this server.
+	s.Environment.Config().SetSettings(environment.Settings{
+		Mounts:      s.Mounts(),
+		Allocations: cfg.Allocations,
+		Limits:      cfg.Limits,
+		Labels:      cfg.Labels,
+	})
+
+	// For Docker specific environments we also want to update the configured image
+	// and stop configuration.
+	if e, ok := s.Environment.(*docker.Environment); ok {
+		s.Log().Debug("syncing stop configuration with configured docker environment")
+		e.SetImage(cfg.Container.Image)
+		e.SetStopConfiguration(s.ProcessConfiguration().Stop)
+	}
+
+	// If build limits are changed, environment variables also change. Plus, any modifications to
+	// the startup command also need to be properly propagated to this environment.
+	//
+	// @see https://github.com/pterodactyl/panel/issues/2255
+	s.Environment.Config().SetEnvironmentVariables(s.GetEnvironmentVariables())
+
+	if !s.IsSuspended() {
+		// Update the environment in place, allowing memory and CPU usage to be adjusted
+		// on the fly without the user needing to reboot (theoretically).
+		s.Log().Info("performing server limit modification on-the-fly")
+		if err := s.Environment.InSituUpdate(); err != nil {
+			// This is not a failure, the process is still running fine and will fix itself on the
+			// next boot, or fail out entirely in a more logical position.
+			s.Log().WithField("error", err).Warn("failed to perform on-the-fly update of the server environment")
+		}
+	} else {
+		// Checks if the server is now in a suspended state. If so and a server process is currently running it
+		// will be gracefully stopped (and terminated if it refuses to stop).
+		if s.Environment.State() != environment.ProcessOfflineState {
+			s.Log().Info("server suspended with running process state, terminating now")
+
+			go func(s *Server) {
+				if err := s.Environment.WaitForStop(s.Context(), time.Minute, true); err != nil {
+					s.Log().WithField("error", err).Warn("failed to terminate server environment after suspension")
+				}
+			}(s)
+		}
+	}
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/system"
@@ -18,6 +19,18 @@ type ResourceUsage struct {
 
 	// The current server status.
 	State *system.AtomicString `json:"state"`
+
+	// The current disk space being used by the server. This value is not guaranteed to be accurate
+	// at all times. It is "manually" set whenever server.Proc() is called. This is kind of just a
+	// hacky solution for now to avoid passing events all over the place.
+	Disk int64 `json:"disk_bytes"`
+
+	// Max size of the file system
+	MaxDisk int64 `json:"disk_max"`
+
+	// The disk usage of the upper directory in the overlay filesystem.
+	// This represents the actual disk space this server takes up.
+	Overlay int64 `json:"overlay_bytes"`
 }
 
 // Proc returns the current resource usage stats for the server instance. This returns
@@ -25,6 +38,11 @@ type ResourceUsage struct {
 func (s *Server) Proc() ResourceUsage {
 	s.resources.mu.Lock()
 	defer s.resources.mu.Unlock()
+	s.resources.MaxDisk = s.Filesystem().MaxDisk()
+	// Store the updated disk usage when requesting process usage.
+	atomic.StoreInt64(&s.resources.Disk, s.Filesystem().CachedUsage())
+	// Get the cached overlay usage (updated in the same background routine as disk usage)
+	atomic.StoreInt64(&s.resources.Overlay, s.Filesystem().CachedOverlayUsage())
 	//goland:noinspection GoVetCopyLock
 	return s.resources
 }

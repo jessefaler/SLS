@@ -35,6 +35,13 @@ public interface ClientServer {
     SLSAction<ServerStats> getStats();
 
     /**
+     * Retrieves the servers stats with optional disk usage cache update
+     * @param update if true, updates the overlay usage cache and disk usage cache before returning stats
+     * @return ServerStats
+     */
+    SLSAction<ServerStats> getStats(boolean update);
+
+    /**
      * Retrieves the servers ip
      * @return the servers ip
      */

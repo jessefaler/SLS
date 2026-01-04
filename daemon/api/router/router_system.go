@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"os"
@@ -35,7 +36,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	}
 
 	// Create the server
-	server, err := r.ServerManager.Create(req)
+	s, err := r.ServerManager.Create(req)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// A not exists error usually means the blueprints server or world paths don't exist
@@ -51,7 +52,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 
 	// todo handle allocations differently
 	// this just returns the computers ipv4 address which will only work for local network connections
-	Alloc := server.Config().Allocations
+	Alloc := s.Config().Allocations
 	Alloc.DefaultMapping.Ip, err = GetLocalIPv4()
 	if err != nil {
 		Alloc.DefaultMapping.Ip = "unknown"
@@ -63,11 +64,22 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	})
 
 	// Start the server
-	go func() {
-		if err := server.Environment.Start(server.Context()); err != nil {
-			log.WithError(err).Error("failed to start server container")
+	// Pass the actual heavy processing off to a separate thread to handle so that
+	// we can immediately return a response from the server. Some of these actions
+	// can take quite some time, especially stopping or restarting.
+	go func(s *server.Server) {
+		action := server.PowerActionStart
+		if err := s.HandlePowerAction(server.PowerAction(action), 0); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				s.Log().WithField("action", action).WithField("error", err).Warn("could not process server power action")
+			} else if errors.Is(err, server.ErrIsRunning) {
+				// Do nothing, this isn't something we care about for logging,
+			} else {
+				s.Log().WithFields(log.Fields{"action": action, "wait_seconds": 0, "error": err}).
+					Error("encountered error processing a server power action in the background")
+			}
 		}
-	}()
+	}(s)
 }
 
 // Returns all the servers that are registered and configured correctly on

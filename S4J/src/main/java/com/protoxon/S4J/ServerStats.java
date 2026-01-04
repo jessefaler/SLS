@@ -4,6 +4,8 @@ import org.json.JSONObject;
 
 /**
  * Represents the resource usage statistics for a server instance.
+ * This class parses the ResourceUsage struct returned by the stats endpoint,
+ * which includes embedded environment stats (memory, CPU, network, uptime) and disk usage.
  */
 public class ServerStats {
     private final long memoryBytes;
@@ -11,6 +13,10 @@ public class ServerStats {
     private final double cpuAbsolute;
     private final NetworkStats network;
     private final long uptime;
+    private final long diskBytes;
+    private final long maxDiskBytes;
+    private final long overlayBytes;
+    private final ServerStatus state;
 
     /**
      * Creates a new ServerStats instance.
@@ -20,19 +26,30 @@ public class ServerStats {
      * @param cpuAbsolute the absolute CPU usage in relation to the entire system
      * @param network the current network transmit in & out for a container
      * @param uptime the current uptime of the container, in milliseconds
+     * @param diskBytes the current disk space being used by the server, in bytes
+     * @param maxDiskBytes the maximum size of the filesystem, in bytes
+     * @param overlayBytes the disk usage of the upper directory in the overlay filesystem, in bytes. This represents the actual disk space this server takes up.
+     * @param state the current server status
      */
-    public ServerStats(long memoryBytes, long memoryLimitBytes, double cpuAbsolute, NetworkStats network, long uptime) {
+    public ServerStats(long memoryBytes, long memoryLimitBytes, double cpuAbsolute, NetworkStats network, long uptime, long diskBytes, long maxDiskBytes, long overlayBytes, ServerStatus state) {
         this.memoryBytes = memoryBytes;
         this.memoryLimitBytes = memoryLimitBytes;
         this.cpuAbsolute = cpuAbsolute;
         this.network = network;
         this.uptime = uptime;
+        this.diskBytes = diskBytes;
+        this.maxDiskBytes = maxDiskBytes;
+        this.overlayBytes = overlayBytes;
+        this.state = state;
     }
 
     /**
      * Parses a JSONObject into a ServerStats instance.
+     * The JSON object represents a ResourceUsage struct which embeds environment stats
+     * (memory_bytes, memory_limit_bytes, cpu_absolute, network, uptime) and includes
+     * additional fields (disk_bytes, disk_max, overlay_bytes, state).
      *
-     * @param json the JSON object containing the stats data
+     * @param json the JSON object containing the ResourceUsage data
      * @return a new ServerStats instance parsed from the JSON
      */
     public static ServerStats fromJSON(JSONObject json) {
@@ -40,6 +57,10 @@ public class ServerStats {
         long memoryLimitBytes = json.optLong("memory_limit_bytes", 0);
         double cpuAbsolute = json.optDouble("cpu_absolute", 0.0);
         long uptime = json.optLong("uptime", 0);
+        long diskBytes = json.optLong("disk_bytes", 0);
+        long maxDiskBytes = json.optLong("disk_max", 0);
+        long overlayBytes = json.optLong("overlay_bytes", 0);
+        ServerStatus state = ServerStatus.fromString(json.optString("state", "unknown"));
 
         NetworkStats network = null;
         if (json.has("network") && !json.isNull("network")) {
@@ -49,7 +70,7 @@ public class ServerStats {
             network = new NetworkStats(0, 0);
         }
 
-        return new ServerStats(memoryBytes, memoryLimitBytes, cpuAbsolute, network, uptime);
+        return new ServerStats(memoryBytes, memoryLimitBytes, cpuAbsolute, network, uptime, diskBytes, maxDiskBytes, overlayBytes, state);
     }
 
     /**
@@ -85,6 +106,35 @@ public class ServerStats {
      */
     public long getUptime() {
         return uptime;
+    }
+
+    /**
+     * @return the current disk space being used by the server, in bytes
+     */
+    public long getDiskBytes() {
+        return diskBytes;
+    }
+
+    /**
+     * @return the maximum size of the filesystem, in bytes
+     */
+    public long getMaxDiskBytes() {
+        return maxDiskBytes;
+    }
+
+    /**
+     * @return the disk usage of the upper directory in the overlay filesystem, in bytes.
+     * This represents the actual disk space this server takes up.
+     */
+    public long getOverlayBytes() {
+        return overlayBytes;
+    }
+
+    /**
+     * @return the current server status
+     */
+    public ServerStatus getState() {
+        return state;
     }
 
     /**
@@ -204,6 +254,87 @@ public class ServerStats {
      */
     public String getNetworkEgressFormattedAuto() {
         return network.getTxBytesFormattedAuto();
+    }
+
+    /**
+     * Formats the disk usage in the specified data type.
+     *
+     * @param dataType the data type to format the disk usage in
+     * @return a formatted string representing the disk usage
+     */
+    public String getDiskFormatted(DataType dataType) {
+        return formatBytes(diskBytes, dataType);
+    }
+
+    /**
+     * Automatically formats the disk usage in the most appropriate unit (KB, MB, GB, or TB)
+     * based on the size, similar to Docker's format (e.g., "612.2 MB" or "4.4 GB").
+     *
+     * @return a formatted string representing the disk usage with automatically selected unit
+     */
+    public String getDiskFormattedAuto() {
+        return formatBytesAuto(diskBytes);
+    }
+
+    /**
+     * Formats the maximum disk size in the specified data type.
+     *
+     * @param dataType the data type to format the maximum disk size in
+     * @return a formatted string representing the maximum disk size
+     */
+    public String getMaxDiskFormatted(DataType dataType) {
+        return formatBytes(maxDiskBytes, dataType);
+    }
+
+    /**
+     * Automatically formats the maximum disk size in the most appropriate unit (KB, MB, GB, or TB)
+     * based on the size, similar to Docker's format (e.g., "612.2 MB" or "4.4 GB").
+     *
+     * @return a formatted string representing the maximum disk size with automatically selected unit
+     */
+    public String getMaxDiskFormattedAuto() {
+        return formatBytesAuto(maxDiskBytes);
+    }
+
+    /**
+     * Calculates and returns the disk usage as a percentage of the maximum disk size.
+     *
+     * @return the disk usage percentage (0.0 to 100.0), or 0.0 if max disk is 0
+     */
+    public double getDiskUsagePercentage() {
+        if (maxDiskBytes == 0) {
+            return 0.0;
+        }
+        return (double) diskBytes / maxDiskBytes * 100.0;
+    }
+
+    /**
+     * Formats the disk usage as a percentage string.
+     *
+     * @return a formatted string representing the disk usage as a percentage (e.g., "45.67%")
+     */
+    public String getDiskUsagePercentageFormatted() {
+        return String.format("%.2f", getDiskUsagePercentage()) + "%";
+    }
+
+    /**
+     * Formats the overlay usage in the specified data type.
+     *
+     * @param dataType the data type to format the overlay usage in
+     * @return a formatted string representing the overlay usage
+     */
+    public String getOverlayFormatted(DataType dataType) {
+        return formatBytes(overlayBytes, dataType);
+    }
+
+    /**
+     * Automatically formats the overlay usage in the most appropriate unit (KB, MB, GB, or TB)
+     * based on the size, similar to Docker's format (e.g., "612.2 MB" or "4.4 GB").
+     *
+     * @return a formatted string representing the overlay usage with automatically selected unit
+     */
+    public String getOverlayFormattedAuto() {
+        return formatBytesAuto(overlayBytes);
     }
 
     /**

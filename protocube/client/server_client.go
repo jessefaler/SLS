@@ -5,14 +5,13 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"protoxon.com/sls/protocube/enviroment"
 	"protoxon.com/sls/protocube/models"
 )
 
 type ServerClient interface {
 	Power(ctx context.Context, action models.PowerAction) error
 	Logs(ctx context.Context, size int) (gin.H, error)
-	Stats(ctx context.Context) (enviroment.Stats, error)
+	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
 	Status(ctx context.Context) (gin.H, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
 	Commands(ctx context.Context, commands []string) error
@@ -30,8 +29,11 @@ func (sc *serverClient) Power(ctx context.Context, action models.PowerAction) er
 }
 
 // Stats fetches resource stats from the remote node.
-func (sc *serverClient) Stats(ctx context.Context) (enviroment.Stats, error) {
-	return Get[enviroment.Stats](sc, ctx, "/stats", nil)
+func (sc *serverClient) Stats(ctx context.Context, update bool) (models.ResourceUsage, error) {
+	if update {
+		return Get[models.ResourceUsage](sc, ctx, "/stats", q{"update_disk_usage": "true"})
+	}
+	return Get[models.ResourceUsage](sc, ctx, "/stats", nil)
 }
 
 // Status fetches the servers status from the remote node.
