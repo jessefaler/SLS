@@ -11,7 +11,7 @@ software:
     "Java 8": "sls:java_8"
   invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -jar server.jar"  # Start command for the server
   stop-command: "stop"  # Command to stop the server
-  online-signal: "Done"  # Signal to indicate server is online
+  online-signal: ")! For help, type"  # Signal to indicate server is online
   install-script: # Install script configuration
     image: "sls:java_8"  # Docker image used for installation
     entrypoint: "/bin/bash"  # Entrypoint for the installation process
