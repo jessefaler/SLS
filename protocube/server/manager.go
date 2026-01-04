@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"emperror.dev/errors"
+	"github.com/apex/log"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
@@ -87,6 +88,12 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		return nil, errors.Wrap(err, "failed to create output line matcher for the start configuration: "+sw.OnlineSignal)
 	}
 
+	// Convert software and blueprint configuration patches
+	// to config file patches
+	// if an error occurs the server will still be created but an error
+	// will be logged when the server is created
+	configFiles, cfgErr := GetConfigFiles(sw, blueprint)
+
 	pc := &models.ProcessConfiguration{
 		Startup: struct {
 			Done      []*models.OutputLineMatcher `json:"done"`
@@ -99,7 +106,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 			Type:  "command",
 			Value: "stop",
 		},
-		ConfigurationFiles: nil,
+		ConfigurationFiles: configFiles,
 	}
 
 	nodeReq := models.NodeCreateServerRequest{
@@ -132,6 +139,11 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		Remove: func() {
 			m.Remove(nodeReq.ID)
 		},
+	}
+
+	// log any errors that occurred when converting configuration patches
+	if cfgErr != nil {
+		log.WithError(err).Warn("An error occurred while converting config patches for server " + server.id)
 	}
 
 	// Add the server to the manager

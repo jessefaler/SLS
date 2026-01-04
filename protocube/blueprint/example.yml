@@ -57,24 +57,14 @@ server:
 
   # File-level configs to patch when building the server OPTIONAL
   configs:
-    # Vanilla server.properties file
     server.properties:
       parser: properties
       find:
-        motd: "Block Hunt Server"
-
-    # Spigot config
+        motd: "Block Hunt"
     spigot.yml:
       parser: yaml
       find:
         settings.bungeecord: true
-        messages.restart: "Server restarting..."
-
-    # Paper config
-    paper.yml:
-      parser: yaml
-      find:
-        timings.enabled: false
 
   # Optional content bundled with this blueprint (e.g., plugins, datapacks, mods)
   # Content is placed at the root of the servers volume.

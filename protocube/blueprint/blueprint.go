@@ -1,6 +1,9 @@
 package blueprint
 
-import "protoxon.com/sls/protocube/enviroment"
+import (
+	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/parser"
+)
 
 // Blueprint is a high-level specification of a server environment.
 //
@@ -41,6 +44,36 @@ type Server struct {
 type ConfigFile struct {
 	Parser string                 `yaml:"parser" json:"parser"`
 	Find   map[string]interface{} `yaml:"find" json:"find"`
+}
+
+// ToConfigurationFile converts a blueprint ConfigFile to a parser.ConfigurationFile
+// that can be used by the daemon to patch configuration files.
+// serverData can be nil if server information is not yet available (e.g., allocations).
+// In that case, placeholders like {{server.build.default.port}} will be left for the daemon to handle.
+func (cf *ConfigFile) ToConfigurationFile(fileName string, serverData *parser.ServerPlaceholderData) (*parser.ConfigurationFile, error) {
+	configFile := &parser.ConfigurationFile{
+		FileName: fileName,
+		Parser:   parser.ConfigurationParser(cf.Parser),
+		Replace:  make([]parser.ConfigurationFileReplacement, 0, len(cf.Find)),
+	}
+
+	// Convert each find entry to a replacement
+	for match, value := range cf.Find {
+		// Replace placeholders in the value if serverData is available
+		processedValue := parser.ReplacePlaceholders(value, serverData)
+
+		replaceValue, err := parser.ValueToReplaceValue(processedValue)
+		if err != nil {
+			return nil, err
+		}
+
+		configFile.Replace = append(configFile.Replace, parser.ConfigurationFileReplacement{
+			Match:       match,
+			ReplaceWith: *replaceValue,
+		})
+	}
+
+	return configFile, nil
 }
 
 // Content represents additional files to include with a server instance, such as plugins, datapacks, or mods.

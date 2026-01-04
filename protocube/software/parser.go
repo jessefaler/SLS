@@ -109,13 +109,14 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// Use a temporary struct to unmarshal directly into Software fields
 	// (not into a config struct, since we're already at the software: level)
 	var tmp struct {
-		Id            string              `yaml:"id"`
-		Name          string              `yaml:"name"`
-		DockerImages  map[string]string   `yaml:"images"`
-		StopCommand   string              `yaml:"stop-command"`
-		Invocation    string              `yaml:"invocation"`
-		OnlineSignal  string              `yaml:"online-signal"`
-		InstallScript *InstallationScript `yaml:"install-script"`
+		Id            string                `yaml:"id"`
+		Name          string                `yaml:"name"`
+		DockerImages  map[string]string     `yaml:"images"`
+		StopCommand   string                `yaml:"stop-command"`
+		Invocation    string                `yaml:"invocation"`
+		OnlineSignal  string                `yaml:"online-signal"`
+		InstallScript *InstallationScript   `yaml:"install-script"`
+		Configs       map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 	}
 	if err := unmarshal(&tmp); err != nil {
 		return err
@@ -148,6 +149,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	s.StopCommand = tmp.StopCommand
 	s.Invocation = tmp.Invocation
 	s.OnlineSignal = tmp.OnlineSignal
+	s.Configs = tmp.Configs
 
 	// If install-script is provided, validate it
 	if tmp.InstallScript != nil {

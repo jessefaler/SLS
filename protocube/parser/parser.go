@@ -13,6 +13,42 @@ type ReplaceValue struct {
 	valueType jsonparser.ValueType
 }
 
+// NewReplaceValue creates a new ReplaceValue from an interface{} value.
+// It marshals the value to JSON and determines its type by inspecting the JSON bytes.
+func NewReplaceValue(value interface{}) (*ReplaceValue, error) {
+	// Marshal the value to JSON to get the proper representation
+	jsonBytes, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine the value type by checking the first byte of the JSON
+	// jsonparser.Get requires a path, so for raw JSON values we need to determine type manually
+	var valueType jsonparser.ValueType
+	if len(jsonBytes) == 0 {
+		return nil, errors.New("empty JSON value")
+	}
+
+	firstByte := jsonBytes[0]
+	switch firstByte {
+	case '"':
+		valueType = jsonparser.String
+	case 't', 'f': // true or false
+		valueType = jsonparser.Boolean
+	case 'n': // null
+		valueType = jsonparser.Null
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		valueType = jsonparser.Number
+	default:
+		return nil, errors.Errorf("unexpected JSON value type starting with byte: %c", firstByte)
+	}
+
+	return &ReplaceValue{
+		value:     jsonBytes,
+		valueType: valueType,
+	}, nil
+}
+
 // Value returns the underlying value of the replacement. Be aware that this
 // can include escaped UTF-8 sequences that will need to be handled by the caller
 // in order to avoid accidentally injecting invalid sequences into the running
@@ -70,6 +106,13 @@ func (cv *ReplaceValue) Bytes() []byte {
 	default:
 		return []byte("<invalid>")
 	}
+}
+
+// MarshalJSON returns the raw JSON bytes for the value.
+// This allows the value to be properly serialized when sending to the daemon,
+// matching how Pterodactyl Panel sends configuration values.
+func (cv *ReplaceValue) MarshalJSON() ([]byte, error) {
+	return cv.value, nil
 }
 
 type ConfigurationParser string

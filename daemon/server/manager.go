@@ -96,7 +96,7 @@ func (manager *Manager) Create(req models.CreateServerRequest) (*Server, error) 
 	s.id = req.ID
 
 	// Replace the server.build.default.port variable with the servers actual port
-	// todo make an actual parser for parsing and replacing server variables with their actual values
+	// todo add support for other variables in the invocation
 	invocation := req.Invocation
 	invocation = strings.ReplaceAll(invocation, "{{server.build.default.port}}", fmt.Sprintf("%d", alloc.DefaultMapping.Port))
 

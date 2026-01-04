@@ -110,6 +110,10 @@ type ConfigurationFile struct {
 	// Tracks the daemon's configuration so that we can quickly get values
 	// out of it when variables request it.
 	configuration []byte
+
+	// Tracks the server's configuration so that we can quickly get values
+	// out of it when server placeholders are used (e.g., {{server.build.default.port}}).
+	serverData []byte
 }
 
 // UnmarshalJSON is a custom unmarshaler for configuration files. If there is an
@@ -189,12 +193,15 @@ func (cfr *ConfigurationFileReplacement) UnmarshalJSON(data []byte) error {
 
 // Parse parses a given configuration file and updates all the values within
 // as defined in the API response from protocube.
-func (f *ConfigurationFile) Parse(file ufs.File) error {
+// serverData can be nil if server information is not available.
+func (f *ConfigurationFile) Parse(file ufs.File, serverData []byte) error {
 	if mb, err := json.Marshal(config.Get()); err != nil {
 		return err
 	} else {
 		f.configuration = mb
 	}
+
+	f.serverData = serverData
 
 	var err error
 

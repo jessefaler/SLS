@@ -22,6 +22,15 @@ import (
 // it is common to see variables such as "{{config.docker.interface}}"
 var configMatchRegex = regexp.MustCompile(`{{\s?config\.([\w.-]+)\s?}}`)
 
+// Regex to match anything that has a value matching the format of {{ server.$1 }} which
+// will cause the program to look up that value from the server's configuration.
+//
+// This allows configurations to reference server-specific values such as:
+// - {{server.build.default.port}} - The server's default port
+// - {{server.build.default.ip}} - The server's default IP
+// - {{server.build.memory}} - The server's memory limit
+var serverMatchRegex = regexp.MustCompile(`{{\s?server\.([\w.-]+)\s?}}`)
+
 // Regex to support modifying XML inline variable data using the config tools. This means
 // you can pass a replacement of Root.Property='[value="testing"]' to get an XML node
 // matching:
@@ -215,40 +224,80 @@ func (cfr *ConfigurationFileReplacement) SetAtPathway(c *gabs.Container, path st
 }
 
 // Looks up a configuration value on the Daemon given a dot-notated syntax.
+// Supports both {{config.X}} and {{server.X}} placeholders.
 func (f *ConfigurationFile) LookupConfigurationValue(cfr ConfigurationFileReplacement) (string, error) {
-	// If this is not something that we can do a regex lookup on then just continue
-	// on our merry way. If the value isn't a string, we're not going to be doing anything
-	// with it anyways.
-	if cfr.ReplaceWith.Type() != jsonparser.String || !configMatchRegex.Match(cfr.ReplaceWith.Value()) {
+	// If this is not a string, we can't do placeholder replacement
+	if cfr.ReplaceWith.Type() != jsonparser.String {
 		return cfr.ReplaceWith.String(), nil
 	}
 
-	// If there is a match, lookup the value in the configuration for the Daemon. If no key
-	// is found, just return the string representation, otherwise use the value from the
-	// daemon configuration here.
-	huntPath := configMatchRegex.ReplaceAllString(
-		configMatchRegex.FindString(cfr.ReplaceWith.String()), "$1",
-	)
+	valueStr := cfr.ReplaceWith.String()
+	valueBytes := cfr.ReplaceWith.Value()
 
-	var path []string
-	for _, value := range strings.Split(huntPath, ".") {
-		path = append(path, strcase.ToSnake(value))
-	}
-
-	// Look for the key in the configuration file, and if found return that value to the
-	// calling function.
-	match, _, _, err := jsonparser.Get(f.configuration, path...)
-	if err != nil {
-		if err != jsonparser.KeyPathNotFoundError {
-			return string(match), err
+	// Check for server placeholders first (e.g., {{server.build.default.port}})
+	if serverMatchRegex.Match(valueBytes) {
+		if f.serverData == nil {
+			log.WithFields(log.Fields{"filename": f.FileName, "value": valueStr}).Debug("server placeholder found but server data not available")
+			return valueStr, nil
 		}
 
-		log.WithFields(log.Fields{"path": path, "filename": f.FileName}).Debug("attempted to load a configuration value that does not exist")
+		// Extract the path from the placeholder (e.g., "build.default.port" from "{{server.build.default.port}}")
+		huntPath := serverMatchRegex.ReplaceAllString(
+			serverMatchRegex.FindString(valueStr), "$1",
+		)
 
-		// If there is no key, keep the original value intact, that way it is obvious there
-		// is a replace issue at play.
-		return string(match), nil
-	} else {
-		return configMatchRegex.ReplaceAllString(cfr.ReplaceWith.String(), string(match)), nil
+		// Convert dot-notation path to JSON path (e.g., "build.default.port" -> ["build", "default", "port"])
+		var path []string
+		for _, value := range strings.Split(huntPath, ".") {
+			path = append(path, value)
+		}
+
+		// Look up the value in the server data
+		match, _, _, err := jsonparser.Get(f.serverData, path...)
+		if err != nil {
+			if err != jsonparser.KeyPathNotFoundError {
+				return valueStr, err
+			}
+
+			log.WithFields(log.Fields{"path": path, "filename": f.FileName}).Debug("attempted to load a server configuration value that does not exist")
+			// If not found, return original value
+			return valueStr, nil
+		}
+
+		// Replace the placeholder with the actual value
+		return serverMatchRegex.ReplaceAllString(valueStr, string(match)), nil
 	}
+
+	// Check for config placeholders (e.g., {{config.docker.interface}})
+	if configMatchRegex.Match(valueBytes) {
+		// Extract the path from the placeholder
+		huntPath := configMatchRegex.ReplaceAllString(
+			configMatchRegex.FindString(valueStr), "$1",
+		)
+
+		var path []string
+		for _, value := range strings.Split(huntPath, ".") {
+			path = append(path, strcase.ToSnake(value))
+		}
+
+		// Look for the key in the configuration file, and if found return that value to the
+		// calling function.
+		match, _, _, err := jsonparser.Get(f.configuration, path...)
+		if err != nil {
+			if err != jsonparser.KeyPathNotFoundError {
+				return string(match), err
+			}
+
+			log.WithFields(log.Fields{"path": path, "filename": f.FileName}).Debug("attempted to load a configuration value that does not exist")
+
+			// If there is no key, keep the original value intact, that way it is obvious there
+			// is a replace issue at play.
+			return string(match), nil
+		} else {
+			return configMatchRegex.ReplaceAllString(valueStr, string(match)), nil
+		}
+	}
+
+	// No placeholders found, return as-is
+	return valueStr, nil
 }
