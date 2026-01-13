@@ -1,6 +1,6 @@
 # ![SLS Standalone Logo](https://cdn.modrinth.com/data/cached_images/7115a8404f7d6a94fd7aab586d6c4de1e9b3846c.png)
 
-**SLS** is a **declarative orchestration system for ephemeral game servers**, designed especially for Minecraft networks.
+**SLS** is a **declarative orchestration system for ephemeral game servers**, designed especially for server networks.
 Everything in SLS is reproducible, isolated, and fully defined through Blueprints.
 
 SLS runs every game server inside its own **Docker container**, keeping environments clean, consistent and secure.
@@ -11,11 +11,16 @@ SLS is **free and open-source** software licensed under the **AGPL-3.0**.
 
 ### **Protocube**
 
-The master controller for all SLS operations. Responsible for building, orchestrating, and managing servers based on Blueprints.
+Protocube is the core controller for SLS, responsible for managing all server instances across the system. It provides a REST API for creating, managing, and monitoring servers.
+
+**Docs:**
+- [API Docs](#) _(Coming Soon)_
+- [Plugin Docs](#) _(Coming Soon)_
+- [Setup](#) _(Coming Soon)_
 
 ### **Daemon**
 
-The server control plane for SLS. Each daemon runs containers, handles world mounting, applies overlays, and executes lifecycle actions.
+The server control plane for SLS. Each Daemon is responsible for provisioning, controlling and monitoring servers inside isolated Docker containers, exactly as defined by their Blueprints.
 
 ### **S4J**
 
@@ -29,7 +34,7 @@ A Velocity proxy plugin that lets you manage SLS servers directly through in-gam
 
 ### **SlimePacks**
 
-A resource-pack management system with automatic routing and versioning logic.
+A resource pack management system that exposes API endpoints for resource pack downloads and automatically converts resource packs to the requested version using [ResourcePackConverter](https://github.com/agentdid127/ResourcePackConverter).
 
 ## Blueprints
 
@@ -58,7 +63,7 @@ server:
   image: "sls:java_21"
   path: "paper/1.18.2"
 
-  # Optional resource limits
+  # Resource limits
   limits:
     memory_limit: 4096
     swap: 1024
@@ -68,14 +73,14 @@ server:
     threads: ""
     oom_disabled: false
 
-  # Optional configuration patches
+  # Configuration patches
   configs:
     server.properties:
       parser: properties
       find:
         motd: "Block Hunt Server"
 
-  # Optional content bundled with the server.
+  # Additional files/folders bundled with the server.
   content:
     - name: "WorldEdit"
       source: "plugins/bukkit/worldedit"
@@ -85,7 +90,7 @@ server:
       source: "mods/fabric/distant_horizons"
 
 # Whether to persist servers created from this blueprint.
-# If false, the server is removed on shutdown.
+# If false, the server is deleted on shutdown.
 save: false
 
 # Arbitrary metadata for external systems
@@ -99,4 +104,4 @@ annotations:
 ## Development Status
 
 > [!WARNING]
-> This version of SLS is **actively in development** and is not yet ready for use.
+> This version of ```SLS``` is in **active development** and is not yet ready for use.
