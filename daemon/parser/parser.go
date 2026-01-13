@@ -14,6 +14,7 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/icza/dyno"
 	"github.com/magiconair/properties"
+	"golang.org/x/sys/unix"
 	"gopkg.in/ini.v1"
 	"gopkg.in/yaml.v3"
 	"protoxon.com/sls/daemon/config"
@@ -195,6 +196,19 @@ func (cfr *ConfigurationFileReplacement) UnmarshalJSON(data []byte) error {
 // as defined in the API response from protocube.
 // serverData can be nil if server information is not available.
 func (f *ConfigurationFile) Parse(file ufs.File, serverData []byte) error {
+	// Acquire an exclusive lock on the file to prevent race conditions
+	// where the server process might read the file while we're updating it.
+	fd := file.Fd()
+	if err := unix.Flock(int(fd), unix.LOCK_EX); err != nil {
+		return errors.Wrap(err, "parser: failed to acquire exclusive lock on configuration file")
+	}
+	// Ensure we unlock the file when we're done
+	defer func() {
+		if unlockErr := unix.Flock(int(fd), unix.LOCK_UN); unlockErr != nil {
+			log.WithError(unlockErr).WithField("file_name", f.FileName).Warn("failed to unlock configuration file")
+		}
+	}()
+
 	if mb, err := json.Marshal(config.Get()); err != nil {
 		return err
 	} else {
@@ -219,7 +233,18 @@ func (f *ConfigurationFile) Parse(file ufs.File, serverData []byte) error {
 	case Xml:
 		err = f.parseXmlFile(file)
 	}
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	// Sync the file to ensure all data is written to disk before releasing the lock.
+	// This prevents the server process from reading stale or partially written data.
+	if err := unix.Fsync(int(fd)); err != nil {
+		return errors.Wrap(err, "parser: failed to sync configuration file to disk")
+	}
+
+	return nil
 }
 
 // Parses an xml file.

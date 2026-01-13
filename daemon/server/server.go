@@ -21,8 +21,8 @@ import (
 // by SLS.
 type Server struct {
 	powerLock *system.Locker
-	// Internal mutex used to block actions that need to occur sequentially, as
-	// writing the configuration to the disk.such
+	// Internal mutex used to block actions that need to occur sequentially, such as
+	// writing the configuration to the disk.
 	sync.RWMutex
 	ctx       context.Context
 	ctxCancel *context.CancelFunc
@@ -36,7 +36,7 @@ type Server struct {
 	// The unique identifier for the server
 	id string
 
-	// Weather to save this server when its shutdown
+	// Whether to save this server when its shutdown
 	save bool
 
 	// Removes the server from the manager
