@@ -32,20 +32,28 @@ func run(cmd *cobra.Command, _ []string) {
 	log.Debug("running in debug mode")
 	log.WithField("config_file", config.Path).Info("loading configuration from file")
 
-	// Create the server manager
-	serverManager := server.NewManager()
+	// Initialize the internal sqlite database
+	err := database.Initialize()
+	if err != nil {
+		log.WithError(err).Fatal("failed to initialize database")
+	}
+
 	// Create the load balancer provider with the default load balancer
 	loadBalancer := balancer.NewProvider(balancer.NewRoundRobin())
 	// Create the remote client
 	remoteClient := client.New()
 	// Create the node manager
 	nodeManager := node.NewManager(remoteClient, loadBalancer)
-
-	// Initialize the internal sqlite database
-	err := database.Initialize()
+	// Create the server manager
+	serverManager, err := server.NewManager(nodeManager)
 	if err != nil {
-		log.WithError(err).Fatal("failed to initialize database")
+		log.Fatal(err.Error())
 	}
+
+	// Wire up node connection callback to attach node clients to servers
+	nodeManager.SetOnNodeRegistered(func(nodeId string, node *node.Node) {
+		serverManager.AttachNodeClientToServers(nodeId, node)
+	})
 
 	// Initialize the token store
 	tokenStore, err := auth.LoadAllTokens()

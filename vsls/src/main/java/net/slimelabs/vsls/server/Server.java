@@ -121,4 +121,14 @@ public class Server extends Listener {
         return client.getStatus();
     }
 
+    // Returns the name of the node this server resides on
+    public String getNodeName() {
+        return client.getNodeName();
+    }
+
+    // Returns the id of the node this server resides on
+    public String getNodeId() {
+        return client.getNodeId();
+    }
+
 }

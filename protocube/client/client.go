@@ -43,9 +43,10 @@ func New(opts ...ClientOption) *Client {
 }
 
 // Node creates a client for a specific node.
-func (c *Client) Node(baseUrl, token string) NodeClient {
+func (c *Client) Node(nodeId string, baseUrl, token string) NodeClient {
 	return &nodeClient{
 		client:  c,
+		nodeId:  nodeId,
 		baseUrl: baseUrl,
 		token:   token,
 	}

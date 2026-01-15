@@ -14,6 +14,10 @@ type Manager struct {
 	lb     *balancer.Provider
 	client *client.Client
 	nodes  map[string]*Node
+
+	// onNodeRegistered is called when a node is registered.
+	// The callback receives the node ID and the node client.
+	onNodeRegistered func(nodeId string, node *Node)
 }
 
 // NewManager returns a new server manager instance.
@@ -41,11 +45,20 @@ func (m *Manager) remove(id string) {
 	delete(m.nodes, id)
 }
 
+// SetOnNodeRegistered sets a callback that will be invoked when a node is registered.
+// This allows external components to react to node connections without creating
+// cyclic dependencies.
+func (m *Manager) SetOnNodeRegistered(callback func(nodeId string, node *Node)) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.onNodeRegistered = callback
+}
+
 // Register creates a new Node, initializes its NodeClient, adds it to the Manager's
 // internal collection, and registers it with the Manager's load balancer.
 // Returns the newly created Node instance.
 func (m *Manager) Register(id string, name string, url string, location string, token string) *Node {
-	nc := m.client.Node(url, token)
+	nc := m.client.Node(id, url, token)
 	n := &Node{
 		id:       id,
 		name:     name,
@@ -64,6 +77,15 @@ func (m *Manager) Register(id string, name string, url string, location string, 
 		"name":     n.name,
 		"location": n.location,
 	}).Info("Node connected")
+
+	// Invoke the callback if it's set
+	m.mutex.RLock()
+	callback := m.onNodeRegistered
+	m.mutex.RUnlock()
+	if callback != nil {
+		callback(id, n)
+	}
+
 	return n
 }
 

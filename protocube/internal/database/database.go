@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"protoxon.com/sls/protocube/config"
+	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/system"
 )
 
@@ -33,6 +34,17 @@ func Initialize() error {
 		return errors.WithStack(err)
 	} else {
 		sql.SetMaxOpenConns(1)
+	}
+	if err := migrations(); err != nil {
+		return errors.Wrap(err, "database: migration failed")
+	}
+	return nil
+}
+
+func migrations() error {
+	err := Instance().AutoMigrate(&models.ServerStore{})
+	if err != nil {
+		return errors.Wrap(err, "failed to auto migrate server data")
 	}
 	return nil
 }

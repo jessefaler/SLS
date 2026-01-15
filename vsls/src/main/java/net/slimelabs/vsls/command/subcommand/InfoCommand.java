@@ -37,10 +37,10 @@ public class InfoCommand {
                         NamedTextColor color = NamedTextColor.YELLOW;
                         if(server.status == ServerStatus.RUNNING) {
                             color = NamedTextColor.GREEN;
-                        } else if (server.status == ServerStatus.STOPPING) {
+                        } else if (server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
                             color = NamedTextColor.RED;
-                        } else if (server.status == ServerStatus.OFFLINE) {
-                            color = NamedTextColor.DARK_RED;
+                        } else if (server.status == ServerStatus.STARTING) {
+                            color = NamedTextColor.YELLOW;
                         }
                         message.add(server.id, color);
                         message.add(": ", NamedTextColor.WHITE);
@@ -78,22 +78,31 @@ public class InfoCommand {
                             String type        = blueprint != null ? blueprint.getType() : "Unknown";
                             String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
                             String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
+                            String statusColor = "green";
+                            if(server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
+                                statusColor = "red";
+                            } else if(server.status == ServerStatus.STARTING) {
+                                statusColor = "yellow";
+                            }
                             ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.id + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                                     " <hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
-                                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <green>" + server.status.getStatus() + "</green>\n" +
+                                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.status.getStatus() + "</" + statusColor + ">\n" +
                                     " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><blue> " + server.blueprintId + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue>\n" +
-                                    " <gold>-</gold> <dark_gray>Stats:</dark_gray>\n" +
+                                    " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
+                                    " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
                                     "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "\n" +
+                                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                                     "   <gold>-</gold> <dark_gray>Disk (Actual):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red> <dark_gray>(upperdir)</dark_gray>" +
-                                    "</red><dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
+                                    "</dark_purple>'><dark_gray>[</dark_gray><dark_red>Cpu:</dark_red> <red>" + stats.getCpuFormatted() + "</red><dark_gray>,</dark_gray> <dark_red>Mem:</dark_red> <red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>]</dark_gray></hover>\n" +
+                                    " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
+                                    "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
                         },  failure -> {
                             ProtoMessage.chat()
                                     .add(MessagePreset.SLS)

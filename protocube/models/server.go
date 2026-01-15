@@ -12,9 +12,18 @@ type PowerAction struct {
 }
 
 type ServerData struct {
-	Id   string `json:"id"`
-	Ip   string `json:"ip"`
-	Port int    `json:"port"`
+	Id       string `json:"id"`
+	NodeName string `json:"node_name"`
+	NodeId   string `json:"node_id"`
+	Ip       string `json:"ip"`
+	Port     int    `json:"port"`
+}
+
+type ServerStore struct {
+	Id          string `gorm:"primaryKey"`
+	NodeName    string `gorm:"index"`
+	NodeId      string `gorm:"index"`
+	BlueprintId string `gorm:"index"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you

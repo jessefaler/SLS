@@ -10,12 +10,15 @@ import (
 	"protoxon.com/sls/protocube/enviroment"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
+	"protoxon.com/sls/protocube/server/repository"
 	"protoxon.com/sls/protocube/system"
 )
 
 // Server represents a managed server instance controlled by SLS.
 type Server struct {
 	id          string
+	nodeName    string
+	nodeId      string
 	Limits      enviroment.Limits
 	status      Status
 	emitterLock sync.Mutex
@@ -40,6 +43,13 @@ type Server struct {
 
 func (s *Server) Id() string {
 	return s.id
+}
+
+func (s *Server) NodeName() string {
+	return s.nodeName
+}
+func (s *Server) NodeId() string {
+	return s.nodeId
 }
 
 // SetStatus updates the server's status and publishes the change.
@@ -101,9 +111,11 @@ func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
 // ServerData returns the ServerData model for this server.
 func (s *Server) ServerData() models.ServerData {
 	return models.ServerData{
-		Id:   s.id,
-		Ip:   s.Allocations.DefaultMapping.Ip,
-		Port: s.Allocations.DefaultMapping.Port,
+		Id:       s.id,
+		NodeId:   s.NodeId(),
+		NodeName: s.NodeName(),
+		Ip:       s.Allocations.DefaultMapping.Ip,
+		Port:     s.Allocations.DefaultMapping.Port,
 	}
 }
 
@@ -118,4 +130,9 @@ func (s *Server) CleanupForDestroy() {
 	s.DestroyAllSinks()
 	// Remove the server from the manager
 	s.Remove()
+	// Remove the server from the database
+	err := repository.RemoveServer(s.Id())
+	if err != nil {
+		log.WithError(err).Errorf("failed to remove server %s from database.", s.Id())
+	}
 }

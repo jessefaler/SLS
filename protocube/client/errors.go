@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var ErrNodeUnavailable = errors.New("node unavailable")
+
 type RequestErrors struct {
 	Errors []RequestError `json:"errors"`
 }
@@ -72,6 +74,8 @@ func HandleError(c *gin.Context, err error) {
 		return
 	}
 	switch {
+	case errors.Is(err, ErrNodeUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 	case errors.Is(err, context.DeadlineExceeded):
 		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Remote node request timed out"})
 	case errors.Is(err, context.Canceled):

@@ -20,6 +20,20 @@ public interface ClientServer {
      */
     String getId();
 
+    /**
+     * The id of the node this server is running on
+     *
+     * @return Possibly-null String containing the node id.
+     */
+    String getNodeId();
+
+    /**
+     * The name of the node this server is running on
+     *
+     * @return Possibly-null String containing the node name.
+     */
+    String getNodeName();
+
     SLSAction<Void> setPower(PowerAction powerAction);
 
     /**
@@ -51,6 +65,12 @@ public interface ClientServer {
      * Deletes the server
      */
     SLSAction<Void> delete();
+
+    /**
+     * Deletes the server with optional force flag
+     * @param force if true, ensures the server is cleaned up on Protocube even if deletion from the daemon fails
+     */
+    SLSAction<Void> delete(boolean force);
 
     /**
      * Retrieves the servers port

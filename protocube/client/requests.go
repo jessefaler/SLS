@@ -73,24 +73,36 @@ func (nc *nodeClient) Get(ctx context.Context, path string, query q) (*Response,
 // It automatically prefixes the provided path with "/servers/{id}" so callers only
 // need to specify the server-relative endpoint.
 func (sc *serverClient) Get(ctx context.Context, path string, query q) (*Response, error) {
-	route := fmt.Sprintf("/servers/%s%s", sc.id, path)
-	return sc.node.Get(ctx, route, query)
+	route := fmt.Sprintf("/servers/%s%s", sc.serverId, path)
+	node, err := sc.Node()
+	if err != nil {
+		return nil, err
+	}
+	return node.Get(ctx, route, query)
 }
 
 // Post performs a scoped HTTP POST request to the node's API for this specific server.
 // It automatically prefixes the provided path with "/servers/{id}" so callers only
 // need to specify the server-relative endpoint.
 func (sc *serverClient) Post(ctx context.Context, path string, data interface{}) (*Response, error) {
-	route := fmt.Sprintf("/servers/%s%s", sc.id, path)
-	return sc.node.Post(ctx, route, data)
+	route := fmt.Sprintf("/servers/%s%s", sc.serverId, path)
+	node, err := sc.Node()
+	if err != nil {
+		return nil, err
+	}
+	return node.Post(ctx, route, data)
 }
 
 // Delete performs a scoped HTTP DELETE request to the node's API for this specific server.
 // It automatically prefixes the provided path with "/servers/{id}" so callers only
 // need to specify the server-relative endpoint.
 func (sc *serverClient) Delete(ctx context.Context, path string) (*Response, error) {
-	route := fmt.Sprintf("/servers/%s%s", sc.id, path)
-	return sc.node.Delete(ctx, route)
+	route := fmt.Sprintf("/servers/%s%s", sc.serverId, path)
+	node, err := sc.Node()
+	if err != nil {
+		return nil, err
+	}
+	return node.Delete(ctx, route)
 }
 
 // Post executes an HTTP POST request.

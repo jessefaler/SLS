@@ -83,6 +83,55 @@ public class DeleteCommand {
                                 .add("Failed to get server " + id + " Reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);
                     });
                     return 1;
+                }).then(force());
+    }
+
+    private static RequiredArgumentBuilder<CommandSource, String> force() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("force", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("force");
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "server");
+                    if(id.equals("all")) {
+                        SLS.api.getAllServers().executeAsync(servers -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Deleting all servers.", NamedTextColor.GRAY)
+                                    .sendMessage(source);
+                            for(ClientServer server : servers) {
+                                server.delete(true).executeAsync(success -> {}, failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to delete server " + server.getId() + " reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);
+                                });
+                            }
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Failed to delete all servers. Reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);
+                        });
+                        return 1;
+                    }
+                    SLS.api.getServer(id).executeAsync(server -> {
+                        server.delete(true).executeAsync(success -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Deleted " + id, NamedTextColor.GRAY)
+                                    .sendMessage(source);
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Failed to delete server " + id + " Reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);
+                        });
+                    }, failure -> {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Failed to get server " + id + " Reason: " + failure.getMessage(), NamedTextColor.RED).sendMessage(source);
+                    });
+                    return 1;
                 });
     }
 

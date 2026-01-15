@@ -29,6 +29,16 @@ public class ClientServerImpl implements ClientServer {
     }
 
     @Override
+    public String getNodeId() {
+        return json.getString("node_id");
+    }
+
+    @Override
+    public String getNodeName() {
+        return json.getString("node_name");
+    }
+
+    @Override
     public SLSAction<Void> setPower(PowerAction powerAction) {
         JSONObject obj = new JSONObject().put("action", powerAction.name().toLowerCase());
         return SLSActionImpl.onRequestExecute(
@@ -137,8 +147,17 @@ public class ClientServerImpl implements ClientServer {
 
     @Override
     public SLSAction<Void> delete() {
+        return delete(false);
+    }
+
+    @Override
+    public SLSAction<Void> delete(boolean force) {
+        Route.CompiledRoute route = Route.Server.DELETE.compile(getId());
+        if (force) {
+            route = route.withQueryParams("force", "true");
+        }
         return SLSActionImpl.onRequestExecute(
-                impl.getS4J(), Route.Server.DELETE.compile(getId()));
+                impl.getS4J(), route);
     }
 
 }

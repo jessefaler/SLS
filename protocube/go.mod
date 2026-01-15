@@ -4,7 +4,6 @@ go 1.24.0
 
 require (
 	emperror.dev/errors v0.8.1
-	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/NYTimes/logrotate v1.0.0
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/apex/log v1.9.0
@@ -14,11 +13,11 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/fatih/color v1.18.0
 	github.com/franela/goblin v0.0.0-20211003143422-0a4f594942bf
+	github.com/gammazero/workerpool v1.1.3
 	github.com/gin-gonic/gin v1.11.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/iancoleman/strcase v0.3.0
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
 	github.com/pkg/errors v0.9.1
@@ -36,6 +35,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/gammazero/deque v0.2.0 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

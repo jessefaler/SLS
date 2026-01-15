@@ -2,14 +2,20 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 	"sync"
+	"time"
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
+	"github.com/gammazero/workerpool"
 	"protoxon.com/sls/protocube/blueprint"
+	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
+	"protoxon.com/sls/protocube/server/repository"
 	"protoxon.com/sls/protocube/software"
 	"protoxon.com/sls/protocube/system"
 	"protoxon.com/sls/protocube/system/id"
@@ -26,11 +32,15 @@ type Manager struct {
 }
 
 // NewManager returns a new server manager instance.
-func NewManager() *Manager {
-	return &Manager{
+func NewManager(nm *node.Manager) (*Manager, error) {
+	m := &Manager{
 		servers: make(map[string]*Server),
 		emitter: events.NewBus(),
 	}
+	if err := m.init(nm); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // Add a server to the collection
@@ -78,14 +88,82 @@ func (m *Manager) GetServer(id string) *Server {
 	return m.servers[id]
 }
 
+// ServersByNode returns all servers that belong to the specified node ID.
+func (m *Manager) ServersByNode(nodeId string) []*Server {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	var result []*Server
+	for _, server := range m.servers {
+		if server.nodeId == nodeId {
+			result = append(result, server)
+		}
+	}
+	return result
+}
+
+// AttachNodeClientToServers attaches a node client to all servers that belong to the specified node.
+// This is called when a node connects to ensure all servers for that node have their
+// node client properly set.
+func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
+	servers := m.ServersByNode(nodeId)
+	for _, server := range servers {
+		server.sc.SetNodeClient(node.Client())
+		// Update the servers node name in case it changed
+		server.nodeName = node.Name()
+	}
+}
+
 // CreateServer creates a server on the specified node and adds it to the manager
 func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *blueprint.Blueprint, software *software.Registry) (*Server, error) {
+
+	serverId := id.New()
+
+	// Get the server client from the node
+	serverClient := node.Server(serverId)
+
+	// Instantiate the server
+	server := &Server{
+		id:           serverId,
+		nodeName:     node.Name(),
+		nodeId:       node.Id(),
+		sc:           serverClient,
+		GlobalEvents: m.Events,
+		Remove: func() {
+			m.Remove(serverId)
+		},
+	}
+
+	// This will remove the server in the event any of the following steps fail
+	created := false
+	defer func() {
+		if !created {
+			server.Remove()
+			server.Events().Destroy()
+			server.DestroyAllSinks()
+			err := repository.RemoveServer(server.Id())
+			log.WithError(err).Errorf("failed to remove server %s from database.", serverId)
+		}
+	}()
+
+	// Add the server to the manager
+	m.Add(server)
+
+	// Write the server to the database
+	if err := repository.StoreServer(&models.ServerStore{
+		Id:          serverId,
+		NodeName:    node.Name(),
+		NodeId:      node.Id(),
+		BlueprintId: blueprint.Meta.ID,
+	}); err != nil {
+		return nil, err
+	}
 
 	sw := software.Get(blueprint.Server.Software)
 
 	matcher, err := models.NewOutputLineMatcher(sw.OnlineSignal)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create output line matcher for the start configuration: "+sw.OnlineSignal)
+		return nil, errors.Wrapf(err, "failed to create output line matcher for the start configuration: %s", sw.OnlineSignal)
 	}
 
 	// Convert software and blueprint configuration patches
@@ -110,7 +188,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 	}
 
 	nodeReq := models.NodeCreateServerRequest{
-		ID:                   id.New(),
+		ID:                   serverId,
 		ProcessConfiguration: pc,
 		Image:                blueprint.Server.Image,
 		Invocation:           sw.Invocation,
@@ -127,29 +205,82 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		return nil, err
 	}
 
-	// Get the server client from the node
-	serverClient := node.Server(nodeReq.ID)
-
-	// Instantiate the server
-	server := &Server{
-		id:           nodeReq.ID,
-		sc:           serverClient,
-		GlobalEvents: m.Events,
-		Allocations:  resp.Allocation,
-		Remove: func() {
-			m.Remove(nodeReq.ID)
-		},
-	}
+	// Set the servers allocation returned from the node response
+	// todo should probably switch to protocube assigning allocations
+	server.Allocations = resp.Allocation
 
 	// log any errors that occurred when converting configuration patches
 	if cfgErr != nil {
-		log.WithError(err).Warn("An error occurred while converting config patches for server " + server.id)
+		log.WithError(cfgErr).Warn("an error occurred while converting config patches for server " + server.id)
+	}
+
+	// Indicate that the server was successfully created so that it is not removed by the defer function
+	created = true
+	return server, nil
+}
+
+// Loads in all servers stored in the database
+func (m *Manager) init(nm *node.Manager) error {
+	servers, err := repository.GetAllServers()
+	if err != nil {
+		return errors.WrapIf(err, "failed to load servers from database")
+	}
+
+	start := time.Now()
+	log.WithField("total_configs", len(servers)).Info("processing servers configurations from the database")
+
+	pool := workerpool.New(runtime.NumCPU())
+	log.Debugf("using %d workerpools to instantiate server instances", runtime.NumCPU())
+	for _, data := range servers {
+		data := data
+		n, _ := nm.Get(data.NodeId)
+		pool.Submit(func() {
+			s, err := m.InitServer(data, n)
+			if err != nil {
+				log.WithField("server", data.Id).WithField("error", err).Error("failed to load server, skipping...")
+				return
+			}
+			m.Add(s)
+		})
+	}
+
+	// Wait until we've processed all the server configurations in the database
+	// before continuing.
+	pool.StopWait()
+
+	diff := time.Now().Sub(start)
+	log.WithField("duration", fmt.Sprintf("%s", diff)).Info("finished processing server configurations")
+
+	return nil
+}
+
+func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, error) {
+	// Create the server client.
+	// The node client is likely nil at startup because servers are loaded
+	// during program boot, before any nodes have connected. The node client will
+	// be attached later when a node becomes available.
+	serverClient := client.NewServerClient(data.Id, data.NodeId)
+	if n != nil {
+		// Set the node client if the node has already connected
+		serverClient.SetNodeClient(n.Client())
+		// Update the servers node name in case it changed
+		data.NodeName = n.Name()
+	}
+
+	// Instantiate the server
+	server := &Server{
+		id:           data.Id,
+		nodeName:     data.NodeName,
+		nodeId:       data.NodeId,
+		sc:           serverClient,
+		GlobalEvents: m.Events,
+
+		Remove: func() {
+			m.Remove(data.Id)
+		},
 	}
 
 	// Add the server to the manager
 	m.Add(server)
-
-	// Write the server to the database
-
 	return server, nil
 }

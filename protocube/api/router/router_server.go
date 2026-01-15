@@ -37,6 +37,13 @@ func deleteServer(c *gin.Context) {
 	server := middleware.ExtractServer(c)
 	err := server.Delete(c.Request.Context())
 	if err != nil {
+		// If force is enabled, ensure the server is cleaned up on Protocube
+		// even if deletion from the daemon fails
+		if c.Query("force") == "true" {
+			server.CleanupForDestroy()
+			c.Status(http.StatusOK)
+			return
+		}
 		client.HandleError(c, err)
 		return
 	}
