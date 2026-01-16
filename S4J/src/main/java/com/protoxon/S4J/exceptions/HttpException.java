@@ -55,26 +55,26 @@ public class HttpException extends SLSException {
 				if (o instanceof JSONObject) {
 					JSONObject obj = (JSONObject) o;
 					if (obj.has("detail")) {
-						message.append("\t- ").append(obj.getString("detail")).append("\n");
+						message.append("  - ").append(obj.getString("detail")).append("\n");
 					} else {
-						message.append("\t- ").append(obj.toString()).append("\n");
+						message.append("  - ").append(obj.toString()).append("\n");
 					}
 				} else {
-					message.append("\t- ").append(o.toString()).append("\n");
+					message.append("  - ").append(o.toString()).append("\n");
 				}
 			}
 		}
 		// Handle "error" string format (new format)
 		else if (json.has("error")) {
-			message.append("\t- ").append(json.getString("error")).append("\n");
+			message.append("  - ").append(json.getString("error")).append("\n");
 		}
 		// Handle "message" string format (common alternative)
 		else if (json.has("message")) {
-			message.append("\t- ").append(json.getString("message")).append("\n");
+			message.append("  - ").append(json.getString("message")).append("\n");
 		}
 		// Fallback: show raw JSON if no recognized error format
 		else {
-			message.append("\t- ").append(json.toString()).append("\n");
+			message.append("  - ").append(json.toString()).append("\n");
 		}
 		
 		return message.toString();
