@@ -19,7 +19,6 @@ type Server struct {
 	id          string
 	nodeName    string
 	nodeId      string
-	Limits      enviroment.Limits
 	status      Status
 	emitterLock sync.Mutex
 

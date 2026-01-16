@@ -18,6 +18,7 @@ type Node struct {
 	*Health
 }
 
+// Returns the underlying node client
 func (n *Node) Client() client.NodeClient {
 	return n.nc
 }

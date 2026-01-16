@@ -20,10 +20,11 @@ type ServerData struct {
 }
 
 type ServerStore struct {
-	Id          string `gorm:"primaryKey"`
-	NodeName    string `gorm:"index"`
-	NodeId      string `gorm:"index"`
-	BlueprintId string `gorm:"index"`
+	Id          string           `gorm:"primaryKey"`
+	NodeName    string           `gorm:"index"`
+	NodeId      string           `gorm:"index"`
+	BlueprintId string           `gorm:"index"`
+	Overrides   *ServerOverrides `gorm:"serializer:json"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you
@@ -61,8 +62,14 @@ type NodeCreateServerRequest struct {
 }
 
 type CreateServerRequest struct {
-	BlueprintID string `json:"blueprint_id"`
-	NodeId      string `json:"node_id,omitempty"`
+	BlueprintID string           `json:"blueprint_id"`
+	NodeId      string           `json:"node_id,omitempty"`
+	Overrides   *ServerOverrides `json:"overrides,omitempty"`
+}
+
+type ServerOverrides struct {
+	Save   *bool              `json:"save,omitempty"`
+	Limits *enviroment.Limits `json:"limits,omitempty"`
 }
 
 type CreateServerResponse struct {

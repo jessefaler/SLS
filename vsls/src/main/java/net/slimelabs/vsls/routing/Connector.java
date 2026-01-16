@@ -1,5 +1,6 @@
 package net.slimelabs.vsls.routing;
 
+import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
@@ -36,7 +37,9 @@ public class Connector {
     }
 
     public static void join(Player player, String blueprintId) {
-        SLS.servers.CreateServer(blueprintId).executeAsync(server -> {
+        ServerCreationAction creation = SLS.api.createServer();
+        creation.setBlueprintId(blueprintId);
+        SLS.servers.CreateServer(creation).executeAsync(server -> {
             SLS.queue.enqueue(player, server);
         }, failure -> {
             Log.error("Failed to start server from blueprint {} reason: {}", blueprintId, failure.getMessage());

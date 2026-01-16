@@ -36,7 +36,6 @@ public class NodeCommand {
                         // Shorten the node id to a length of 8 and suggest it
                         builder.suggest(Id.shortId(id, 8));
                     }
-                    String temp;
                     return builder.build();
                 }))
                 .executes(context -> {

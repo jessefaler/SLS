@@ -12,6 +12,7 @@ import (
 	"github.com/gammazero/workerpool"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/client"
+	"protoxon.com/sls/protocube/enviroment"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
@@ -115,8 +116,7 @@ func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
 }
 
 // CreateServer creates a server on the specified node and adds it to the manager
-func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *blueprint.Blueprint, software *software.Registry) (*Server, error) {
-
+func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *blueprint.Blueprint, software *software.Registry, overrides *models.ServerOverrides) (*Server, error) {
 	serverId := id.New()
 
 	// Get the server client from the node
@@ -155,6 +155,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		NodeName:    node.Name(),
 		NodeId:      node.Id(),
 		BlueprintId: blueprint.Meta.ID,
+		Overrides:   overrides,
 	}); err != nil {
 		return nil, err
 	}
@@ -187,16 +188,26 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 		ConfigurationFiles: configFiles,
 	}
 
+	// Handle Overrides
+	save := blueprint.Save
+	limits := blueprint.Server.Limits
+	if overrides != nil {
+		if overrides.Save != nil {
+			save = *overrides.Save
+		}
+		limits = MergeLimits(limits, overrides.Limits)
+	}
+
 	nodeReq := models.NodeCreateServerRequest{
 		ID:                   serverId,
 		ProcessConfiguration: pc,
 		Image:                blueprint.Server.Image,
 		Invocation:           sw.Invocation,
-		Limits:               blueprint.Server.Limits,
+		Limits:               limits,
 		ServerFolder:         blueprint.Server.Path,
 		WorldFolder:          blueprint.World.Path,
 		Content:              blueprint.Server.Content,
-		Save:                 blueprint.Save,
+		Save:                 save,
 	}
 
 	// Request server creation on the remote node
@@ -283,4 +294,34 @@ func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, e
 	// Add the server to the manager
 	m.Add(server)
 	return server, nil
+}
+
+func MergeLimits(base *enviroment.Limits, override *enviroment.Limits) *enviroment.Limits {
+	if override == nil {
+		return base
+	}
+
+	if override.MemoryLimit != nil {
+		base.MemoryLimit = override.MemoryLimit
+	}
+	if override.Swap != nil {
+		base.Swap = override.Swap
+	}
+	if override.IoWeight != nil {
+		base.IoWeight = override.IoWeight
+	}
+	if override.CpuLimit != nil {
+		base.CpuLimit = override.CpuLimit
+	}
+	if override.DiskSpace != nil {
+		base.DiskSpace = override.DiskSpace
+	}
+	if override.Threads != nil {
+		base.Threads = override.Threads
+	}
+	if override.OOMDisabled != nil {
+		base.OOMDisabled = override.OOMDisabled
+	}
+
+	return base
 }

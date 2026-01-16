@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -59,7 +60,10 @@ public class StartCommand {
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
 
-                    SLS.servers.CreateServer(blueprint).executeAsync(server -> {
+                    ServerCreationAction creation = SLS.api.createServer();
+                    creation.setBlueprintId(blueprint);
+
+                    SLS.servers.CreateServer(creation).executeAsync(server -> {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
                                 .add("Starting " + blueprint, NamedTextColor.GREEN)

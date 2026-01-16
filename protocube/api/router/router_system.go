@@ -168,7 +168,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		return
 	}
 
-	server, err := r.ServerManager.CreateServer(c.Request.Context(), n, bp, r.SoftwareRegistry)
+	server, err := r.ServerManager.CreateServer(c.Request.Context(), n, bp, r.SoftwareRegistry, req.Overrides)
 	if err != nil {
 		log.WithError(err).Error("Failed to create server")
 		client.HandleError(c, err)

@@ -1,6 +1,7 @@
 package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.SLSClient;
 import com.velocitypowered.api.proxy.server.ServerInfo;
@@ -38,17 +39,16 @@ public class ServerRegistry implements ServerProvider {
     }
 
     /**
-     * Initiates the creation of a new server using the specified blueprint id.
+     * Initiates the creation of a new server
      *
-     * @param blueprint the id of the blueprint to use
+     * @param action the server creation action
      * @return an SLSAction that, when executed, creates the server and registers it
      */
-    public SLSAction<Server> CreateServer(String blueprint) {
-        SLSAction<ClientServer> action = api.createServer().setBlueprintId(blueprint);
+    public SLSAction<Server> CreateServer(ServerCreationAction action) {
         // Map the ClientServer to a vSLS Server, and register it
         return action.map(clientServer -> {
-            String name = SLS.blueprints.getBlueprint(blueprint).getName();
-            Server server = new Server(name, clientServer, blueprint, () -> unRegister(clientServer.getId()));
+            String name = SLS.blueprints.getBlueprint(action.getBlueprintId()).getName();
+            Server server = new Server(name, clientServer, action.getBlueprintId(), () -> unRegister(clientServer.getId()));
             register(server);
             return server;
         });
