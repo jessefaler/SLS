@@ -8,6 +8,11 @@ type NodeData struct {
 	Drained  bool   `json:"drained"`
 }
 
+type NodeState struct {
+	Id      string `gorm:"primaryKey"`
+	Drained bool   `gorm:"not null;default:false"`
+}
+
 type Information struct {
 	Version string            `json:"version"`
 	Docker  DockerInformation `json:"docker"`

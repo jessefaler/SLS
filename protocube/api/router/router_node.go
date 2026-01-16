@@ -135,6 +135,12 @@ func toggleNodeDrained(c *gin.Context) {
 		return
 	}
 
-	node.SetDrained(req.Drained)
+	err := node.SetDrained(req.Drained)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to update node drained state",
+		})
+		log.Errorf("failed to update drained state for node %s: %v", node.Id(), err)
+	}
 	c.Status(http.StatusOK)
 }

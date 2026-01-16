@@ -4,7 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"emperror.dev/errors"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"protoxon.com/sls/protocube/client"
+	"protoxon.com/sls/protocube/internal/database"
 	"protoxon.com/sls/protocube/models"
 )
 
@@ -32,10 +36,18 @@ func (n *Node) Drained() bool {
 	return n.drained
 }
 
-func (n *Node) SetDrained(drained bool) {
+// Sets the drained state of the node
+func (n *Node) SetDrained(drained bool) error {
+	// store the drained state to the database
+	if err := n.storeDrainedState(drained); err != nil {
+		return err
+	}
+	// Update the in memory state
+	// If the database succeeded
 	n.mutex.Lock()
-	defer n.mutex.Unlock()
 	n.drained = drained
+	n.mutex.Unlock()
+	return nil
 }
 
 func (n *Node) Url() string {
@@ -69,4 +81,46 @@ func (n *Node) GetSystemInformation(ctx context.Context) (models.Information, er
 // Server returns a server-specific client bound to this node.
 func (n *Node) Server(id string) client.ServerClient {
 	return n.nc.Server(id)
+}
+
+// Persists the node's drained state to the database.
+// When drained is true, a record is upserted.
+// When drained is false, any existing record is removed.
+func (n *Node) storeDrainedState(drained bool) error {
+	db := database.Instance()
+
+	if drained {
+		// Insert if not exists, update if it does
+		return db.
+			Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "id"}},
+				DoUpdates: clause.Assignments(map[string]interface{}{
+					"drained": true,
+				}),
+			}).
+			Create(&models.NodeState{
+				Id:      n.id,
+				Drained: true,
+			}).Error
+	}
+
+	// Undrained remove row entirely
+	return db.Delete(&models.NodeState{}, "id = ?", n.id).Error
+}
+
+// Loads the persisted drained state for this node, if present.
+// Absence of a record implies the node is not drained.
+// Called when a node connects to restore drained state across restarts.
+func (n *Node) loadDrainedState() error {
+	var state models.NodeState
+	err := database.Instance().First(&state, "id = ?", n.id).Error
+	if err == nil {
+		n.drained = state.Drained
+		return nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		n.drained = false
+		return nil
+	}
+	return err
 }

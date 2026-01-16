@@ -70,6 +70,11 @@ func (m *Manager) Register(id string, name string, url string, location string, 
 			Online:   true,
 		},
 	}
+	// Load the nodes drained state from the database
+	err := n.loadDrainedState()
+	if err != nil {
+		log.WithError(err).Error("failed to load node drained state")
+	}
 	m.lb.Get().AddNode(n)
 	m.add(n)
 	log.WithFields(log.Fields{
