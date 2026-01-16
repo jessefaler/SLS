@@ -6,6 +6,7 @@ import com.protoxon.S4J.client.entites.ServerLimits;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
 import okhttp3.RequestBody;
+import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
 public class CreateServerImpl extends SLSActionImpl<ClientServer> implements ServerCreationAction {
@@ -125,6 +126,22 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
         return this;
     }
 
+    /**
+     * Checks if the limits object has any non-null values set.
+     */
+    private boolean hasLimitsValues(ServerLimits limits) {
+        if (limits == null) {
+            return false;
+        }
+        return limits.getMemoryLimit() != null
+                || limits.getSwap() != null
+                || limits.getIoWeight() != null
+                || limits.getCpuLimit() != null
+                || limits.getDiskSpace() != null
+                || limits.getThreads() != null
+                || limits.getOomDisabled() != null;
+    }
+
     @Override
     protected RequestBody finalizeData() {
         JSONObject obj = new JSONObject()
@@ -133,46 +150,50 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
             obj.put("node_id", nodeId);
         }
 
-        // Build overrides object if any override is set
-        JSONObject overrides = null;
-        if (save != null || limits != null) {
-            overrides = new JSONObject();
-            if (save != null) {
+        // Build overrides object only if there are actual values to override
+        boolean hasSave = save != null;
+        boolean hasLimits = hasLimitsValues(limits);
+
+        if (hasSave || hasLimits) {
+            JSONObject overrides = new JSONObject();
+            if (hasSave) {
                 overrides.put("save", save);
             }
-            if (limits != null) {
-                JSONObject limitsObj = new JSONObject();
-                if (limits.getMemoryLimit() != null) {
-                    limitsObj.put("memory_limit", limits.getMemoryLimit());
-                }
-                if (limits.getSwap() != null) {
-                    limitsObj.put("swap", limits.getSwap());
-                }
-                if (limits.getIoWeight() != null) {
-                    limitsObj.put("io_weight", limits.getIoWeight());
-                }
-                if (limits.getCpuLimit() != null) {
-                    limitsObj.put("cpu_limit", limits.getCpuLimit());
-                }
-                if (limits.getDiskSpace() != null) {
-                    limitsObj.put("disk_space", limits.getDiskSpace());
-                }
-                if (limits.getThreads() != null) {
-                    limitsObj.put("threads", limits.getThreads());
-                }
-                if (limits.getOomDisabled() != null) {
-                    limitsObj.put("oom_disabled", limits.getOomDisabled());
-                }
-                if (limitsObj.length() > 0) {
-                    overrides.put("limits", limitsObj);
-                }
+            if (hasLimits) {
+                JSONObject limitsObj = getLimitsObject();
+                overrides.put("limits", limitsObj);
             }
-            if (overrides.length() > 0) {
-                obj.put("overrides", overrides);
-            }
+            obj.put("overrides", overrides);
         }
 
         return getRequestBody(obj);
+    }
+
+    @NotNull
+    private JSONObject getLimitsObject() {
+        JSONObject limitsObj = new JSONObject();
+        if (limits.getMemoryLimit() != null) {
+            limitsObj.put("memory_limit", limits.getMemoryLimit());
+        }
+        if (limits.getSwap() != null) {
+            limitsObj.put("swap", limits.getSwap());
+        }
+        if (limits.getIoWeight() != null) {
+            limitsObj.put("io_weight", limits.getIoWeight());
+        }
+        if (limits.getCpuLimit() != null) {
+            limitsObj.put("cpu_limit", limits.getCpuLimit());
+        }
+        if (limits.getDiskSpace() != null) {
+            limitsObj.put("disk_space", limits.getDiskSpace());
+        }
+        if (limits.getThreads() != null) {
+            limitsObj.put("threads", limits.getThreads());
+        }
+        if (limits.getOomDisabled() != null) {
+            limitsObj.put("oom_disabled", limits.getOomDisabled());
+        }
+        return limitsObj;
     }
 
 }

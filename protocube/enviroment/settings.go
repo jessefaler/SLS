@@ -28,3 +28,42 @@ type Limits struct {
 	// If true, disables the OOM killer for this container.
 	OOMDisabled *bool `yaml:"oom_disabled" json:"oom_disabled" default:"false"`
 }
+
+func CopyLimits(orig *Limits) *Limits {
+	if orig == nil {
+		return nil
+	}
+
+	copy := &Limits{}
+
+	if orig.MemoryLimit != nil {
+		val := *orig.MemoryLimit
+		copy.MemoryLimit = &val
+	}
+	if orig.Swap != nil {
+		val := *orig.Swap
+		copy.Swap = &val
+	}
+	if orig.IoWeight != nil {
+		val := *orig.IoWeight
+		copy.IoWeight = &val
+	}
+	if orig.CpuLimit != nil {
+		val := *orig.CpuLimit
+		copy.CpuLimit = &val
+	}
+	if orig.DiskSpace != nil {
+		val := *orig.DiskSpace
+		copy.DiskSpace = &val
+	}
+	if orig.Threads != nil {
+		val := *orig.Threads
+		copy.Threads = &val
+	}
+	if orig.OOMDisabled != nil {
+		val := *orig.OOMDisabled
+		copy.OOMDisabled = &val
+	}
+
+	return copy
+}

@@ -190,7 +190,8 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 
 	// Handle Overrides
 	save := blueprint.Save
-	limits := blueprint.Server.Limits
+	// We need to make a copy of the limits so we don't mutate the blueprints default limits
+	limits := enviroment.CopyLimits(blueprint.Server.Limits)
 	if overrides != nil {
 		if overrides.Save != nil {
 			save = *overrides.Save
