@@ -20,14 +20,19 @@ func NewRoundRobin() *RoundRobinBalancer {
 func (b *RoundRobinBalancer) PickNode() BalancedNode {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
 	if len(b.nodes) == 0 {
 		return nil
 	}
 
-	n := b.nodes[b.index]
-	b.index = (b.index + 1) % len(b.nodes)
-	return n
+	for i := 0; i < len(b.nodes); i++ {
+		n := b.nodes[b.index]
+		b.index = (b.index + 1) % len(b.nodes)
+		if !n.Drained() {
+			return n
+		}
+	}
+
+	return nil // all nodes are drained
 }
 
 func (b *RoundRobinBalancer) AddNode(n BalancedNode) {

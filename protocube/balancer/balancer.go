@@ -5,6 +5,7 @@ type BalancedNode interface {
 	Id() string
 	Name() string
 	Url() string
+	Drained() bool
 }
 
 // Balancer defines the interface for selecting nodes for server creation.

@@ -64,7 +64,7 @@ func (r *Router) postNodeDisconnect(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *Router) postNodeServerStatus(c *gin.Context) {
+func postNodeServerStatus(c *gin.Context) {
 	// Declare a variable to hold the JSON data
 	var status server.Status
 	// Bind the JSON to the status variable
@@ -83,7 +83,7 @@ func (r *Router) postNodeServerStatus(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *Router) postEventServerCrash(c *gin.Context) {
+func postEventServerCrash(c *gin.Context) {
 	var crash server.CrashData
 	if err := c.ShouldBindJSON(&crash); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -96,7 +96,7 @@ func (r *Router) postEventServerCrash(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *Router) postEventServerDeleted(c *gin.Context) {
+func postEventServerDeleted(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	s.CleanupForDestroy()
 	c.Status(http.StatusOK)
@@ -109,10 +109,8 @@ func getNode(c *gin.Context) {
 		Name:     node.Name(),
 		Location: node.Location(),
 		URL:      node.Url(),
+		Drained:  node.Drained(),
 	})
-}
-
-func (r *Router) getServers(c *gin.Context) {
 }
 
 func getNodeSystemInfo(c *gin.Context) {
@@ -123,4 +121,20 @@ func getNodeSystemInfo(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, info)
+}
+
+func toggleNodeDrained(c *gin.Context) {
+	node := middleware.ExtractNode(c)
+
+	var req struct {
+		Drained bool `json:"drained"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	node.SetDrained(req.Drained)
+	c.Status(http.StatusOK)
 }

@@ -5,6 +5,7 @@ type NodeData struct {
 	Name     string `json:"name"`
 	Location string `json:"location"`
 	URL      string `json:"url"`
+	Drained  bool   `json:"drained"`
 }
 
 type Information struct {

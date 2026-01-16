@@ -108,6 +108,7 @@ func (r *Router) getAllNodes(c *gin.Context) {
 			Name:     n.Name(),
 			Location: n.Location(),
 			URL:      n.Url(),
+			Drained:  n.Drained(),
 		}
 	}
 	c.JSON(http.StatusOK, out)

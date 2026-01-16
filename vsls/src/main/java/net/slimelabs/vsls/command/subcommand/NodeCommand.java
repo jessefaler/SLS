@@ -3,6 +3,7 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
@@ -61,6 +62,7 @@ public class NodeCommand {
                                 message.append(" <gold>-</gold> <dark_gray>Name:</dark_gray> <red>").append(clientNode.getName()).append("</red>\n");
                                 message.append(" <gold>-</gold> <dark_gray>Location:</dark_gray> <red>").append(clientNode.getLocation()).append("</red>\n");
                                 message.append(" <gold>-</gold> <dark_gray>Url:</dark_gray> <red>").append(clientNode.getUrl()).append("</red>\n");
+                                message.append(" <gold>-</gold> <dark_gray>Drained:</dark_gray> <red>").append(clientNode.getDrained()).append("</red>\n");
                                 message.append(" <gold>-</gold> <dark_gray>Version:</dark_gray> <red>").append(systemInformation.getVersion() != null ? systemInformation.getVersion() : "Unknown").append("</red>\n");
 
                                 // System Information
@@ -115,13 +117,88 @@ public class NodeCommand {
                             }, failure -> {
                                 ProtoMessage.chat()
                                         .add(MessagePreset.SLS)
-                                        .add("Failed to get system information for node " + id + " reason: " + failure.getMessage(), NamedTextColor.RED)
+                                        .add("Failed to get system information for node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
                                         .sendMessage(source);
                             });
                         }, failure -> {
                             ProtoMessage.chat()
                                     .add(MessagePreset.SLS)
-                                    .add("Failed to get node " + id + " reason: " + failure.getMessage(), NamedTextColor.RED)
+                                    .add("Failed to get node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
+                                    .sendMessage(source);
+                        });
+                    }, failure -> {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
+                                .sendMessage(source);
+                        return;
+                    });
+                    return 0;
+                }).then(drained());
+    }
+
+    private static RequiredArgumentBuilder<CommandSource, String> drained() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("drained", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("drained");
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "id");
+                    SLS.api.getAllNodeIds().executeAsync(ids -> {
+                        String fullId = Id.findFullId(id, ids);
+                        SLS.api.getNode(fullId).executeAsync(clientNode -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Drained: ", NamedTextColor.DARK_GRAY).add(String.valueOf(clientNode.getDrained()), NamedTextColor.RED)
+                                    .sendMessage(source);
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Failed to get node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
+                                    .sendMessage(source);
+                        });
+                    }, failure -> {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
+                                .sendMessage(source);
+                        return;
+                    });
+                    return 0;
+                }).then(setDrained());
+    }
+
+    private static RequiredArgumentBuilder<CommandSource, String> setDrained() {
+        return RequiredArgumentBuilder.<CommandSource, String>argument("set_drained", StringArgumentType.string())
+                .suggests((context, builder) -> {
+                    builder.suggest("true");
+                    builder.suggest("false");
+                    return builder.buildFuture();
+                })
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    String id = StringArgumentType.getString(context, "id");
+                    String value = StringArgumentType.getString(context, "set_drained");
+                    SLS.api.getAllNodeIds().executeAsync(ids -> {
+                        String fullId = Id.findFullId(id, ids);
+                        SLS.api.getNode(fullId).executeAsync(clientNode -> {
+                            clientNode.setDrained(Boolean.parseBoolean(value)).executeAsync(success -> {
+                                ProtoMessage.chat()
+                                        .add(MessagePreset.SLS)
+                                        .add("Set drained to: ", NamedTextColor.DARK_GRAY).add(String.valueOf(value), NamedTextColor.RED)
+                                        .sendMessage(source);
+                            }, failure -> {
+                                ProtoMessage.chat()
+                                        .add(MessagePreset.SLS)
+                                        .add("Failed to set node " + Id.shortId(id, 8) + " to drained. Reason: " + failure.getMessage(), NamedTextColor.RED)
+                                        .sendMessage(source);
+                            });
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Failed to get node " + Id.shortId(id, 8) + " Reason: " + failure.getMessage(), NamedTextColor.RED)
                                     .sendMessage(source);
                         });
                     }, failure -> {

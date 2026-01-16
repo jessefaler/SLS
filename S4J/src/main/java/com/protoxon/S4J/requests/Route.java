@@ -56,6 +56,7 @@ public class Route {
     public static class Node {
         public static final Route GET_NODE = new Route(GET, "nodes/{node_id}");
         public static final Route GET_SYSTEM_INFO = new Route(GET, "nodes/{node_id}/system");
+        public static final Route SET_DRAINED = new Route(PATCH, "nodes/{node_id}/drained");
     }
 
     // ===========================================================

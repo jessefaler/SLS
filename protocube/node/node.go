@@ -13,6 +13,7 @@ type Node struct {
 	name     string
 	location string
 	url      string
+	drained  bool
 	mutex    sync.RWMutex
 	nc       client.NodeClient
 	*Health
@@ -21,6 +22,20 @@ type Node struct {
 // Returns the underlying node client
 func (n *Node) Client() client.NodeClient {
 	return n.nc
+}
+
+// Drained reports whether the load balancer should skip this node
+// for automatic server creation.
+func (n *Node) Drained() bool {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+	return n.drained
+}
+
+func (n *Node) SetDrained(drained bool) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	n.drained = drained
 }
 
 func (n *Node) Url() string {

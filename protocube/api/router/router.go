@@ -64,6 +64,7 @@ func (r *Router) Configure() *gin.Engine {
 	{
 		node.GET("", getNode)
 		node.GET("/system", getNodeSystemInfo)
+		node.PATCH("/drained", toggleNodeDrained)
 
 		// These are internal routes for nodes to call
 		internal := router.Group("/api/nodes/:node/internal")
@@ -75,9 +76,9 @@ func (r *Router) Configure() *gin.Engine {
 		event := internal.Group("/event/servers/:server")
 		event.Use(middleware.ServerExists(r.ServerManager))
 		{
-			event.POST("/status", r.postNodeServerStatus)
-			event.POST("/crash", r.postEventServerCrash)
-			event.POST("/deleted", r.postEventServerDeleted)
+			event.POST("/status", postNodeServerStatus)
+			event.POST("/crash", postEventServerCrash)
+			event.POST("/deleted", postEventServerDeleted)
 		}
 	}
 

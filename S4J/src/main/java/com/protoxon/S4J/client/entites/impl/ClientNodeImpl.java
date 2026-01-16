@@ -39,6 +39,11 @@ public class ClientNodeImpl implements ClientNode {
     }
 
     @Override
+    public boolean getDrained() {
+        return json.optBoolean("drained", false);
+    }
+
+    @Override
     public SLSAction<SystemInformation> getSystemInformation() {
         return SLSActionImpl.onRequestExecute(
                 impl.getS4J(),
@@ -47,6 +52,13 @@ public class ClientNodeImpl implements ClientNode {
                     JSONObject systemObj = response.getObject();
                     return new SystemInformationImpl(systemObj);
                 });
+    }
+
+    @Override
+    public SLSAction<Void> setDrained(boolean drained) {
+        JSONObject obj = new JSONObject().put("drained", drained);
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Node.SET_DRAINED.compile(getId()), SLSActionImpl.getRequestBody(obj));
     }
 
 }
