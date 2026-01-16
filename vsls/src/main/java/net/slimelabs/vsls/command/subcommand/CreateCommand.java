@@ -154,6 +154,8 @@ public class CreateCommand {
 
                     // Set overrides if present
                     String[] overrides = StringArgumentType.getString(context, "overrides").trim().split("\\s+");
+                    String nodeValue = null;
+                    
                     for (String override : overrides) {
                         String[] parts = override.split("=", 2); // Split into two parts: base key and value
                         String key = parts[0] + "="; // Extract the key
@@ -161,14 +163,7 @@ public class CreateCommand {
 
                         switch (key) {
                             case "--node=":
-                                SLS.api.getAllNodeIds().executeAsync(nodeIds -> {
-                                    String nodeId = Id.findFullId(value, nodeIds);
-                                    creation.setNodeId(nodeId);
-                                }, failure -> {
-                                    ProtoMessage.chat()
-                                            .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                            .sendMessage(source);
-                                });
+                                nodeValue = value; // Store node value to process asynchronously later
                                 break;
                             case "--save=":
                                 creation.setSave(Boolean.valueOf(value));
@@ -238,20 +233,39 @@ public class CreateCommand {
                         }
                     }
 
-                    // Create the server
-                    SLS.servers.CreateServer(creation).executeAsync(server -> {
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Created " + blueprint, NamedTextColor.GREEN)
-                                .add(" (", NamedTextColor.GRAY)
-                                .add(server.id, NamedTextColor.DARK_GRAY)
-                                .add(")", NamedTextColor.GRAY)
-                                .sendMessage(source);
-                    }, failure -> {
-                        ProtoMessage.chat()
-                                .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                .sendMessage(source);
-                    });
+                    // Helper method to create the server
+                    Runnable createServer = () -> {
+                        SLS.servers.CreateServer(creation).executeAsync(server -> {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Created " + blueprint, NamedTextColor.GREEN)
+                                    .add(" (", NamedTextColor.GRAY)
+                                    .add(server.id, NamedTextColor.DARK_GRAY)
+                                    .add(")", NamedTextColor.GRAY)
+                                    .sendMessage(source);
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                    .sendMessage(source);
+                        });
+                    };
+
+                    // If node was specified, fetch node IDs asynchronously and then create server
+                    if (nodeValue != null) {
+                        String finalNodeValue = nodeValue;
+                        SLS.api.getAllNodeIds().executeAsync(nodeIds -> {
+                            String nodeId = Id.findFullId(finalNodeValue, nodeIds);
+                            creation.setNodeId(nodeId);
+                            createServer.run();
+                        }, failure -> {
+                            ProtoMessage.chat()
+                                    .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
+                                    .sendMessage(source);
+                        });
+                    } else {
+                        // No node specified, create server immediately
+                        createServer.run();
+                    }
 
                     return 0;
                 });

@@ -165,13 +165,13 @@ func (r *Router) postCreateServer(c *gin.Context) {
 
 	bp := r.BlueprintRegistry.Get(req.BlueprintID)
 	if bp == nil {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "No such blueprint with id: " + req.BlueprintID})
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no such blueprint with id: " + req.BlueprintID})
 		return
 	}
 
 	server, err := r.ServerManager.CreateServer(c.Request.Context(), n, bp, r.SoftwareRegistry, req.Overrides)
 	if err != nil {
-		log.WithError(err).Error("Failed to create server")
+		log.WithError(err).Error("failed to create server")
 		client.HandleError(c, err)
 		return
 	}
