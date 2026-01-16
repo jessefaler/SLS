@@ -5,7 +5,7 @@ Everything in SLS is reproducible, isolated, and fully defined through Blueprint
 
 SLS runs every game server inside its own **Docker container**, keeping environments clean, consistent and secure.
 
-SLS is **free and open-source** software licensed under the **AGPL-3.0**.
+SLS is **free and open-source** software licensed under **AGPL-3.0**.
 
 ## Components
 
@@ -61,7 +61,6 @@ server:
   software: "Paper"
   version: "1.18.2"
   image: "sls:java_21"
-  path: "paper/1.18.2"
 
   # Resource limits
   limits:
