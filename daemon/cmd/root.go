@@ -45,15 +45,26 @@ func run(cmd *cobra.Command, _ []string) {
 	cfg := config.Get()
 
 	// =========================================================
-	// Create a client for making requests to the remote api
+	// create a client for making requests to the remote api
 	// =========================================================
 	client := remote.New(
 		cfg.RemoteApi.Url,
 		remote.WithCredentials(cfg.RemoteApi.Token),
 	)
 
-	// Create a server manager instance
-	serverManager := server.NewManager(client)
+	// create a server manager instance
+	manager := server.NewManager(client)
+
+	// Register the on connected callback
+	// This is called when the node successfully connects to Protocube
+	// When connected sync server configurations
+	client.SetOnConnected(func(ctx context.Context) {
+		err := manager.Sync(cmd.Context())
+		if err != nil {
+			log.WithField("error", err).Fatal("failed to load server configurations")
+			return
+		}
+	})
 
 	// Initialize the sqlite database
 	err = database.Initialize()
@@ -65,16 +76,34 @@ func run(cmd *cobra.Command, _ []string) {
 	// Configure and run the api
 	// =========================================================
 	apiInstance := api.New(&router.Resources{
-		ServerManager: serverManager,
+		ServerManager: manager,
 		VerifyToken:   auth.Verify,
 	})
 	apiInstance.Run()
+
+	ticker := time.NewTicker(time.Minute)
+	// Every minute, write the current server states to the disk to allow for a more
+	// seamless hard-reboot process in which the daemon will re-sync server states based
+	// on its last tracked state.
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := manager.PersistStates(); err != nil {
+					log.WithField("error", err).Warn("failed to persist server states to disk")
+				}
+			case <-cmd.Context().Done():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
 
 	handleShutdown(apiInstance, client)
 }
 
 func handleShutdown(apiInstance *api.Api, client remote.Client) {
-	// Create a channel to receive OS signals
+	// create a channel to receive OS signals
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	<-sigChan // Wait for termination

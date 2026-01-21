@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log2 "log"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -54,7 +55,8 @@ type Configuration struct {
 
 	// The remote api where the master is running that this daemon should connect too
 	// to collect data and send events.
-	RemoteApi RemoteApi `json:"-" yaml:"remote"`
+	RemoteApi   RemoteApi                `json:"-" yaml:"remote"`
+	RemoteQuery RemoteQueryConfiguration `json:"remote_query" yaml:"remote_query"`
 
 	// AllowedOrigins is a list of allowed request origins.
 	// protocube URL is automatically allowed, this is only needed for adding
@@ -142,6 +144,11 @@ type ApiConfiguration struct {
 	}
 }
 
+// GetStatesPath returns the location of the JSON file that tracks server states.
+func (sc *SystemConfiguration) GetStatesPath() string {
+	return path.Join(sc.RootDirectory, "/states.json")
+}
+
 type SystemConfiguration struct {
 	RootDirectory string `default:"/var/lib/sls" yaml:"root_directory"`
 
@@ -180,13 +187,16 @@ type SystemConfiguration struct {
 			ContainerGID int `yaml:"container_gid" default:"0"`
 		} `yaml:"rootless"`
 
-		Uid int `yaml:"uid"`
-		Gid int `yaml:"gid"`
+		Uid int `default:"988" yaml:"uid"`
+		Gid int `default:"988" yaml:"gid"`
 	} `yaml:"user"`
 
 	Backups Backups `yaml:"backups"`
 
 	OpenatMode string `default:"auto" yaml:"openat_mode"`
+
+	// Directory where the server data is stored at.
+	Data string `default:"/var/lib/sls/volumes" json:"-" yaml:"data"`
 }
 
 var (
@@ -243,6 +253,28 @@ func InitConfig() {
 	}
 }
 
+// RemoteQueryConfiguration defines the configuration settings for remote requests
+// from the daemon1 to the Protocube.
+type RemoteQueryConfiguration struct {
+	// The amount of time in seconds that the daemon should allow for a request to the Protocube API
+	// to complete. If this time passes the request will be marked as failed. If your requests
+	// are taking longer than 30 seconds to complete it is likely a performance issue that
+	// should be resolved on Protocube, and not something that should be resolved by upping this
+	// number.
+	Timeout int `default:"30" yaml:"timeout"`
+
+	// The number of servers to load in a single request to protocube API when booting the
+	// Daemon instance. A single request is initially made to Protocube to get this number
+	// of servers, and then the pagination status is checked and additional requests are
+	// fired off in parallel to request the remaining pages.
+	//
+	// It is not recommended to change this from the default as you will likely encounter
+	// memory limits on your Protocube instance. In the grand scheme of things 4 requests for
+	// 50 servers is likely just as quick as two for 100 or one for 400, and will certainly
+	// be less likely to cause performance issues on Protocube.
+	BootServersPerPage int `default:"50" yaml:"boot_servers_per_page"`
+}
+
 // LoadConfigFromFile reads the configuration from the provided file and stores it in the
 // global singleton for this instance.
 func loadConfigFromFile(path string) error {
@@ -263,17 +295,17 @@ func loadConfigFromFile(path string) error {
 	}
 
 	// Store this configuration in the global state.
-	set(&config)
+	Set(&config)
 	return nil
 }
 
 // Set the global configuration instance. This is a blocking operation such that
 // anything trying to set a different configuration value, or read the configuration
 // will be paused until it is complete.
-func set(configuration *Configuration) {
+func Set(c *Configuration) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	config = configuration
+	config = c
 }
 
 // Get returns the global configuration instance.

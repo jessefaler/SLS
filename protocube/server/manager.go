@@ -116,17 +116,19 @@ func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
 }
 
 // CreateServer creates a server on the specified node and adds it to the manager
-func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *blueprint.Blueprint, software *software.Registry, overrides *models.ServerOverrides) (*Server, error) {
+func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *blueprint.Blueprint, swr *software.Registry, overrides *models.ServerOverrides) (*Server, error) {
 	serverId := id.New()
 
 	// Get the server client from the node
 	serverClient := node.Server(serverId)
 
 	// Instantiate the server
-	server := &Server{
+	s := &Server{
 		id:           serverId,
 		nodeName:     node.Name(),
 		nodeId:       node.Id(),
+		blueprintId:  bp.Meta.ID,
+		Overrides:    overrides,
 		sc:           serverClient,
 		GlobalEvents: m.Events,
 		Remove: func() {
@@ -138,29 +140,62 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 	created := false
 	defer func() {
 		if !created {
-			server.Remove()
-			server.Events().Destroy()
-			server.DestroyAllSinks()
-			err := repository.RemoveServer(server.Id())
+			s.Remove()
+			s.Events().Destroy()
+			s.DestroyAllSinks()
+			err := repository.RemoveServer(s.Id())
 			log.WithError(err).Errorf("failed to remove server %s from database.", serverId)
 		}
 	}()
 
 	// Add the server to the manager
-	m.Add(server)
+	m.Add(s)
 
 	// Write the server to the database
 	if err := repository.StoreServer(&models.ServerStore{
 		Id:          serverId,
 		NodeName:    node.Name(),
 		NodeId:      node.Id(),
-		BlueprintId: blueprint.Meta.ID,
+		BlueprintId: bp.Meta.ID,
 		Overrides:   overrides,
 	}); err != nil {
 		return nil, err
 	}
 
-	sw := software.Get(blueprint.Server.Software)
+	cfg, err := GetServerConfiguration(s, bp, swr)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeReq := models.ServerConfigurationResponse{
+		ID:                   serverId,
+		ProcessConfiguration: cfg.ProcessConfiguration,
+		Image:                bp.Server.Image,
+		Invocation:           cfg.Invocation,
+		Limits:               cfg.Limits,
+		ServerFolder:         bp.Server.Path,
+		WorldFolder:          bp.World.Path,
+		Content:              bp.Server.Content,
+		Save:                 cfg.Save,
+	}
+
+	// Request server creation on the remote node
+	resp, err := node.CreateServer(ctx, nodeReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the servers allocation returned from the node response
+	// todo should probably switch to protocube assigning allocations
+	s.Allocations = resp.Allocation
+
+	// Indicate that the server was successfully created so that it is not removed by the defer function
+	created = true
+	return s, nil
+}
+
+func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, error) {
+	sw := swr.Get(bp.Server.Software)
 
 	matcher, err := models.NewOutputLineMatcher(sw.OnlineSignal)
 	if err != nil {
@@ -171,7 +206,12 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 	// to config file patches
 	// if an error occurs the server will still be created but an error
 	// will be logged when the server is created
-	configFiles, cfgErr := GetConfigFiles(sw, blueprint)
+	configFiles, cfgErr := GetConfigFiles(sw, bp)
+
+	// log any errors that occurred when converting configuration patches
+	if cfgErr != nil {
+		log.WithError(cfgErr).Warn("an error occurred while converting config patches for server " + s.Id())
+	}
 
 	pc := &models.ProcessConfiguration{
 		Startup: struct {
@@ -189,46 +229,28 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, blueprint *
 	}
 
 	// Handle Overrides
-	save := blueprint.Save
+	save := bp.Save
 	// We need to make a copy of the limits so we don't mutate the blueprints default limits
-	limits := enviroment.CopyLimits(blueprint.Server.Limits)
-	if overrides != nil {
-		if overrides.Save != nil {
-			save = *overrides.Save
+	limits := enviroment.CopyLimits(bp.Server.Limits)
+	if s.Overrides != nil {
+		if s.Overrides.Save != nil {
+			save = *s.Overrides.Save
 		}
-		limits = MergeLimits(limits, overrides.Limits)
+		limits = MergeLimits(limits, s.Overrides.Limits)
 	}
 
-	nodeReq := models.NodeCreateServerRequest{
-		ID:                   serverId,
+	nodeReq := models.ServerConfigurationResponse{
+		ID:                   s.Id(),
 		ProcessConfiguration: pc,
-		Image:                blueprint.Server.Image,
+		Image:                bp.Server.Image,
 		Invocation:           sw.Invocation,
 		Limits:               limits,
-		ServerFolder:         blueprint.Server.Path,
-		WorldFolder:          blueprint.World.Path,
-		Content:              blueprint.Server.Content,
+		ServerFolder:         bp.Server.Path,
+		WorldFolder:          bp.World.Path,
+		Content:              bp.Server.Content,
 		Save:                 save,
 	}
-
-	// Request server creation on the remote node
-	resp, err := node.CreateServer(ctx, nodeReq)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the servers allocation returned from the node response
-	// todo should probably switch to protocube assigning allocations
-	server.Allocations = resp.Allocation
-
-	// log any errors that occurred when converting configuration patches
-	if cfgErr != nil {
-		log.WithError(cfgErr).Warn("an error occurred while converting config patches for server " + server.id)
-	}
-
-	// Indicate that the server was successfully created so that it is not removed by the defer function
-	created = true
-	return server, nil
+	return &nodeReq, nil
 }
 
 // Loads in all servers stored in the database
@@ -284,6 +306,8 @@ func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, e
 		id:           data.Id,
 		nodeName:     data.NodeName,
 		nodeId:       data.NodeId,
+		blueprintId:  data.BlueprintId,
+		Overrides:    data.Overrides,
 		sc:           serverClient,
 		GlobalEvents: m.Events,
 

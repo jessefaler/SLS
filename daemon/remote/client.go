@@ -3,9 +3,11 @@ package remote
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/apex/log"
+	"protoxon.com/sls/daemon/models"
 )
 
 type Client interface {
@@ -15,6 +17,9 @@ type Client interface {
 	StatusUpdate(ctx context.Context, status string, id string) error // Sends a server status update
 	CrashReport(ctx context.Context, data CrashData, id string) error // Sends a server crash report
 	ServerDeleted(ctx context.Context, id string) error               // Sends a server deleted event
+	GetServers(context context.Context, perPage int) ([]models.ServerConfigurationResponse, error)
+	GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfigurationResponse, error)
+	SetOnConnected(callback func(context.Context))
 }
 
 type client struct {
@@ -24,6 +29,8 @@ type client struct {
 	maxAttempts int
 	ctx         context.Context
 	cancel      context.CancelFunc
+	onConnected func(context.Context)
+	mu          sync.RWMutex
 }
 
 // New returns a new HTTP request client that is used for making authenticated
@@ -42,7 +49,7 @@ func New(base string, opts ...ClientOption) Client {
 	for _, opt := range opts {
 		opt(&c)
 	}
-	
+
 	// Attempt to register on startup, but don't block if it fails
 	// Heartbeats will retry registration if needed
 	go func() {
@@ -53,9 +60,17 @@ func New(base string, opts ...ClientOption) Client {
 			log.WithError(err).Debug("initial registration attempt failed, will retry on heartbeat")
 		}
 	}()
-	
+
 	c.StartHeartbeats()
 	return &c
+}
+
+// SetOnConnected sets the callback to be executed when the node successfully connects.
+// This can be called after the client is created to avoid circular dependencies.
+func (c *client) SetOnConnected(callback func(context.Context)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onConnected = callback
 }
 
 // WithCredentials sets the credentials to use when making request to the remote

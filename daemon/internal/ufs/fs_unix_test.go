@@ -163,7 +163,7 @@ func TestUnixFS(t *testing.T) {
 		return
 	}
 
-	// Create multiple nested directories.
+	// create multiple nested directories.
 	if err := fs.MkdirAll("ima_directory/ima_directory/ima_directory/ima_directory", 0o755); err != nil {
 		t.Error(err)
 		return
@@ -438,7 +438,7 @@ func TestUnixFS_Rename(t *testing.T) {
 	})
 
 	t.Run("rename over base directory", func(t *testing.T) {
-		// Create a directory that we are going to try and move over top of the
+		// create a directory that we are going to try and move over top of the
 		// existing base directory.
 		if err := fs.Mkdir("overwrite_dir", 0o755); err != nil {
 			t.Error(err)
@@ -453,7 +453,7 @@ func TestUnixFS_Rename(t *testing.T) {
 	})
 
 	t.Run("directory rename", func(t *testing.T) {
-		// Create a directory to rename to something else.
+		// create a directory to rename to something else.
 		if err := fs.Mkdir("test_directory", 0o755); err != nil {
 			t.Error(err)
 			return
@@ -473,7 +473,7 @@ func TestUnixFS_Rename(t *testing.T) {
 	})
 
 	t.Run("file rename", func(t *testing.T) {
-		// Create a directory to rename to something else.
+		// create a directory to rename to something else.
 		f, err := fs.Create("test_file")
 		if err != nil {
 			t.Error(err)

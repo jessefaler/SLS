@@ -21,6 +21,7 @@ func (r *Router) Configure() *gin.Engine {
 	protected := router.Use(middleware.RequireAuthorization(r.VerifyToken))
 
 	protected.GET("/api/system", getSystemInformation)
+	protected.POST("/api/sync", r.postSync)
 	protected.GET("/api/servers", r.getAllServers)
 	protected.POST("/api/servers", r.postCreateServer)
 

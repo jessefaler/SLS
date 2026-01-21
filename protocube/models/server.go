@@ -49,7 +49,7 @@ type ResourceUsage struct {
 	Overlay int64 `json:"overlay_bytes"`
 }
 
-type NodeCreateServerRequest struct {
+type ServerConfigurationResponse struct {
 	ID                   string                `json:"id"`
 	ProcessConfiguration *ProcessConfiguration `json:"process-configuration"`
 	Image                string                `json:"image"`

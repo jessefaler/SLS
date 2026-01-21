@@ -41,8 +41,8 @@ func (s *Server) Proc() ResourceUsage {
 	s.resources.MaxDisk = s.Filesystem().MaxDisk()
 	// Store the updated disk usage when requesting process usage.
 	atomic.StoreInt64(&s.resources.Disk, s.Filesystem().CachedUsage())
-	// Get the cached overlay usage (updated in the same background routine as disk usage)
-	atomic.StoreInt64(&s.resources.Overlay, s.Filesystem().CachedOverlayUsage())
+	// Get the physical disk usage
+	atomic.StoreInt64(&s.resources.Overlay, s.Filesystem().Overlay().CachedUsage())
 	//goland:noinspection GoVetCopyLock
 	return s.resources
 }

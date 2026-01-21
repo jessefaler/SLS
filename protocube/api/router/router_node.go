@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"strconv"
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
@@ -44,7 +45,7 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 	}
 
 	// Connect the node in the node manager
-	node = r.NodeManager.Register(req.Id, req.Name, req.Url, req.Location, token.String())
+	node = r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String())
 	c.JSON(http.StatusOK, gin.H{
 		"token": token.String(),
 	})
@@ -143,4 +144,112 @@ func toggleNodeDrained(c *gin.Context) {
 		log.Errorf("failed to update drained state for node %s: %v", node.Id(), err)
 	}
 	c.Status(http.StatusOK)
+}
+
+func (r *Router) getServerConfiguration(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	bp := r.BlueprintRegistry.Get(s.BlueprintId())
+	if bp == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "unable to get server configuration: referenced blueprint does not exist (blueprint_id=" + s.BlueprintId() + ")",
+		})
+		return
+	}
+	configuration, err := server.GetServerConfiguration(s, bp, r.SoftwareRegistry)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, configuration)
+}
+
+func (r *Router) getAllServerConfigurations(c *gin.Context) {
+	// Extract the node from the context
+	n := middleware.ExtractNode(c)
+	nodeId := n.Id()
+
+	// Parse pagination query parameters
+	// The daemon uses "page" and "per_page" query parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
+
+	// Validate and set defaults
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 50
+	}
+
+	// Get all servers for this node
+	servers := r.ServerManager.ServersByNode(nodeId)
+
+	// Build configurations for all servers
+	configurations := make([]*models.ServerConfigurationResponse, 0, len(servers))
+	for _, s := range servers {
+		bp := r.BlueprintRegistry.Get(s.BlueprintId())
+		if bp == nil {
+			// Skip servers with missing blueprints, log but don't fail the request
+			log.WithField("server", s.Id()).WithField("blueprint_id", s.BlueprintId()).
+				Warn("skipping server configuration: referenced blueprint does not exist")
+			continue
+		}
+
+		configuration, err := server.GetServerConfiguration(s, bp, r.SoftwareRegistry)
+		if err != nil {
+			// Skip servers with configuration errors, log but don't fail the request
+			log.WithField("server", s.Id()).WithError(err).
+				Warn("skipping server configuration: failed to generate configuration")
+			continue
+		}
+
+		configurations = append(configurations, configuration)
+	}
+
+	// Calculate pagination
+	total := len(configurations)
+	start := (page - 1) * perPage
+	end := start + perPage
+
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	// Get the paged slice
+	var paged []*models.ServerConfigurationResponse
+	if start < total {
+		paged = configurations[start:end]
+	} else {
+		paged = []*models.ServerConfigurationResponse{}
+	}
+
+	// Calculate pagination metadata
+	totalPages := 0
+	if perPage > 0 && total > 0 {
+		totalPages = (total + perPage - 1) / perPage
+	}
+
+	from := uint(0)
+	to := uint(0)
+	if total > 0 {
+		from = uint(start + 1)
+		to = uint(end)
+	}
+
+	// Return paginated response
+	c.JSON(http.StatusOK, gin.H{
+		"data": paged,
+		"meta": gin.H{
+			"current_page": uint(page),
+			"from":         from,
+			"last_page":    uint(totalPages),
+			"per_page":     uint(perPage),
+			"to":           to,
+			"total":        uint(total),
+		},
+	})
 }

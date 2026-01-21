@@ -37,7 +37,7 @@ func (api *Api) Run() {
 	cfg := config.Get().Api
 	address := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 
-	// Create a single listener for HTTP
+	// create a single listener for HTTP
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
 		log.WithField("error", err).Fatal("Failed to create net listener")

@@ -17,8 +17,9 @@ type NodeClient interface {
 	Delete(ctx context.Context, path string) (*Response, error)
 
 	// Requests
-	CreateServer(context context.Context, request models.NodeCreateServerRequest) (models.CreateServerResponse, error)
+	CreateServer(context context.Context, request models.ServerConfigurationResponse) (models.CreateServerResponse, error)
 	GetSystemInformation(context context.Context) (models.Information, error)
+	Sync(context context.Context) error
 }
 
 type nodeClient struct {
@@ -48,8 +49,14 @@ func (nc *nodeClient) GetToken() string {
 
 // CreateServer sends a request to create a new server on the remote node
 // and returns the server's data upon successful creation.
-func (nc *nodeClient) CreateServer(ctx context.Context, create models.NodeCreateServerRequest) (models.CreateServerResponse, error) {
+func (nc *nodeClient) CreateServer(ctx context.Context, create models.ServerConfigurationResponse) (models.CreateServerResponse, error) {
 	return Post[models.CreateServerResponse](nc, ctx, "/servers", create)
+}
+
+// Syncs the nodes server configurations with Protocube
+func (nc *nodeClient) Sync(ctx context.Context) error {
+	_, err := nc.Post(ctx, "/sync", nil)
+	return err
 }
 
 // GetSystemInformation fetches system information from the nodes system package

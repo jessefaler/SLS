@@ -59,6 +59,9 @@ func (r *Router) Configure() *gin.Engine {
 
 	// These are node specific routes, and require that the request be authorized, and
 	// that the node exists.
+	// TODO: Current node routes are becoming messy and deeply nested.
+	// TODO: Refactor to a flat structure like /api/remote/... where the node is
+	//       identified via its API key instead of path parameters.
 	node := router.Group("/api/nodes/:node")
 	node.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.NodeExists(r.NodeManager))
 	{
@@ -66,11 +69,17 @@ func (r *Router) Configure() *gin.Engine {
 		node.GET("/system", getNodeSystemInfo)
 		node.PATCH("/drained", toggleNodeDrained)
 
-		// These are internal routes for nodes to call
+		// These are routes for internal communication
 		internal := router.Group("/api/nodes/:node/internal")
 		internal.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node), middleware.NodeExists(r.NodeManager))
 		internal.POST("/heartbeat", postNodeHeartbeat)
 		internal.POST("/disconnect", r.postNodeDisconnect)
+
+		// Routes for the node to retrieve server configurations
+		internal.GET("/servers", r.getAllServerConfigurations)
+		nodeServer := internal.Group("/servers/:server")
+		nodeServer.Use(middleware.ServerExists(r.ServerManager))
+		nodeServer.GET("", r.getServerConfiguration)
 
 		// Node events
 		event := internal.Group("/event/servers/:server")

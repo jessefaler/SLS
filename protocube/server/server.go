@@ -19,6 +19,8 @@ type Server struct {
 	id          string
 	nodeName    string
 	nodeId      string
+	blueprintId string
+	Overrides   *models.ServerOverrides
 	status      Status
 	emitterLock sync.Mutex
 
@@ -49,6 +51,9 @@ func (s *Server) NodeName() string {
 }
 func (s *Server) NodeId() string {
 	return s.nodeId
+}
+func (s *Server) BlueprintId() string {
+	return s.blueprintId
 }
 
 // SetStatus updates the server's status and publishes the change.

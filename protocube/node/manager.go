@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -57,7 +58,7 @@ func (m *Manager) SetOnNodeRegistered(callback func(nodeId string, node *Node)) 
 // Register creates a new Node, initializes its NodeClient, adds it to the Manager's
 // internal collection, and registers it with the Manager's load balancer.
 // Returns the newly created Node instance.
-func (m *Manager) Register(id string, name string, url string, location string, token string) *Node {
+func (m *Manager) Register(ctx context.Context, id string, name string, url string, location string, token string) *Node {
 	nc := m.client.Node(id, url, token)
 	n := &Node{
 		id:       id,

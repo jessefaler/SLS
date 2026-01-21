@@ -119,6 +119,10 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 
 		// Run the pre-boot logic for the server before processing the environment start.
 		if err := s.onBeforeStart(); err != nil {
+			if !s.save {
+				// If saving is false delete the server if startup failed
+				go s.Delete()
+			}
 			return err
 		}
 
@@ -155,6 +159,10 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 
 		// Now actually try to start the process by executing the normal pre-boot logic.
 		if err := s.onBeforeStart(); err != nil {
+			if !s.save {
+				// If saving is false delete the server if startup failed
+				go s.Delete()
+			}
 			return err
 		}
 
@@ -180,10 +188,9 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 // that everything is ready to go for environment booting, and that the server can even be started.
 func (s *Server) onBeforeStart() error {
 	s.Log().Info("syncing server configuration with protocube")
-	//todo implement this
-	//if err := s.Sync(); err != nil {
-	//	return errors.WithMessage(err, "unable to sync server data from Panel instance")
-	//}
+	if err := s.Sync(); err != nil {
+		return errors.WithMessage(err, "unable to sync server data from Protocube")
+	}
 
 	// Disallow start & restart if the server is suspended. Do this check after performing a sync
 	// action with the Panel to ensure that we have the most up-to-date information for that server.
@@ -194,6 +201,12 @@ func (s *Server) onBeforeStart() error {
 	// Ensure we sync the server information with the environment so that any new environment variables
 	// and process resource limits are correctly applied.
 	s.SyncWithEnvironment()
+
+	// Mount the overlay filesystem
+	err := s.Filesystem().Overlay().Mount()
+	if err != nil {
+		return errors.Wrap(err, "failed to mount filesystem")
+	}
 
 	// Update the configuration files defined for the server before beginning the boot process.
 	// This process executes a bunch of parallel updates, so we just block until that process
@@ -217,6 +230,11 @@ func (s *Server) onBeforeStart() error {
 			s.PublishConsoleOutputFromDaemon("Checking server disk space usage, this could take a few seconds...")
 			if err := s.Filesystem().HasSpaceErr(false); err != nil {
 				s.PublishConsoleOutputFromDaemon("Disk space error: " + err.Error())
+			}
+			// Update the cached usage of the overlay filesystem
+			_, err := s.Filesystem().Overlay().DiskUsage(false)
+			if err != nil {
+				s.Log().WithError(err).Error("failed to update overlay disk usage")
 			}
 		}
 	}()
@@ -257,8 +275,6 @@ func (s *Server) SyncWithEnvironment() {
 
 	// If build limits are changed, environment variables also change. Plus, any modifications to
 	// the startup command also need to be properly propagated to this environment.
-	//
-	// @see https://github.com/pterodactyl/panel/issues/2255
 	s.Environment.Config().SetEnvironmentVariables(s.GetEnvironmentVariables())
 
 	if !s.IsSuspended() {

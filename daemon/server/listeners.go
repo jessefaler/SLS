@@ -115,6 +115,15 @@ func (s *Server) StartEventListeners() {
 								limit.Reset()
 								s.Throttler().Reset()
 							}
+
+							// Unmount the servers filesystem when the server switches to offline
+							if e.Data == environment.ProcessOfflineState {
+								err := s.Filesystem().Overlay().Unmount()
+								if err != nil {
+									s.Log().WithField("error", err).Warn("failed to unmount filesystem")
+								}
+							}
+
 							s.OnStateChange()
 						}
 					case environment.DockerImagePullStatus:

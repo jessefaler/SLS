@@ -41,7 +41,7 @@ func (fs *UnixFS) mkdirAll(name string, mode FileMode) error {
 	}
 
 	if j > 1 {
-		// Create parent.
+		// create parent.
 		err = fs.mkdirAll(name[:j-1], mode)
 		if err != nil {
 			return err

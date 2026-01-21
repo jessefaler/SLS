@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 
+	"emperror.dev/errors"
 	"github.com/apex/log"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
@@ -50,7 +52,7 @@ type Server struct {
 	// such as build settings and container images.
 	cfg Configuration
 
-	filesystem *filesystem.Filesystem
+	fs *filesystem.Filesystem
 
 	// Events emitted by the server instance.
 	emitter *events.Bus
@@ -146,7 +148,7 @@ func (s *Server) IsSuspended() bool {
 
 // Filesystem returns an instance of the mounts for this server.
 func (s *Server) Filesystem() *filesystem.Filesystem {
-	return s.filesystem
+	return s.fs
 }
 
 // OnStateChange sets the state of the server internally. This function handles crash detection as
@@ -262,10 +264,9 @@ func (s *Server) Delete() error {
 	// so we don't want to block the HTTP call while waiting on this.
 	go func() {
 		fs := s.Filesystem()
-		if fs != nil {
-			if err := fs.DeleteVolume(); err != nil {
-				log.WithField("error", err).Warn("failed to delete server filesystem")
-			}
+		err := fs.Destroy()
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Warn("failed to remove server files during deletion process")
 		}
 	}()
 
@@ -307,4 +308,45 @@ func (s *Server) ToAPIResponse() APIResponse {
 		Utilization:   s.Proc(),
 		Configuration: *s.Config(),
 	}
+}
+
+// Sync syncs the state of the server on the Panel with Wings. This ensures that
+// we're always using the state of the server from the Panel and allows us to
+// not require successful API calls to Wings to do things.
+//
+// This also means mass actions can be performed against servers on the Panel
+// and they will automatically sync with Wings when the server is started.
+func (s *Server) Sync() error {
+	cfg, err := s.client.GetServerConfiguration(s.Context(), s.ID())
+	if err != nil {
+		if err := remote.AsRequestError(err); err != nil && err.StatusCode() == http.StatusNotFound {
+			return &serverDoesNotExist{}
+		}
+		return errors.WithStackIf(err)
+	}
+
+	if err := s.SyncWithConfiguration(cfg); err != nil {
+		return errors.WithStackIf(err)
+	}
+
+	// Update the disk space limits for the server whenever the configuration for
+	// it changes.
+	s.fs.SetDiskLimit(s.DiskSpace())
+
+	s.SyncWithEnvironment()
+
+	return nil
+}
+
+// SyncWithConfiguration accepts a configuration object for a server and will
+// sync all of the values with the existing server state. This only replaces the
+// existing configuration and process configuration for the server. The
+// underlying environment will not be affected. This is because this function
+// can be called from scoped where the server may not be fully initialized,
+// therefore other things like the filesystem and environment may not exist yet.
+func (s *Server) SyncWithConfiguration(cfg models.ServerConfigurationResponse) error {
+	s.Lock()
+	s.procConfig = cfg.ProcessConfiguration
+	s.Unlock()
+	return nil
 }

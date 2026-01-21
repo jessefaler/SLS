@@ -18,7 +18,7 @@ import (
 
 func (r *Router) postCreateServer(c *gin.Context) {
 	// Parse incoming JSON body
-	var req models.CreateServerRequest
+	var req models.ServerConfigurationResponse
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -35,8 +35,8 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		}()
 	}
 
-	// Create the server
-	s, err := r.ServerManager.Create(req)
+	// create the server
+	s, err := r.ServerManager.InitServer(req)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// A not exists error usually means the blueprints server or world paths don't exist
@@ -130,4 +130,17 @@ func getSystemInformation(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, i)
+}
+
+// Syncs the daemons servers with Protocube
+func (r *Router) postSync(c *gin.Context) {
+	err := r.ServerManager.Sync(c.Request.Context())
+	if err != nil {
+		log.WithError(err).Error("failed to sync server configurations")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to sync server configurations",
+		})
+		return
+	}
+	c.Status(http.StatusOK)
 }

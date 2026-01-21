@@ -155,7 +155,7 @@ public class CreateCommand {
                     // Set overrides if present
                     String[] overrides = StringArgumentType.getString(context, "overrides").trim().split("\\s+");
                     String nodeValue = null;
-                    
+
                     for (String override : overrides) {
                         String[] parts = override.split("=", 2); // Split into two parts: base key and value
                         String key = parts[0] + "="; // Extract the key
@@ -270,6 +270,5 @@ public class CreateCommand {
                     return 0;
                 });
     }
-
 
 }

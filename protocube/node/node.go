@@ -70,7 +70,7 @@ func (n *Node) Id() string {
 // and returns its data upon success.
 // This only sends the request; it does not configure the server locally.
 // Typically, servers should be created through the server manager.
-func (n *Node) CreateServer(ctx context.Context, request models.NodeCreateServerRequest) (models.CreateServerResponse, error) {
+func (n *Node) CreateServer(ctx context.Context, request models.ServerConfigurationResponse) (models.CreateServerResponse, error) {
 	return n.nc.CreateServer(ctx, request)
 }
 

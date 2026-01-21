@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"encoding/json"
 	"time"
 )
 
@@ -24,13 +23,6 @@ type Pagination struct {
 	PerPage     uint `json:"per_page"`
 	To          uint `json:"to"`
 	Total       uint `json:"total"`
-}
-
-// RawServerData is a raw response from the API for a server.
-type RawServerData struct {
-	Uuid                 string          `json:"uuid"`
-	Settings             json.RawMessage `json:"settings"`
-	ProcessConfiguration json.RawMessage `json:"process_configuration"`
 }
 
 type CreateServerRequest struct {
