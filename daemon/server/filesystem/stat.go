@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
+
 	"protoxon.com/sls/daemon/internal/ufs"
 )
 

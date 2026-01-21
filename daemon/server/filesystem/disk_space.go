@@ -1,19 +1,19 @@
 package filesystem
 
 import (
-	"os"
-	"path/filepath"
-
-	"golang.org/x/sys/unix"
-	"protoxon.com/sls/daemon/internal/ufs"
-
-	"slices"
+	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"emperror.dev/errors"
 	"github.com/apex/log"
+
+	"protoxon.com/sls/daemon/internal/ufs"
 )
 
 type SpaceCheckingOpts struct {
@@ -74,6 +74,7 @@ func (fs *Filesystem) HasSpaceAvailable(allowStaleValue bool) bool {
 	if err != nil {
 		log.WithField("root", fs.Path()).WithField("error", err).Warn("failed to determine root fs directory size")
 	}
+
 	// If space is -1 or 0 just return true, means they're allowed unlimited.
 	//
 	// Technically we could skip disk space calculation because we don't need to check if the
@@ -91,14 +92,6 @@ func (fs *Filesystem) HasSpaceAvailable(allowStaleValue bool) bool {
 // does not need to be perfect, e.g. API responses for server resource usage.
 func (fs *Filesystem) CachedUsage() int64 {
 	return fs.unixFS.Usage()
-}
-
-// CachedOverlayUsage returns the cached value for the overlay filesystem upper directory usage.
-// This represents the actual disk space used by changes/writes in the overlay (copy-on-write).
-// Do not rely on this function for critical logical checks. It should only be used in areas where
-// the actual overlay usage does not need to be perfect, e.g. API responses for server resource usage.
-func (fs *Filesystem) CachedOverlayUsage() int64 {
-	return fs.overlayUsageCache.Load()
 }
 
 // Internal helper function to allow other parts of the codebase to check the total used disk space
@@ -122,12 +115,12 @@ func (fs *Filesystem) DiskUsage(allowStaleValue bool) (int64, error) {
 		// If we are now allowing a stale response go ahead  and perform the lookup and return the fresh
 		// value. This is a blocking operation to the calling process.
 		if !allowStaleValue {
-			return fs.UpdateCachedDiskUsage()
+			return fs.updateCachedDiskUsage()
 		} else if !fs.lookupInProgress.Load() {
 			// Otherwise, if we allow a stale value and there isn't a valid item in the cache and we aren't
 			// currently performing a lookup, just do the disk usage calculation in the background.
 			go func(fs *Filesystem) {
-				if _, err := fs.UpdateCachedDiskUsage(); err != nil {
+				if _, err := fs.updateCachedDiskUsage(); err != nil {
 					log.WithField("root", fs.Path()).WithField("error", err).Warn("failed to update fs disk usage from within routine")
 				}
 			}(fs)
@@ -138,104 +131,8 @@ func (fs *Filesystem) DiskUsage(allowStaleValue bool) (int64, error) {
 	return fs.unixFS.Usage(), nil
 }
 
-// directorySizeUnsafe calculates the size of a directory using direct filesystem access.
-// This is used for paths outside the filesystem sandbox (like overlay directories).
-// It tracks hard links to avoid double-counting.
-func directorySizeUnsafe(root string) (int64, error) {
-	var totalSize int64
-	var hardLinks []uint64
-
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			// Skip files/directories that can't be accessed
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return errors.Wrap(err, "walk error")
-		}
-
-		// Only calculate the size of regular files
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-
-		// Use Lstat to get proper stat info for hard link detection
-		stat, err := os.Lstat(path)
-		if err != nil {
-			// If we can't stat the file, skip it
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return errors.Wrap(err, "lstat error")
-		}
-
-		// Get syscall stat to check for hard links
-		sysStat, ok := stat.Sys().(*unix.Stat_t)
-		if ok && sysStat.Nlink > 1 {
-			// Hard links have the same inode number
-			if slices.Contains(hardLinks, sysStat.Ino) {
-				// Don't add hard links size twice
-				return nil
-			}
-			hardLinks = append(hardLinks, sysStat.Ino)
-		}
-
-		totalSize += stat.Size()
-		return nil
-	})
-
-	return totalSize, errors.WrapIf(err, "failed to walk directory")
-}
-
-// OverlayUpperDirUsage calculates the disk usage of the overlay filesystem's upper directory.
-// This represents the actual disk space used by changes/writes in the overlay (copy-on-write).
-// It includes both the server and world overlay upper directories.
-// Uses direct filesystem access since overlay paths are outside the filesystem sandbox.
-func (fs *Filesystem) OverlayUpperDirUsage() (int64, error) {
-	if fs.overlay == "" {
-		return 0, nil
-	}
-
-	var totalSize int64
-
-	// Calculate server overlay upperdir size using direct filesystem access
-	serverUpperDir := filepath.Join(fs.overlay, "server", "upperdir")
-	if size, err := directorySizeUnsafe(serverUpperDir); err != nil {
-		// If directory doesn't exist or can't be accessed, just skip it
-		if !os.IsNotExist(err) {
-			log.WithField("path", serverUpperDir).WithError(err).Warn("failed to calculate server overlay upperdir size")
-		}
-	} else {
-		totalSize += size
-	}
-
-	// Calculate world overlay upperdir size using direct filesystem access
-	worldUpperDir := filepath.Join(fs.overlay, "world", "upperdir")
-	if size, err := directorySizeUnsafe(worldUpperDir); err != nil {
-		// If directory doesn't exist or can't be accessed, just skip it
-		if !os.IsNotExist(err) {
-			log.WithField("path", worldUpperDir).WithError(err).Warn("failed to calculate world overlay upperdir size")
-		}
-	} else {
-		totalSize += size
-	}
-
-	return totalSize, nil
-}
-
-// UpdateOverlayUsageCache updates the cached overlay upperdir size.
-// This is an expensive operation, so it should typically be called in a goroutine.
-func (fs *Filesystem) UpdateOverlayUsageCache() {
-	overlaySize, overlayErr := fs.OverlayUpperDirUsage()
-	if overlayErr != nil {
-		log.WithField("overlay", fs.overlay).WithError(overlayErr).Warn("failed to update overlay usage cache")
-	} else {
-		fs.overlayUsageCache.Store(overlaySize)
-	}
-}
-
 // Updates the currently used disk space for a server.
-func (fs *Filesystem) UpdateCachedDiskUsage() (int64, error) {
+func (fs *Filesystem) updateCachedDiskUsage() (int64, error) {
 	// Obtain an exclusive lock on this process so that we don't unintentionally run it at the same
 	// time as another running process. Once the lock is available it'll read from the cache for the
 	// second call rather than hitting the disk in parallel.
@@ -252,7 +149,7 @@ func (fs *Filesystem) UpdateCachedDiskUsage() (int64, error) {
 	// will have effectively no impact), or there is nothing in the cache, in which case we need to
 	// grab the size of their data directory. This is a taxing operation, so we want to store it in
 	// the cache once we've gotten it.
-	size, err := fs.DirectorySize("/")
+	size, err := fs.DirectorySize(fs.Path())
 
 	// Always cache the size, even if there is an error. We want to always return that value
 	// so that we don't cause an endless loop of determining the disk size if there is a temporary
@@ -260,10 +157,6 @@ func (fs *Filesystem) UpdateCachedDiskUsage() (int64, error) {
 	fs.lastLookupTime.Set(time.Now())
 
 	fs.unixFS.SetUsage(size)
-
-	// Also update the overlay usage cache while we're at it, since overlay changes when files change.
-	// This is also expensive, so we do it in the same background routine.
-	fs.UpdateOverlayUsageCache()
 
 	return size, err
 }
@@ -276,7 +169,7 @@ func (fs *Filesystem) DirectorySize(root string) (int64, error) {
 		return 0, err
 	}
 
-	var hardLinks []uint64
+	hardLinks := make(map[uint64]struct{})
 
 	var size atomic.Int64
 	err = fs.unixFS.WalkDirat(dirfd, name, func(dirfd int, name, _ string, d ufs.DirEntry, err error) error {
@@ -297,18 +190,29 @@ func (fs *Filesystem) DirectorySize(root string) (int64, error) {
 		var sysFileInfo = info.Sys().(*unix.Stat_t)
 		if sysFileInfo.Nlink > 1 {
 			// Hard links have the same inode number
-			if slices.Contains(hardLinks, sysFileInfo.Ino) {
+			if _, exists := hardLinks[sysFileInfo.Ino]; exists {
 				// Don't add hard links size twice
 				return nil
-			} else {
-				hardLinks = append(hardLinks, sysFileInfo.Ino)
 			}
+			hardLinks[sysFileInfo.Ino] = struct{}{}
 		}
 
 		size.Add(info.Size())
 		return nil
 	})
 	return size.Load(), errors.WrapIf(err, "server/filesystem: directorysize: failed to walk directory")
+}
+
+// DirectorySizePhysical reports the physical size of a directory on disk
+func DirectorySizePhysical(root string) (int64, error) {
+	cmd := exec.Command("du", "-sb", root)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return 0, errors.WrapWithDetails(err, "du failed", "output", out)
+	}
+
+	fields := strings.Fields(string(out))
+	return strconv.ParseInt(fields[0], 10, 64)
 }
 
 func (fs *Filesystem) HasSpaceFor(size int64) error {

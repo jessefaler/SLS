@@ -3,6 +3,7 @@ package filesystem
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -10,34 +11,31 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gabriel-vasile/mimetype"
 	ignore "github.com/sabhiram/go-gitignore"
-	"golang.org/x/sys/unix"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/internal/ufs"
 )
 
 type Filesystem struct {
-	unixFS *ufs.Quota
+	unixFS  *ufs.Quota
+	overlay *OverlayVolume
 
 	mu                sync.RWMutex
 	lastLookupTime    *usageLookupTime
 	lookupInProgress  atomic.Bool
 	diskCheckInterval time.Duration
 	denylist          *ignore.GitIgnore
-	overlay           string
-	overlayUsageCache atomic.Int64
 
 	isTest bool
 }
 
 // New creates a new Filesystem instance for a given server.
-func New(root string, overlay string, size int64, denylist []string) (*Filesystem, error) {
+func New(root string, overlay *OverlayVolume, size int64, denylist []string) (*Filesystem, error) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
@@ -48,13 +46,17 @@ func New(root string, overlay string, size int64, denylist []string) (*Filesyste
 	quota := ufs.NewQuota(unixFS, size)
 
 	return &Filesystem{
-		unixFS: quota,
+		unixFS:  quota,
+		overlay: overlay,
 
 		diskCheckInterval: time.Duration(config.Get().System.DiskCheckInterval),
 		lastLookupTime:    &usageLookupTime{},
 		denylist:          ignore.CompileIgnoreLines(denylist...),
-		overlay:           overlay,
 	}, nil
+}
+
+func (fs *Filesystem) Overlay() *OverlayVolume {
+	return fs.overlay
 }
 
 // Path returns the root path for the Filesystem instance.
@@ -262,6 +264,86 @@ func (fs *Filesystem) Chown(p string) error {
 	return nil
 }
 
+// ChownUnsafe sets ownership on the provided directories using the configured user UID/GID
+// This does not verify if the path is within the servers volume
+func ChownUnsafe(dirs ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	uid := cfg.System.User.Uid
+	gid := cfg.System.User.Gid
+
+	for _, dir := range dirs {
+		if dir == "" {
+			continue
+		}
+		if err := os.Chown(dir, uid, gid); err != nil {
+			return errors.Wrapf(err, "failed to chown directory %s", dir)
+		}
+	}
+	return nil
+}
+
+// ChownRecursiveUnsafe recursively sets ownership on the provided paths using the configured user UID/GID.
+// This does not verify if the paths are within the servers volume.
+func ChownRecursiveUnsafe(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	uid := cfg.System.User.Uid
+	gid := cfg.System.User.Gid
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if err := os.Chown(p, uid, gid); err != nil {
+				return errors.Wrapf(err, "failed to chown %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chown %s", path)
+		}
+	}
+	return nil
+}
+
+// ChmodUnsafe recursively sets permissions on the provided paths.
+// This does not verify if the paths are within the servers volume.
+func ChmodUnsafe(mode fs.FileMode, paths ...string) error {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if err := os.Chmod(p, mode); err != nil {
+				return errors.Wrapf(err, "failed to chmod %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chmod %s", path)
+		}
+	}
+	return nil
+}
+
 func (fs *Filesystem) Chmod(path string, mode ufs.FileMode) error {
 	return fs.unixFS.Chmod(path, mode)
 }
@@ -395,38 +477,6 @@ func (fs *Filesystem) Delete(p string) error {
 	return fs.unixFS.RemoveAll(p)
 }
 
-// Overlay returns the path to the servers overlay folder
-func (s *Filesystem) Overlay() string {
-	return s.overlay
-}
-
-//type fileOpener struct {
-//	fs   *Filesystem
-//	busy uint
-//}
-//
-//// Attempts to open a given file up to "attempts" number of times, using a backoff. If the file
-//// cannot be opened because of a "text file busy" error, we will attempt until the number of attempts
-//// has been exhaused, at which point we will abort with an error.
-//func (fo *fileOpener) open(path string, flags int, perm ufs.FileMode) (ufs.File, error) {
-//	for {
-//		f, err := fo.fs.unixFS.OpenFile(path, flags, perm)
-//
-//		// If there is an error because the text file is busy, go ahead and sleep for a few
-//		// hundred milliseconds and then try again up to three times before just returning the
-//		// error back to the caller.
-//		//
-//		// Based on code from: https://github.com/golang/go/issues/22220#issuecomment-336458122
-//		if err != nil && fo.busy < 3 && strings.Contains(err.Error(), "text file busy") {
-//			time.Sleep(100 * time.Millisecond << fo.busy)
-//			fo.busy++
-//			continue
-//		}
-//
-//		return f, err
-//	}
-//}
-
 // ListDirectory lists the contents of a given directory and returns stat
 // information about each file and folder within it.
 func (fs *Filesystem) ListDirectory(p string) ([]Stat, error) {
@@ -498,177 +548,32 @@ func (fs *Filesystem) ListDirectory(p string) ([]Stat, error) {
 	return out, nil
 }
 
+// Destroy closes and deletes the entire filesystem including the server and overlay volume
+func (fs *Filesystem) Destroy() error {
+	p := fs.Path()
+	var errs []error
+	// Close the underlying UnixFS
+	if err := fs.UnixFS().Close(); err != nil {
+		errs = append(errs, errors.Wrap(err, "failed to close filesystem"))
+	}
+	// Destroy overlay
+	if err := fs.Overlay().Destroy(); err != nil {
+		errs = append(errs, errors.WrapWithDetails(err, "failed to destroy overlay", "path", fs.Overlay().Root))
+	}
+	// Remove the main volume
+	if err := os.RemoveAll(p); err != nil {
+		errs = append(errs, errors.WrapWithDetails(err, "failed to remove server files", "path", p))
+	}
+	// Combine all collected errors
+	if len(errs) > 0 {
+		return errors.Combine(errs...)
+	}
+	return nil
+}
+
 func (fs *Filesystem) Chtimes(path string, atime, mtime time.Time) error {
 	if fs.isTest {
 		return nil
 	}
 	return fs.unixFS.Chtimes(path, atime, mtime)
-}
-
-func chownPath(path string) error {
-	cfg := config.Get()
-	if cfg == nil {
-		return nil
-	}
-
-	return os.Chown(path, cfg.System.User.Uid, cfg.System.User.Gid)
-}
-
-// DeleteVolume removes all mounts and directories associated with this filesystem.
-// It unmounts all overlay filesystems and bind mounts in the correct order,
-// then deletes the overlay directory and volume directory.
-// If unmount operations fail, it will attempt forced unmounts and continue
-// with deletion regardless of unmount errors.
-func (fs *Filesystem) DeleteVolume() error {
-	return CleanupServerVolume(fs.Path(), fs.overlay)
-}
-
-// CleanupServerVolume removes all mounts and directories created by BuildServerVolume.
-// It unmounts all overlay filesystems and bind mounts in the correct order,
-// then deletes the overlay directory and volume directory.
-// This function is used by Filesystem.Delete() and can also be called directly
-// from the server package if volume creation succeeds but subsequent steps fail.
-func CleanupServerVolume(volumePath string, overlayRoot string) error {
-	// Define paths for unmounting
-	serverOverlayMerged := filepath.Join(overlayRoot, "server", "merged")
-	serverOverlayWorld := filepath.Join(serverOverlayMerged, "world")
-	worldOverlayMerged := filepath.Join(overlayRoot, "world", "merged")
-	serverLowerdir := filepath.Join(overlayRoot, "server", "lowerdir")
-	worldLowerdir := filepath.Join(overlayRoot, "world", "lowerdir")
-
-	var unmountErrors []error
-
-	// Unmount in reverse order of mounting (innermost to outermost)
-	// Collect errors but continue processing all mounts
-
-	// Unmount the volume (bind mount from serverOverlay to volume)
-	if err := unmountIfMounted(volumePath); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount volume"))
-	}
-
-	// Unmount the world overlay from serverOverlay/world (bind mount)
-	if err := unmountIfMounted(serverOverlayWorld); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world overlay from server overlay"))
-	}
-
-	// Unmount the server overlay filesystem
-	if err := unmountIfMounted(serverOverlayMerged); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount server overlay filesystem"))
-	}
-
-	// Unmount the world overlay filesystem
-	if err := unmountIfMounted(worldOverlayMerged); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world overlay filesystem"))
-	}
-
-	// Unmount server lowerdir bind mount
-	if err := unmountIfMounted(serverLowerdir); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount server lowerdir"))
-	}
-
-	// Unmount world lowerdir bind mount
-	if err := unmountIfMounted(worldLowerdir); err != nil {
-		unmountErrors = append(unmountErrors, errors.Wrap(err, "failed to unmount world lowerdir"))
-	}
-
-	// Continue with deletion even if unmounts failed
-	var deleteErrors []error
-
-	// Delete the overlay root directory
-	if overlayRoot != "" {
-		if err := os.RemoveAll(overlayRoot); err != nil {
-			deleteErrors = append(deleteErrors, errors.Wrapf(err, "failed to delete overlay directory %s", overlayRoot))
-		}
-	}
-
-	// Delete the volume directory
-	if volumePath != "" {
-		if err := os.RemoveAll(volumePath); err != nil {
-			deleteErrors = append(deleteErrors, errors.Wrapf(err, "failed to delete volume directory %s", volumePath))
-		}
-	}
-
-	// Combine all errors if any occurred
-	if len(unmountErrors) > 0 || len(deleteErrors) > 0 {
-		var allErrors []error
-		allErrors = append(allErrors, unmountErrors...)
-		allErrors = append(allErrors, deleteErrors...)
-
-		errorMsg := "cleanup completed with errors"
-		if len(unmountErrors) > 0 {
-			errorMsg += fmt.Sprintf(" (%d unmount error(s))", len(unmountErrors))
-		}
-		if len(deleteErrors) > 0 {
-			errorMsg += fmt.Sprintf(" (%d delete error(s))", len(deleteErrors))
-		}
-
-		return errors.WithMessage(
-			errors.Combine(allErrors...),
-			errorMsg,
-		)
-	}
-
-	return nil
-}
-
-// unmountIfMounted attempts to unmount a path if it is currently mounted.
-// It tries multiple strategies: lazy unmount (MNT_DETACH), regular unmount, and forced unmount.
-// If the path is not mounted or doesn't exist, it returns nil (no error).
-// Returns an error only if all unmount strategies fail and the path is definitely mounted.
-func unmountIfMounted(path string) error {
-	// Check if the path exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Path doesn't exist, nothing to unmount
-		return nil
-	} else if err != nil {
-		// Some other error occurred, but we'll still try to unmount
-		// in case it's a permission issue but the mount exists
-	}
-
-	// Helper to check if error is EINVAL (not mounted)
-	isNotMounted := func(err error) bool {
-		if err == nil {
-			return false
-		}
-		if errno, ok := err.(syscall.Errno); ok && errno == unix.EINVAL {
-			return true
-		}
-		return false
-	}
-
-	var lastErr error
-	var err error
-
-	// Strategy 1: Try lazy unmount (MNT_DETACH) - this allows processes to continue using
-	// the filesystem while unmounting happens in the background
-	if err = unix.Unmount(path, unix.MNT_DETACH); err == nil {
-		return nil
-	}
-	if isNotMounted(err) {
-		return nil
-	}
-	lastErr = err
-
-	// Strategy 2: Try regular unmount
-	if err = unix.Unmount(path, 0); err == nil {
-		return nil
-	}
-	if isNotMounted(err) {
-		return nil
-	}
-	lastErr = err
-
-	// Strategy 3: Try forced unmount (MNT_FORCE) - this will force unmount even if busy
-	// Note: This requires CAP_SYS_ADMIN, but we try it anyway
-	if err = unix.Unmount(path, unix.MNT_FORCE); err == nil {
-		return nil
-	}
-	if isNotMounted(err) {
-		return nil
-	}
-	lastErr = err
-
-	// All strategies failed with a non-EINVAL error
-	// Return the last error but note that we tried multiple strategies
-	return errors.Wrapf(lastErr, "failed to unmount %s (tried lazy, regular, and forced unmount)", path)
 }

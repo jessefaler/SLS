@@ -11,21 +11,25 @@ import (
 	"unicode/utf8"
 
 	. "github.com/franela/goblin"
+
 	"protoxon.com/sls/daemon/internal/ufs"
 
-	"github.com/pterodactyl/wings/config"
+	"protoxon.com/sls/daemon/config"
 )
 
 func NewFs() (*Filesystem, *rootFs) {
 	config.Set(&config.Configuration{
-		AuthenticationToken: "abc",
 		System: config.SystemConfiguration{
 			RootDirectory:     "/server",
 			DiskCheckInterval: 150,
 		},
+		RemoteApi: config.RemoteApi{
+			Url:   "",
+			Token: "abc",
+		},
 	})
 
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "pterodactyl")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "sls")
 	if err != nil {
 		panic(err)
 		return nil, nil

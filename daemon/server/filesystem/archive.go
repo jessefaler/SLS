@@ -15,6 +15,7 @@ import (
 	"github.com/juju/ratelimit"
 	"github.com/klauspost/pgzip"
 	ignore "github.com/sabhiram/go-gitignore"
+
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/internal/progress"
 	"protoxon.com/sls/daemon/internal/ufs"
@@ -210,8 +211,6 @@ func (a *Archive) callback(opts ...walkFunc) walkFunc {
 
 		// If base isn't empty, strip it from the relative path. This fixes an
 		// issue when creating an archive starting from a nested directory.
-		//
-		// See https://github.com/pterodactyl/panel/issues/5030 for more details.
 		if base != "" {
 			relative = strings.TrimPrefix(relative, base)
 		}
