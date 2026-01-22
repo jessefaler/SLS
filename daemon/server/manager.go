@@ -288,12 +288,37 @@ func (m *Manager) LoadServers(ctx context.Context) error {
 		}
 
 		pool.Submit(func() {
-			s.Log().Info("configuring server environment and restoring to previous state")
 			var st string
 			if state, exists := states[s.ID()]; exists {
 				st = state
 			}
 
+			// Ephemeral servers (save=false) should be deleted on daemon boot if they're offline.
+			if !s.save {
+				ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+				defer cancel()
+
+				r, err := s.Environment.IsRunning(ctx)
+				if err != nil && !client.IsErrNotFound(err) {
+					s.Log().WithField("error", err).Error("error checking server environment status")
+				}
+
+				// If ephemeral server is offline, delete it immediately
+				if !r {
+					go s.Delete()
+					return
+				}
+
+				// If server is still running reconfigure it
+				s.Log().Info("configuring server environment")
+				s.Environment.SetState(environment.ProcessRunningState)
+				if err := s.Environment.Attach(ctx); err != nil {
+					s.Log().WithField("error", err).Warn("failed to attach to running server environment")
+				}
+				return
+			}
+
+			s.Log().Info("configuring server environment and restoring to previous state")
 			// Use a timed context here to avoid booting issues where Docker hangs for a
 			// specific container that would cause Wings to be un-bootable until the entire
 			// machine is rebooted. It is much better for us to just have a single failed
