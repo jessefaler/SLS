@@ -72,7 +72,7 @@ public class StatsCommand {
                                 " <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
                                 " <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
-                                " <gold>-</gold> <dark_gray>Disk (Actual):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red> <dark_gray>(upperdir)</dark_gray>" +
+                                " <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
                                 "<dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
                     }, failure -> {
                         ProtoMessage.chat()

@@ -99,7 +99,7 @@ public class InfoCommand {
                                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
                                     "   <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
-                                    "   <gold>-</gold> <dark_gray>Disk (Actual):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red> <dark_gray>(upperdir)</dark_gray>" +
+                                    "   <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
                                     "</dark_purple>'><dark_gray>[</dark_gray><dark_red>Cpu:</dark_red> <red>" + stats.getCpuFormatted() + "</red><dark_gray>,</dark_gray> <dark_red>Mem:</dark_red> <red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>]</dark_gray></hover>\n" +
                                     " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
                                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);

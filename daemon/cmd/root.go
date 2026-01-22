@@ -85,6 +85,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Every minute, write the current server states to the disk to allow for a more
 	// seamless hard-reboot process in which the daemon will re-sync server states based
 	// on its last tracked state.
+	// Only servers with saving enabled have their states saved
 	go func() {
 		for {
 			select {

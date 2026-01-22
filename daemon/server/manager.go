@@ -167,14 +167,17 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 }
 
 // PersistStates writes the current environment states to the disk for each
-// server. This is generally called at a specific interval defined in the root
+// server that has saving enabled. This is generally called at a specific interval defined in the root
 // runner command to avoid hammering disk I/O when tons of server switch states
 // at once. It is fine if this file falls slightly out of sync, it is just here
 // to make recovering from an unexpected system reboot a little easier.
 func (m *Manager) PersistStates() error {
 	states := map[string]string{}
 	for _, s := range m.All() {
-		states[s.ID()] = s.Environment.State()
+		if s.save == true {
+			// only write the state for servers that have saving enabled
+			states[s.ID()] = s.Environment.State()
+		}
 	}
 	data, err := json.Marshal(states)
 	if err != nil {
