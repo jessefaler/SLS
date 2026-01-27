@@ -21,6 +21,7 @@ type ServerClient interface {
 
 	// Requests
 	Power(ctx context.Context, action models.PowerAction) error
+	Reset(ctx context.Context) error
 	Logs(ctx context.Context, size int) (gin.H, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
 	Status(ctx context.Context) (gin.H, error)
@@ -62,6 +63,11 @@ func (sc *serverClient) Node() (NodeClient, error) {
 
 func (sc *serverClient) Power(ctx context.Context, action models.PowerAction) error {
 	_, err := sc.Post(ctx, "/power", action)
+	return err
+}
+
+func (sc *serverClient) Reset(ctx context.Context) error {
+	_, err := sc.Post(ctx, "/reset", nil)
 	return err
 }
 

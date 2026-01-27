@@ -59,6 +59,7 @@ type Server struct {
 
 	resources   ResourceUsage
 	Environment environment.ProcessEnvironment `json:"-"`
+	installer   *Installer
 
 	// Defines the process configuration for the server instance.
 	procConfig *models.ProcessConfiguration
@@ -119,6 +120,11 @@ func (s *Server) ProcessConfiguration() *models.ProcessConfiguration {
 	defer s.RUnlock()
 
 	return s.procConfig
+}
+
+// Installer gets the server installer
+func (s *Server) Installer() *Installer {
+	return s.installer
 }
 
 func (s *Server) SetProcessConfiguration(cfg *models.ProcessConfiguration) {

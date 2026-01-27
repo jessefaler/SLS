@@ -184,6 +184,61 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 	return errors.New("attempting to handle unknown power action")
 }
 
+// HandleReset resets the server's overlay filesystem. If the server is running,
+// it will stop the server, wait for it to fully stop, reset the overlay, and
+// then start it back up if it was running before.
+func (s *Server) HandleReset() error {
+	// Check if server is running first - we only need the lock if it's running
+	running, err := s.Environment.IsRunning(s.Context())
+	if err != nil {
+		return errors.Wrap(err, "failed to check if server is running during reset")
+	}
+
+	wasRunning := running
+	var lockAcquired bool
+
+	if running {
+		// Only acquire the power lock if the server is running - this prevents
+		// deletion when saving is false during the stop operation
+		if err := s.powerLock.Acquire(); err != nil {
+			return errors.Wrap(err, "failed to acquire exclusive lock for reset")
+		}
+		lockAcquired = true
+		s.Log().Info("acquired power lock for reset, stopping server...")
+
+		// Server is running, stop it first
+		if err := s.Environment.Stop(s.Context()); err != nil {
+			s.powerLock.Release()
+			return errors.Wrap(err, "failed to stop server instance during reset")
+		}
+
+		// Wait for the server to fully stop before resetting
+		if err := s.Environment.WaitForStop(s.Context(), time.Minute*10, true); err != nil {
+			s.powerLock.Release()
+			return errors.Wrap(err, "failed to wait for server to stop during reset")
+		}
+	}
+
+	// Once the server is fully stopped (or wasn't running), call reset
+	if err := s.Filesystem().Overlay().Reset(); err != nil {
+		if lockAcquired {
+			s.powerLock.Release()
+		}
+		return errors.Wrap(err, "failed to reset server instance")
+	}
+
+	// If the server was running before the reset, start it back up
+	// Release the lock first so HandlePowerAction can acquire it
+	if wasRunning {
+		s.powerLock.Release()
+		if err := s.HandlePowerAction(PowerActionStart); err != nil {
+			return errors.Wrap(err, "failed to start server after reset")
+		}
+	}
+
+	return nil
+}
+
 // Execute a few functions before actually calling the environment start commands. This ensures
 // that everything is ready to go for environment booting, and that the server can even be started.
 func (s *Server) onBeforeStart() error {
@@ -201,6 +256,16 @@ func (s *Server) onBeforeStart() error {
 	// Ensure we sync the server information with the environment so that any new environment variables
 	// and process resource limits are correctly applied.
 	s.SyncWithEnvironment()
+
+	// Check if the base server folder has been installed
+	if !s.Installer().IsInstalled(s.Filesystem().Overlay().Server) {
+		// If the base server folder doesn't exist install the server
+		// This will block until installation is complete or fails
+		//err := s.Installer().Install(s.Filesystem().Overlay().Server)
+		//if err != nil {
+		//	return errors.Wrap(err, "failed to install server")
+		//}
+	}
 
 	// Mount the overlay filesystem
 	err := s.Filesystem().Overlay().Mount()

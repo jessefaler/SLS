@@ -96,6 +96,18 @@ func postServerCommands(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func postServerReset(c *gin.Context) {
+	server := middleware.ExtractServer(c)
+	// Make the request
+	err := server.Reset(c.Request.Context())
+	// Handle any errors
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
 func getServerLogs(c *gin.Context) {
 	server := middleware.ExtractServer(c)
 
@@ -116,4 +128,24 @@ func getServerLogs(c *gin.Context) {
 
 	// Return the logs response
 	c.JSON(http.StatusOK, logs)
+}
+
+func (r *Router) getInstallInfo(c *gin.Context) {
+	server := middleware.ExtractServer(c)
+
+	// Get the servers blueprint
+	bp := r.BlueprintRegistry.Get(server.BlueprintId())
+	if bp == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Blueprint not found"})
+		return
+	}
+	// Get the software used by the blueprint
+	sw := r.SoftwareRegistry.Get(bp.Server.Software)
+	if sw == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Software not found"})
+		return
+	}
+
+	// Return the installation script from the software configuration
+	c.JSON(http.StatusOK, sw.InstallScript)
 }

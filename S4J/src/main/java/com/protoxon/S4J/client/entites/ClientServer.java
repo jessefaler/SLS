@@ -122,4 +122,12 @@ public interface ClientServer {
         return getLogs(100);
     }
 
+    /**
+     * Resets the server by deleting the overlay filesystem and restarting if it was running.
+     * This will stop the server if it's running, wait for it to fully stop, reset the overlay,
+     * and then start it back up if it was running before.
+     * @return SLSAction that completes when the reset request is accepted
+     */
+    SLSAction<Void> reset();
+
 }

@@ -156,7 +156,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if err := tmp.InstallScript.Validate(); err != nil {
 			return err
 		}
-		s.InstallScript = tmp.InstallScript
+		s.InstallScript = *tmp.InstallScript
 	}
 
 	return nil

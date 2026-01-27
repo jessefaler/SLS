@@ -19,6 +19,7 @@ type Client interface {
 	ServerDeleted(ctx context.Context, id string) error               // Sends a server deleted event
 	GetServers(context context.Context, perPage int) ([]models.ServerConfigurationResponse, error)
 	GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfigurationResponse, error)
+	GetServerInstallInfo(ctx context.Context, uuid string) (models.InstallationScript, error)
 	SetOnConnected(callback func(context.Context))
 }
 

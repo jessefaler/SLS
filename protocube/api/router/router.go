@@ -46,6 +46,7 @@ func (r *Router) Configure() *gin.Engine {
 		server.GET("/status", getServerStatus)
 		server.GET("/stats", getServerStats)
 		server.POST("/commands", postServerCommands)
+		server.POST("/reset", postServerReset)
 		//server.POST("/install", postServerInstall)
 		//server.POST("/reinstall", postServerReinstall)
 		//server.POST("/sync", postServerSync)
@@ -80,6 +81,7 @@ func (r *Router) Configure() *gin.Engine {
 		nodeServer := internal.Group("/servers/:server")
 		nodeServer.Use(middleware.ServerExists(r.ServerManager))
 		nodeServer.GET("", r.getServerConfiguration)
+		nodeServer.GET("/install", r.getInstallInfo)
 
 		// Node events
 		event := internal.Group("/event/servers/:server")

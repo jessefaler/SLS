@@ -126,6 +126,25 @@ func postServerCommands(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Handles a request to reset a server instance. This will stop the server if it's running,
+// wait for it to fully stop, and then reset the overlay filesystem. Returns HTTP/202 Accepted
+// immediately and processes the reset asynchronously, similar to power actions.
+func postServerReset(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	// Pass the actual heavy processing off to a separate thread to handle so that
+	// we can immediately return a response from the server. Resetting can take quite
+	// some time, especially if the server needs to be stopped first.
+	go func(s *server.Server) {
+		if err := s.HandleReset(); err != nil {
+			s.Log().WithError(err).Error("failed to reset server instance")
+			return
+		}
+	}(s)
+
+	c.Status(http.StatusAccepted)
+}
+
 // Deletes a server from the daemon and dissociate its objects.
 func (r *Router) deleteServer(c *gin.Context) {
 	s := middleware.ExtractServer(c)

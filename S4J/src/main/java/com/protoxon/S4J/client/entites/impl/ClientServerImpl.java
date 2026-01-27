@@ -160,4 +160,10 @@ public class ClientServerImpl implements ClientServer {
                 impl.getS4J(), route);
     }
 
+    @Override
+    public SLSAction<Void> reset() {
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.RESET.compile(getId()));
+    }
+
 }

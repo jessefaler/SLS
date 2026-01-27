@@ -87,6 +87,13 @@ func (s *Server) Kill(ctx context.Context) error {
 	return s.Power(ctx, models.PowerAction{Action: "kill"})
 }
 
+// Reset sends a request to reset the server on the node
+// This will delete the servers overlay and restart the server
+// If it is running
+func (s *Server) Reset(ctx context.Context) error {
+	return s.Client().Reset(ctx)
+}
+
 // Delete deletes the server from the daemon
 func (s *Server) Delete(ctx context.Context) error {
 	return s.Client().DeleteServer(ctx)

@@ -7,7 +7,7 @@ type Software struct {
 	StopCommand   string                `yaml:"stop-command"`
 	Invocation    string                `yaml:"invocation"`
 	OnlineSignal  string                `yaml:"online-signal"`
-	InstallScript *InstallationScript   `yaml:"install-script"`
+	InstallScript InstallationScript    `yaml:"install-script"`
 	Configs       map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 }
 

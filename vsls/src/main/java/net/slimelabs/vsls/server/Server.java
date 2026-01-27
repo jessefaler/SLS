@@ -58,6 +58,10 @@ public class Server extends Listener {
         });
     }
 
+    public SLSAction<Void> reset() {
+        return client.reset();
+    }
+
     public SLSAction<Void> delete() {
         SLSAction<Void> action = client.delete();
         return action.map(v -> {

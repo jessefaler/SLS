@@ -88,3 +88,12 @@ func (c *client) GetServerConfiguration(ctx context.Context, uuid string) (model
 	}
 	return res, nil
 }
+
+func (c *client) GetServerInstallInfo(ctx context.Context, uuid string) (models.InstallationScript, error) {
+	var script models.InstallationScript
+	res, err := Get[models.InstallationScript](c, ctx, fmt.Sprintf("/internal/servers/%s/install", uuid), nil)
+	if err != nil {
+		return script, err
+	}
+	return res, nil
+}

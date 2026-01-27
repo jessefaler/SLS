@@ -44,7 +44,7 @@ type ResourceUsage struct {
 	Disk int64 `json:"disk_bytes"`
 	// Max size of the file system
 	MaxDisk int64 `json:"disk_max"`
-	// The disk usage of the upper directory in the overlay filesystem
+	// The disk usage of the overlay filesystem
 	// The represents the actual disk space this server takes up
 	Overlay int64 `json:"overlay_bytes"`
 }

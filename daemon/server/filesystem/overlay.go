@@ -15,8 +15,10 @@ import (
 type OverlayVolume struct {
 	Root          string
 	Target        string
-	mounted       bool
+	mounted       atomic.Bool
 	usage         atomic.Int64
+	Server        string
+	World         string
 	ServerOverlay *overlay.Overlay
 	WorldOverlay  *overlay.Overlay
 }
@@ -60,6 +62,8 @@ func NewOverlayVolume(root string, target string, server string, world string, c
 
 	return &OverlayVolume{
 		Root:          root,
+		Server:        server,
+		World:         world,
 		ServerOverlay: so,
 		WorldOverlay:  wo,
 	}, nil
@@ -104,7 +108,7 @@ func BuildWorldOverlay(root string, target string, world string) (*overlay.Overl
 }
 
 func (o *OverlayVolume) IsMounted() bool {
-	return o.mounted
+	return o.mounted.Load()
 }
 
 // Mount mounts the overlay volume
@@ -126,14 +130,13 @@ func (o *OverlayVolume) Mount() error {
 		return errors.Wrap(err, "failed to set volume ownership")
 	}
 
-	o.mounted = true
+	o.mounted.Store(true)
 	return nil
 }
 
 // Unmount unmounts the overlay volume
 func (o *OverlayVolume) Unmount() error {
 	var errs []error
-	o.mounted = false
 
 	// Unmount the server overlay
 	if err := o.ServerOverlay.Unmount(); err != nil {
@@ -150,13 +153,12 @@ func (o *OverlayVolume) Unmount() error {
 		return errors.Combine(errs...)
 	}
 
+	o.mounted.Store(false)
 	return nil
 }
 
 // Destroy deletes the overlay volume
 func (o *OverlayVolume) Destroy() error {
-	o.mounted = false
-
 	var errs []error
 
 	if err := o.Unmount(); err != nil {
@@ -172,6 +174,21 @@ func (o *OverlayVolume) Destroy() error {
 
 	if len(errs) > 0 {
 		return errors.Combine(errs...)
+	}
+
+	return nil
+}
+
+// Reset destroys the overlay filesystem and recreates the work and upper directories
+func (o *OverlayVolume) Reset() error {
+	if err := o.Destroy(); err != nil {
+		return err
+	}
+
+	// Create the overlay directories
+	err := Mkdirs(o.ServerOverlay.Work, o.ServerOverlay.Upper, o.WorldOverlay.Work, o.WorldOverlay.Upper)
+	if err != nil {
+		return errors.Wrap(err, "failed to create overlay directories")
 	}
 
 	return nil
@@ -221,6 +238,7 @@ func (o *OverlayVolume) SetUsage(newUsage int64) int64 {
 // Ownership of the lower directories is required because OverlayFS preserves
 // the original permissions and ownership when copying up files or directories.
 // If the server does not own these directories, it will not be able to write to them.
+// todo this can likely be fixed with idmapped mounts
 func (o *OverlayVolume) EnsureOwned() error {
 	// Chown and chmod the server overlay directories
 	// Recursively chown the lower directory

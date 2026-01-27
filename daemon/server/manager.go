@@ -25,9 +25,10 @@ import (
 )
 
 type Manager struct {
-	mutex   sync.RWMutex
-	client  remote.Client
-	servers map[string]*Server // key = server ID
+	mutex     sync.RWMutex
+	client    remote.Client
+	servers   map[string]*Server // key = server ID
+	installer *Installer
 }
 
 // NewManager returns a new server manager instance.
@@ -35,6 +36,9 @@ func NewManager(client remote.Client) *Manager {
 	return &Manager{
 		client:  client,
 		servers: make(map[string]*Server),
+		installer: &Installer{
+			Processes: make(map[string]*InstallationProcess),
+		},
 	}
 }
 
@@ -65,6 +69,11 @@ func (m *Manager) Find(filter func(match *Server) bool) *Server {
 		}
 	}
 	return nil
+}
+
+// Installer gets the server installer
+func (m *Manager) Installer() *Installer {
+	return m.installer
 }
 
 // Remove removes a server from the collection by its ID.
@@ -100,7 +109,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	// create an allocation for the server
 	alloc := environment.NewAllocation()
 	s.Config().Allocations = alloc
-
+	s.installer = m.Installer()
 	s.id = req.ID
 
 	// Replace the server.build.default.port variable with the servers actual port

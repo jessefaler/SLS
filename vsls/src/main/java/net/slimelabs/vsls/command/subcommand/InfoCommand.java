@@ -78,6 +78,7 @@ public class InfoCommand {
                             String type        = blueprint != null ? blueprint.getType() : "Unknown";
                             String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
                             String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
+                            String name        = blueprint != null ? blueprint.getName() : server.blueprintId;
                             String statusColor = "green";
                             if(server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
                                 statusColor = "red";
@@ -88,7 +89,7 @@ public class InfoCommand {
                                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                                     " <hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
                                     " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.status.getStatus() + "</" + statusColor + ">\n" +
-                                    " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><blue> " + server.blueprintId + "</blue>\n" +
+                                    " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><hover:show_text:'<dark_purple>" + server.blueprintId + "</dark_purple>'><blue> " + name + "</blue></hover>\n" +
                                     " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue>\n" +
                                     " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +

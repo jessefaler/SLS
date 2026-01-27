@@ -12,7 +12,6 @@ import (
 	"protoxon.com/sls/daemon/api/router/middleware"
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/server"
-	"protoxon.com/sls/daemon/server/installer"
 	"protoxon.com/sls/daemon/system"
 )
 
@@ -22,17 +21,6 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	// todo verify that the incoming request fields are correct
-
-	// Check if the base server folder has been installed
-	if !installer.IsInstalled(req.ServerFolder) {
-		c.Status(http.StatusAccepted)
-		// If the base server folder doesn't exist create it
-		go func() {
-			installer.Install()
-		}()
 	}
 
 	// create the server
@@ -58,7 +46,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		Alloc.DefaultMapping.Ip = "unknown"
 	}
 
-	// At this point respond with a status accepted
+	// Respond with a status accepted
 	c.JSON(http.StatusAccepted, models.CreateServerResponse{
 		Allocation: Alloc,
 	})

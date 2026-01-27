@@ -26,3 +26,9 @@ type ServerConfigurationResponse struct {
 type CreateServerResponse struct {
 	Allocation environment.Allocations `json:"allocations"`
 }
+
+type InstallationScript struct {
+	ContainerImage string `yaml:"image"`
+	Entrypoint     string `yaml:"entrypoint"`
+	Script         string `yaml:"script"`
+}

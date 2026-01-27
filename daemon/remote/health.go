@@ -17,7 +17,7 @@ import (
 
 const heartbeatInterval = 10 * time.Second
 
-var connected = false
+var connected = system.NewAtomicBool(false)
 
 // Register will send a single register request to protocube
 func (c *client) Register(ctx context.Context) error {
@@ -64,8 +64,8 @@ func (c *client) Register(ctx context.Context) error {
 		return errors.Wrap(err, "failed to set auth token")
 	}
 
-	if connected == false {
-		connected = true
+	if !connected.Load() {
+		connected.Store(true)
 		log.Info("Successfully registered with protocube.")
 		// Call the onConnected callback if it has been registered
 		c.mu.RLock()
@@ -85,7 +85,7 @@ func (c *client) Heartbeat(ctx context.Context) {
 	heartbeat := HeartBeat{}
 	_, err := Post[d](c, ctx, "/internal/heartbeat", heartbeat)
 	if err != nil {
-		connected = false
+		connected.Store(false)
 		log.WithError(err).Error("failed to connect to protocube: heartbeat failed")
 	}
 }
@@ -94,7 +94,7 @@ func (c *client) Heartbeat(ctx context.Context) {
 // And cancels the sending of heartbeats
 func (c *client) Disconnect(ctx context.Context) {
 	c.cancel() // Cancel the clients main context to stop sending heartbeats
-	if connected {
+	if connected.Load() {
 		_, _ = Post[d](c, ctx, "/internal/disconnect", nil)
 	}
 }
