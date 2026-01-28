@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * The reset command deletes all saved data related to the server and world for a specified server.
  * It performs the following actions:
  * <ul>
- *   <li>Kills the server.</li>
+ *   <li>Stops the server.</li>
  *   <li>Deletes the contents of the upper and work directories in the server and world folder.</li>
  *   <li>Sends all players connected to the server being reset to a fallback server.</li>
  *   <li>Starts the server.</li>

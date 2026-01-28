@@ -8,6 +8,7 @@ import net.slimelabs.vsls.log.Log;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -115,20 +116,35 @@ public class BlueprintRegistry {
      * Initializes the blueprint registry.
      * <p>
      * Fetches all blueprints asynchronously from the API and populates the registry.
+     * If the fetch fails, it will retry every 30 seconds until successful.
      * Any errors encountered during the fetch are logged.
      *
      * @return a new Registry instance with asynchronously loaded blueprints
      */
     public static BlueprintRegistry init() {
         BlueprintRegistry registry = new BlueprintRegistry();
+        loadBlueprints(registry);
+        return registry;
+    }
+
+    /**
+     * Attempts to load blueprints from the API. If it fails, schedules a retry after 30 seconds.
+     * This will continue retrying until successful.
+     *
+     * @param registry the registry instance to populate
+     */
+    private static void loadBlueprints(BlueprintRegistry registry) {
         // Fetches 70 blueprints per page
         SLS.api.getBlueprints().limit(70).executeAsync(blueprints -> {
             registry.setBlueprints(blueprints);
             SLS.logger.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
         }, failure -> {
-            SLS.logger.warn("Failed to load blueprints: {}", failure.getMessage());
+            SLS.logger.warn("Failed to load blueprints: {}. Retrying in 30 seconds...", failure.getMessage());
+            // Schedule a retry after 30 seconds
+            SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
+                loadBlueprints(registry);
+            }).delay(30, TimeUnit.SECONDS).schedule();
         });
-        return registry;
     }
 
 }

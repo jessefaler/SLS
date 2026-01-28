@@ -68,7 +68,7 @@ public class Queue {
     public void enqueue(Player player) {
         players.add(player);
         loadingIcon.start(player);
-        ProtoMessage.chat().add(MessagePreset.SLS).add("In queue for " + server.name, NamedTextColor.DARK_AQUA).sendMessage(player);
+        ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>In queue for " + server.name + "</gradient>").sendMessage(player);
     }
 
     public boolean dequeue(Player player) {
