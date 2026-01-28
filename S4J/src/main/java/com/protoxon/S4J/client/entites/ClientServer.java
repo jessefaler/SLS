@@ -21,6 +21,13 @@ public interface ClientServer {
     String getId();
 
     /**
+     * The blueprint id the server is using
+     *
+     * @return Possibly-null String containing the Server's id.
+     */
+    String getBlueprintId();
+
+    /**
      * The id of the node this server is running on
      *
      * @return Possibly-null String containing the node id.

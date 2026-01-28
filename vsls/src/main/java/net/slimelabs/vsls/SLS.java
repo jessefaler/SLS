@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 )
 public class SLS {
 
-    public static Logger            logger;
     public static ProxyServer       proxy;
     public static SLS               plugin;
     public static ServerRegistry    servers;
@@ -48,7 +47,6 @@ public class SLS {
 
     @Inject // injects the proxy server and logger into the plugin class
     public SLS(ProxyServer proxy, Logger logger) {
-        SLS.logger = logger;
         SLS.proxy = proxy;
         SLS.plugin = this;
     }

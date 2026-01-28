@@ -34,6 +34,13 @@ public interface SLSClient {
 
     PaginationAction<Blueprint> getBlueprints();
 
+    /**
+     * Retrieves a single blueprint by its ID
+     * @param id The blueprint ID
+     * @return SLSAction that returns the blueprint with the given ID
+     */
+    SLSAction<Blueprint> getBlueprint(String id);
+
     WebSocketEventStream getEventStream();
 
     SLSAction<Void> reloadBlueprints();

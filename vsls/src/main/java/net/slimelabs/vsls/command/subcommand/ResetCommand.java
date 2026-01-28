@@ -12,6 +12,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -53,7 +54,7 @@ public class ResetCommand {
                             return 1;
                         }
                     } else {
-                        SLS.logger.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                        Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
                         return 0;
                     }
 

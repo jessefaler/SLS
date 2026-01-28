@@ -33,6 +33,14 @@ func (r *Router) Configure() *gin.Engine {
 		protected.GET("/events/ws", r.getServerWebsocket)
 	}
 
+	// These are blueprint specific routes, and require that the request be authorized, and
+	// that the blueprint exist.
+	blueprintGroup := router.Group("/api/blueprints/:blueprint")
+	blueprintGroup.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.BlueprintExists(r.BlueprintRegistry))
+	{
+		blueprintGroup.GET("", r.getBlueprint)
+	}
+
 	// These are server specific routes, and require that the request be authorized, and
 	// that the server exist.
 	server := router.Group("/api/servers/:server")

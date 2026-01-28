@@ -29,6 +29,11 @@ public class ClientServerImpl implements ClientServer {
     }
 
     @Override
+    public String getBlueprintId() {
+        return json.getString("blueprint_id");
+    }
+
+    @Override
     public String getNodeId() {
         return json.getString("node_id");
     }

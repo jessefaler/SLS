@@ -1,6 +1,7 @@
 package net.slimelabs.vsls.config;
 
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import org.yaml.snakeyaml.Yaml;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +52,7 @@ public class Config {
                 Files.copy(in, path);
             }
         } catch (IOException e) {
-            SLS.logger.warn("Failed to copy default config {}", e.getMessage());
+            Log.warn("Failed to copy default config {}", e.getMessage());
         }
     }
 
@@ -69,9 +70,9 @@ public class Config {
         Yaml yaml = new Yaml(new Constructor(Config.class));
         try (InputStream in = Files.newInputStream(targetPath)) {
             SLS.config = yaml.load(in);
-            SLS.logger.info("Configuration reloaded.");
+            Log.info("Configuration reloaded.");
         } catch (Exception e) {
-            SLS.logger.error("Failed to reload configuration: {}", e.getMessage());
+            Log.error("Failed to reload configuration: {}", e.getMessage());
         }
     }
 

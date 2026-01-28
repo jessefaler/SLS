@@ -87,6 +87,17 @@ public class SLSClientImpl implements SLSClient {
     }
 
     @Override
+    public SLSAction<Blueprint> getBlueprint(String id) {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.Blueprint.GET_BLUEPRINT.compile(id),
+                (response, request) -> {
+                    JSONObject blueprintObj = response.getObject();
+                    return new BlueprintImpl(blueprintObj, this);
+                });
+    }
+
+    @Override
     public WebSocketEventStream getEventStream() {
         return new WebSocketEventStreamImpl(api);
     }

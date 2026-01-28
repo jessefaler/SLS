@@ -12,11 +12,12 @@ type PowerAction struct {
 }
 
 type ServerData struct {
-	Id       string `json:"id"`
-	NodeName string `json:"node_name"`
-	NodeId   string `json:"node_id"`
-	Ip       string `json:"ip"`
-	Port     int    `json:"port"`
+	Id          string `json:"id"`
+	BlueprintId string `json:"blueprint_id"`
+	NodeName    string `json:"node_name"`
+	NodeId      string `json:"node_id"`
+	Ip          string `json:"ip"`
+	Port        int    `json:"port"`
 }
 
 type ServerStore struct {

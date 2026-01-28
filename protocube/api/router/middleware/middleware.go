@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"protoxon.com/sls/protocube/auth"
+	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/node"
 	"protoxon.com/sls/protocube/server"
@@ -270,4 +271,34 @@ func ExtractNode(c *gin.Context) *node.Node {
 		panic("router/middleware: cannot extract node: not present in request context")
 	}
 	return v.(*node.Node)
+}
+
+// BlueprintExists will ensure that the requested blueprint exists in this setup.
+// Returns a 404 if we cannot locate it. If the blueprint is found it is set into
+// the request context, and the logger for the context is also updated to include
+// the blueprint ID in the fields list.
+func BlueprintExists(registry *blueprint.Registry) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bp *blueprint.Blueprint
+		if c.Param("blueprint") != "" {
+			bp = registry.Get(c.Param("blueprint"))
+		}
+		if bp == nil {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			return
+		}
+		c.Set("logger", ExtractLogger(c).WithField("blueprint_id", bp.Meta.ID))
+		c.Set("blueprint", bp)
+		c.Next()
+	}
+}
+
+// ExtractBlueprint will return the blueprint from the gin.Context or panic if it is
+// not present.
+func ExtractBlueprint(c *gin.Context) *blueprint.Blueprint {
+	v, ok := c.Get("blueprint")
+	if !ok {
+		panic("router/middleware: cannot extract blueprint: not present in request context")
+	}
+	return v.(*blueprint.Blueprint)
 }

@@ -5,16 +5,21 @@ import com.protoxon.S4J.entites.Blueprint;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class BlueprintRegistry {
 
     private Map<String, Blueprint> blueprints = new HashMap<>();
+    private volatile boolean isLoaded = false;
+    private final List<Consumer<BlueprintRegistry>> loadCallbacks = new ArrayList<>();
 
     /**
      * Adds a blueprint to the registry
@@ -34,6 +39,19 @@ public class BlueprintRegistry {
             map.put(blueprint.getId(), blueprint);
         }
         this.blueprints = map;
+        
+        // Mark as loaded and execute all pending callbacks
+        synchronized (loadCallbacks) {
+            isLoaded = true;
+            for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
+                try {
+                    callback.accept(this);
+                } catch (Exception e) {
+                    Log.error("Error executing blueprint registry load callback", e);
+                }
+            }
+            loadCallbacks.clear();
+        }
     }
 
     /**
@@ -96,10 +114,47 @@ public class BlueprintRegistry {
     }
 
     /**
+     * Checks if the blueprint registry has been loaded.
+     * @return true if the registry has been loaded, false otherwise
+     */
+    public boolean isLoaded() {
+        return isLoaded;
+    }
+
+    /**
+     * Registers a callback to be executed when the blueprint registry is loaded.
+     * If the registry is already loaded, the callback will be executed immediately.
+     * If the registry is not yet loaded, the callback will be executed once loading completes.
+     *
+     * @param callback the callback to execute when the registry is loaded, receives this BlueprintRegistry instance
+     */
+    public void whenLoaded(Consumer<BlueprintRegistry> callback) {
+        synchronized (loadCallbacks) {
+            if (isLoaded) {
+                // Already loaded, execute immediately
+                try {
+                    callback.accept(this);
+                } catch (Exception e) {
+                    Log.error("Error executing blueprint registry load callback", e);
+                }
+            } else {
+                // Not loaded yet, add to callback list
+                loadCallbacks.add(callback);
+            }
+        }
+    }
+
+    /**
      * Fetches all blueprints asynchronously from the API and updates the registry.
      * Any errors encountered during the fetch are logged.
+     * Note: This will trigger load callbacks again when the reload completes.
      */
     public SLSAction<Void> reload() {
+        // Mark as not loaded during reload so callbacks can be registered again
+        synchronized (loadCallbacks) {
+            isLoaded = false;
+        }
+        
         return SLS.api.getBlueprints().limit(70)
                 .map(loadedBlueprints -> {
                     setBlueprints(loadedBlueprints);
@@ -107,7 +162,19 @@ public class BlueprintRegistry {
                     return (Void) null;
                 })
                 .onErrorMap((Throwable failure) -> {
-                    SLS.logger.warn("Failed to reload blueprints: {}", failure.getMessage());
+                    Log.warn("Failed to reload blueprints: {}", failure.getMessage());
+                    // Mark as loaded and execute callbacks even on error to prevent them from waiting forever
+                    synchronized (loadCallbacks) {
+                        isLoaded = true;
+                        for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
+                            try {
+                                callback.accept(this);
+                            } catch (Exception e) {
+                                Log.error("Error executing blueprint registry load callback", e);
+                            }
+                        }
+                        loadCallbacks.clear();
+                    }
                     return (Void) null;
                 });
     }
@@ -137,9 +204,9 @@ public class BlueprintRegistry {
         // Fetches 70 blueprints per page
         SLS.api.getBlueprints().limit(70).executeAsync(blueprints -> {
             registry.setBlueprints(blueprints);
-            SLS.logger.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
+            Log.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
         }, failure -> {
-            SLS.logger.warn("Failed to load blueprints: {}. Retrying in 30 seconds...", failure.getMessage());
+            Log.warn("Failed to load blueprints: {}. Retrying in 30 seconds...", failure.getMessage());
             // Schedule a retry after 30 seconds
             SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
                 loadBlueprints(registry);

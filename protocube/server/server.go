@@ -122,11 +122,12 @@ func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
 // ServerData returns the ServerData model for this server.
 func (s *Server) ServerData() models.ServerData {
 	return models.ServerData{
-		Id:       s.id,
-		NodeId:   s.NodeId(),
-		NodeName: s.NodeName(),
-		Ip:       s.Allocations.DefaultMapping.Ip,
-		Port:     s.Allocations.DefaultMapping.Port,
+		Id:          s.id,
+		BlueprintId: s.BlueprintId(),
+		NodeId:      s.NodeId(),
+		NodeName:    s.NodeName(),
+		Ip:          s.Allocations.DefaultMapping.Ip,
+		Port:        s.Allocations.DefaultMapping.Port,
 	}
 }
 

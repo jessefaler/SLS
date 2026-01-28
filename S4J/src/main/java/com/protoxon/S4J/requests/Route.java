@@ -42,6 +42,10 @@ public class Route {
         public static final Route RELOAD = new Route(POST, "blueprints/reload");
     }
 
+    public static class Blueprint {
+        public static final Route GET_BLUEPRINT = new Route(GET, "blueprints/{blueprint_id}");
+    }
+
     public static class Software {
         public static final Route RELOAD = new Route(POST, "software/reload");
     }

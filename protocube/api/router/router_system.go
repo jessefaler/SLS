@@ -67,6 +67,11 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	})
 }
 
+func (r *Router) getBlueprint(c *gin.Context) {
+	bp := middleware.ExtractBlueprint(c)
+	c.JSON(http.StatusOK, bp)
+}
+
 // Returns all servers
 func (r *Router) getAllServers(c *gin.Context) {
 	servers := r.ServerManager.All()
