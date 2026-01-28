@@ -16,7 +16,7 @@ import net.slimelabs.vsls.internal.Message;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.routing.AnimationController;
 import net.slimelabs.vsls.routing.QueueManager;
-import net.slimelabs.vsls.server.ServerRegistry;
+import net.slimelabs.vsls.server.ServerManager;
 import org.slf4j.Logger;
 
 @Plugin(
@@ -34,7 +34,7 @@ public class SLS {
 
     public static ProxyServer       proxy;
     public static SLS               plugin;
-    public static ServerRegistry    servers;
+    public static ServerManager servers;
     public static BlueprintRegistry blueprints;
     public static Config            config;
     public static SLSClient         api;
@@ -62,7 +62,7 @@ public class SLS {
         // Initialize the blueprint registry
         blueprints = BlueprintRegistry.init();
         // Initialize the server registry
-        servers = ServerRegistry.init(api);
+        servers = ServerManager.init(api);
         // Initialize the packet listener
         chatPackets = ChatPackets.init();
         // Register the sls command

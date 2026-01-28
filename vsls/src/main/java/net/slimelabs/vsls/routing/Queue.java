@@ -17,8 +17,6 @@ import java.util.concurrent.TimeUnit;
 
 public class Queue {
 
-    private final int TIMEOUT = 120; // Seconds
-
     public Server server;
     ArrayList<Player> players = new ArrayList<>();
     private final AnimationController loadingIcon = new AnimationController();
@@ -39,9 +37,9 @@ public class Queue {
         timeoutTask = SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
             if (!flushed) {
                 handle.remove();
-                flushQueueWithError();
+                flushQueueWithError("Failed to join " + server.name + " queue timed out");
             }
-        }).delay(TIMEOUT, TimeUnit.SECONDS).schedule();
+        }).delay(SLS.config.queue.timeout, TimeUnit.SECONDS).schedule();
     }
 
     private void cancelTimeout() {
@@ -61,18 +59,18 @@ public class Queue {
             if(status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
                 handle.remove();
                 cancelTimeout();
-                flushQueueWithError();
+                flushQueueWithError("Failed to join " + server.name);
             }
-        })).timeout(TIMEOUT, TimeUnit.SECONDS);
+        })).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS);
     }
 
-    public void enqueue(Player player) {
+    public synchronized void enqueue(Player player) {
         players.add(player);
         loadingIcon.start(player);
         ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>In queue for " + server.name + "</gradient>").sendMessage(player);
     }
 
-    public boolean dequeue(Player player) {
+    public synchronized boolean dequeue(Player player) {
         if(player == null) return false;
         ChatPackets.enableActionBarPackets(player.getUniqueId());
         loadingIcon.stop(player.getUniqueId());
@@ -92,13 +90,13 @@ public class Queue {
         }
     }
 
-    public void flushQueueWithError() {
+    public void flushQueueWithError(String message) {
         if (flushed) return;
         flushed = true;
         cancelTimeout();
         remove.run(); // remove this queue from the queue manager
         for(Player player : players) {
-            ProtoMessage.chat().add(MessagePreset.SLS).add("Failed to join " + server.name, NamedTextColor.RED).sendMessage(player);
+            ProtoMessage.chat().add(MessagePreset.SLS).add(message, NamedTextColor.RED).sendMessage(player);
             ChatPackets.enableActionBarPackets(player.getUniqueId());
             loadingIcon.stop(player.getUniqueId());
         }

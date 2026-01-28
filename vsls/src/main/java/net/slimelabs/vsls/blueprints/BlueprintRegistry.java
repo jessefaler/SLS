@@ -5,11 +5,12 @@ import com.protoxon.S4J.entites.Blueprint;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -17,9 +18,9 @@ import java.util.stream.Collectors;
 
 public class BlueprintRegistry {
 
-    private Map<String, Blueprint> blueprints = new HashMap<>();
+    private ConcurrentHashMap<String, Blueprint> blueprints = new ConcurrentHashMap<>();
     private volatile boolean isLoaded = false;
-    private final List<Consumer<BlueprintRegistry>> loadCallbacks = new ArrayList<>();
+    private final List<Consumer<BlueprintRegistry>> loadCallbacks = new CopyOnWriteArrayList<>();
 
     /**
      * Adds a blueprint to the registry
@@ -34,24 +35,22 @@ public class BlueprintRegistry {
      * @param blueprints the collection of blueprints to set
      */
     public void setBlueprints(Collection<Blueprint> blueprints) {
-        Map<String, Blueprint> map = new HashMap<>(blueprints.size());
+        ConcurrentHashMap<String, Blueprint> map = new ConcurrentHashMap<>(blueprints.size());
         for (Blueprint blueprint : blueprints) {
             map.put(blueprint.getId(), blueprint);
         }
         this.blueprints = map;
         
         // Mark as loaded and execute all pending callbacks
-        synchronized (loadCallbacks) {
-            isLoaded = true;
-            for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
-                try {
-                    callback.accept(this);
-                } catch (Exception e) {
-                    Log.error("Error executing blueprint registry load callback", e);
-                }
+        isLoaded = true;
+        for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
+            try {
+                callback.accept(this);
+            } catch (Exception e) {
+                Log.error("Error executing blueprint registry load callback", e);
             }
-            loadCallbacks.clear();
         }
+        loadCallbacks.clear();
     }
 
     /**
@@ -129,17 +128,24 @@ public class BlueprintRegistry {
      * @param callback the callback to execute when the registry is loaded, receives this BlueprintRegistry instance
      */
     public void whenLoaded(Consumer<BlueprintRegistry> callback) {
-        synchronized (loadCallbacks) {
+        if (isLoaded) {
+            // Already loaded, execute immediately
+            try {
+                callback.accept(this);
+            } catch (Exception e) {
+                Log.error("Error executing blueprint registry load callback", e);
+            }
+        } else {
+            // Not loaded yet, add to callback list
+            loadCallbacks.add(callback);
+            // Double-check: if loaded while we were adding, execute immediately
             if (isLoaded) {
-                // Already loaded, execute immediately
+                loadCallbacks.remove(callback);
                 try {
                     callback.accept(this);
                 } catch (Exception e) {
                     Log.error("Error executing blueprint registry load callback", e);
                 }
-            } else {
-                // Not loaded yet, add to callback list
-                loadCallbacks.add(callback);
             }
         }
     }
@@ -151,9 +157,7 @@ public class BlueprintRegistry {
      */
     public SLSAction<Void> reload() {
         // Mark as not loaded during reload so callbacks can be registered again
-        synchronized (loadCallbacks) {
-            isLoaded = false;
-        }
+        isLoaded = false;
         
         return SLS.api.getBlueprints().limit(70)
                 .map(loadedBlueprints -> {
@@ -164,17 +168,16 @@ public class BlueprintRegistry {
                 .onErrorMap((Throwable failure) -> {
                     Log.warn("Failed to reload blueprints: {}", failure.getMessage());
                     // Mark as loaded and execute callbacks even on error to prevent them from waiting forever
-                    synchronized (loadCallbacks) {
-                        isLoaded = true;
-                        for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
-                            try {
-                                callback.accept(this);
-                            } catch (Exception e) {
-                                Log.error("Error executing blueprint registry load callback", e);
-                            }
+                    isLoaded = true;
+                    // CopyOnWriteArrayList creates a snapshot for iteration, so concurrent adds are safe
+                    for (Consumer<BlueprintRegistry> callback : loadCallbacks) {
+                        try {
+                            callback.accept(this);
+                        } catch (Exception e) {
+                            Log.error("Error executing blueprint registry load callback", e);
                         }
-                        loadCallbacks.clear();
                     }
+                    loadCallbacks.clear();
                     return (Void) null;
                 });
     }

@@ -39,7 +39,7 @@ public class Connector {
     public static void join(Player player, String blueprintId) {
         ServerCreationAction creation = SLS.api.createServer();
         creation.setBlueprintId(blueprintId);
-        SLS.servers.CreateServer(creation).executeAsync(server -> {
+        SLS.servers.createServer(creation).executeAsync(server -> {
             SLS.queue.enqueue(player, server);
         }, failure -> {
             Log.error("Failed to start server from blueprint {} reason: {}", blueprintId, failure.getMessage());

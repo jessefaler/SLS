@@ -22,6 +22,14 @@ public class Config {
         public String key;
     }
 
+    // ==================================
+    // Queue Configuration
+    // ==================================
+    public QueueConfiguration queue = new QueueConfiguration();
+    public static class QueueConfiguration {
+        public int timeout = 120;
+    }
+
     /**
      * Reads the configuration from disk and returns a Config object.
      * If the config doesn't exist it will create a default config

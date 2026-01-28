@@ -7,23 +7,22 @@ import com.protoxon.S4J.client.entites.SLSClient;
 import com.protoxon.S4J.entites.Blueprint;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.blueprints.BlueprintRegistry;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-public class ServerRegistry implements ServerProvider {
+public class ServerManager implements ServerProvider {
 
     ConcurrentHashMap<String, Server> servers = new ConcurrentHashMap<>();
     private SLSClient api;
     public Events events;
 
-    public ServerRegistry(SLSClient api) {
+    public ServerManager(SLSClient api) {
         this.api = api;
         // Initialize the event listener
         events = Events.init(api, this);
@@ -39,9 +38,9 @@ public class ServerRegistry implements ServerProvider {
      * @param api the S4J api client
      * @return the initialized registry
      */
-    public static ServerRegistry init(SLSClient api) {
-        ServerRegistry registry = new ServerRegistry(api);
-        LoadServers(registry, api);
+    public static ServerManager init(SLSClient api) {
+        ServerManager registry = new ServerManager(api);
+        loadServers(registry, api);
         return registry;
     }
 
@@ -52,7 +51,7 @@ public class ServerRegistry implements ServerProvider {
      * @param registry the registry instance to populate
      * @param api the S4J api client
      */
-    private static void LoadServers(ServerRegistry registry, SLSClient api) {
+    private static void loadServers(ServerManager registry, SLSClient api) {
         api.getAllServers().executeAsync(servers -> {
             SLS.blueprints.whenLoaded(blueprints -> {
                 for (ClientServer clientServer : servers) {
@@ -83,7 +82,7 @@ public class ServerRegistry implements ServerProvider {
             Log.warn("Failed to load servers: {}. Retrying in 30 seconds...", failure.getMessage());
             // Schedule a retry after 30 seconds
             SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-                LoadServers(registry, api);
+                loadServers(registry, api);
             }).delay(30, TimeUnit.SECONDS).schedule();
         });
     }
@@ -98,10 +97,11 @@ public class ServerRegistry implements ServerProvider {
      * @param action the server creation action
      * @return an SLSAction that, when executed, creates the server and registers it
      */
-    public SLSAction<Server> CreateServer(ServerCreationAction action) {
+    public SLSAction<Server> createServer(ServerCreationAction action) {
         // Map the ClientServer to a vSLS Server, and register it
         return action.map(clientServer -> {
-            String name = SLS.blueprints.getBlueprint(action.getBlueprintId()).getName();
+            Blueprint blueprint = SLS.blueprints.getBlueprint(action.getBlueprintId());
+            String name = Objects.requireNonNullElse(blueprint != null ? blueprint.getName() : null, action.getBlueprintId());
             Server server = new Server(name, clientServer, action.getBlueprintId(), () -> unRegister(clientServer.getId()));
             register(server);
             return server;
@@ -109,9 +109,8 @@ public class ServerRegistry implements ServerProvider {
     }
 
     /**
-     * Adds the server to the server registry
-     * and registers the server with velocity
-     * and registers the server with viaversion
+     * Registers a server with the manager, Velocity, and ViaVersion.
+     *
      * @param server the server to register
      */
     public void register(Server server) {

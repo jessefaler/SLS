@@ -228,9 +228,10 @@ public class Listener {
         deletionListenersWithHandle.clear();
     }
 
-    public static class Handle {
+    public static class Handle implements AutoCloseable {
 
         Runnable remove;
+        private volatile boolean removed = false;
         private ScheduledTask timeoutTask;
 
         public Handle(Runnable remove) {
@@ -239,13 +240,13 @@ public class Listener {
 
         /**
          * Automatically removes this listener handle after the specified duration.
-         * If the listener is manually removed before the timeout, the scheduled task is cancelled.
+         * If the listener is manually removed before the timeout, the scheduled task is canceled.
          *
          * @param duration the duration to wait before automatically removing the listener
          * @param unit the time unit of the duration
          * @return this handle for method chaining
          */
-        public Handle timeout(long duration, TimeUnit unit) {
+        public synchronized Handle timeout(long duration, TimeUnit unit) {
             if (timeoutTask != null) {
                 // If a timeout is already set, cancel it first
                 timeoutTask.cancel();
@@ -264,14 +265,21 @@ public class Listener {
 
         /**
          * Removes this listener handle.
-         * If a timeout was set, it will be cancelled.
+         * If a timeout was set, it will be canceled.
          */
-        public void remove() {
+        public synchronized void remove() {
+            if (removed) return;
+            removed = true;
             if (timeoutTask != null) {
                 timeoutTask.cancel();
                 timeoutTask = null;
             }
             remove.run();
+        }
+
+        @Override
+        public void close() throws Exception {
+            remove();
         }
     }
 

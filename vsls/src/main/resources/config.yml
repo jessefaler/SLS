@@ -2,3 +2,5 @@
 api:
   url: "" # url to sls protocube
   key: "" # protocube api key
+queue:
+  timeout: 120 # The amount of time in seconds before forcefully closing a server queue

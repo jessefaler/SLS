@@ -10,10 +10,11 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class QueueManager {
-    private HashMap<String, Queue> queues = new HashMap<>();
+    private ConcurrentHashMap<String, Queue> queues = new ConcurrentHashMap<>();
 
     public void enqueue(Player player, Server server) {
         Queue queue = getQueue(server);

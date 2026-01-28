@@ -64,7 +64,7 @@ public class CreateCommand {
                     ServerCreationAction creation = SLS.api.createServer();
                     creation.setBlueprintId(blueprint);
 
-                    SLS.servers.CreateServer(creation).executeAsync(server -> {
+                    SLS.servers.createServer(creation).executeAsync(server -> {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
                                 .add("Created " + blueprint, NamedTextColor.GREEN)
@@ -235,7 +235,7 @@ public class CreateCommand {
 
                     // Helper method to create the server
                     Runnable createServer = () -> {
-                        SLS.servers.CreateServer(creation).executeAsync(server -> {
+                        SLS.servers.createServer(creation).executeAsync(server -> {
                             ProtoMessage.chat()
                                     .add(MessagePreset.SLS)
                                     .add("Created " + blueprint, NamedTextColor.GREEN)

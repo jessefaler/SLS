@@ -61,7 +61,9 @@ public class Events {
                 // Deletion Event
                 // ================================
                 if(server == null) return;
-                // Notify Listeners
+                // Fire an offline status change for the server
+                server.fireStatusChange(ServerStatus.OFFLINE);
+                // Notify deletion event listeners
                 server.fireDeletion(deletionEvent);
                 // Handle server deletion events
                 server.unregister();

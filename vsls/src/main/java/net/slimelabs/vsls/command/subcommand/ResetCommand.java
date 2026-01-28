@@ -149,7 +149,7 @@ public class ResetCommand {
                             .add(MessagePreset.SLS)
                             .add("⚠ ", NamedTextColor.YELLOW)
                             .add(server.name, NamedTextColor.GOLD)
-                            .add( " is resetting. You will be automatically reconnected.", NamedTextColor.GRAY)
+                            .add( " is resetting. You will reconnect momentarily.", NamedTextColor.GRAY)
                             .sendMessage(player);
                 }).delay(2, TimeUnit.SECONDS).schedule();
             }
@@ -163,7 +163,7 @@ public class ResetCommand {
 
     public static void showResetTitle(Audience target, String serverName) {
         final Component mainTitle = Component.text("Resetting " + serverName, NamedTextColor.YELLOW);
-        final Component subtitle = Component.text("You’ll be reconnected automatically.", NamedTextColor.GREEN);
+        final Component subtitle = Component.text("You will reconnect momentarily.", NamedTextColor.GREEN);
         final Title title = Title.title(mainTitle, subtitle);
         target.showTitle(title);
     }
