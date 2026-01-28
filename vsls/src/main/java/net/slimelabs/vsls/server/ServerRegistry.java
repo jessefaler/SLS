@@ -148,7 +148,6 @@ public class ServerRegistry implements ServerProvider {
         Server server = servers.get(id);
         servers.remove(id);
         if(server != null) {
-            server.handleUnregistration();
             server.clearListeners();
         }
         // Unregister the server in velocity

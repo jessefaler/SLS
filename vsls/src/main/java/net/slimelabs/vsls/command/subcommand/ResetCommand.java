@@ -3,6 +3,7 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -133,9 +134,16 @@ public class ResetCommand {
 
         server.reset().executeAsync(success -> {
             for(Player player : players) {
+                server.onStatusChange(((status, handle) -> {
+                    // Wait for the server to change its state to starting
+                    // before queueing the player
+                    if(status == ServerStatus.STARTING) {
+                        // Queue the player to reconnect to the server
+                        SLS.queue.enqueue(player, server);
+                        handle.remove();
+                    }
+                })).timeout(2, TimeUnit.MINUTES);
                 SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-                    // Queue the player to reconnect to the server
-                    SLS.queue.enqueue(player, server);
                     showResetTitle(player, server.name);
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)

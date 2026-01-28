@@ -43,11 +43,7 @@ public class Server extends Listener {
     }
 
     public SLSAction<Void> stop() {
-        SLSAction<Void> action = client.stop();
-        return action.map(v -> {
-            unregister.run();
-            return v;
-        });
+        return client.stop();
     }
 
     public SLSAction<Void> start() {
@@ -59,11 +55,7 @@ public class Server extends Listener {
     }
 
     public SLSAction<Void> kill() {
-        SLSAction<Void> action = client.kill();
-        return action.map(v -> {
-            unregister.run();
-            return v;
-        });
+        return client.kill();
     }
 
     public SLSAction<Void> reset() {
@@ -71,11 +63,20 @@ public class Server extends Listener {
     }
 
     public SLSAction<Void> delete() {
-        SLSAction<Void> action = client.delete();
-        return action.map(v -> {
-            unregister.run();
-            return v;
-        });
+        return client.delete();
+    }
+
+    /**
+     * Deletes the server.
+     * <p>
+     * If {@code force} is {@code true}, the server will be removed from Protocube
+     * even if deletion fails on the underlying node.
+     *
+     * @param force whether to force deletion when node-level deletion fails
+     * @return an {@link SLSAction} callback that performs the deletion when executed
+     */
+    public SLSAction<Void> delete(boolean force) {
+        return client.delete(force);
     }
 
     public int getPort() {
@@ -94,20 +95,7 @@ public class Server extends Listener {
         return client.getStats(update);
     }
 
-    // Internal
-    public void handleStatusChange(ServerStatus status) {
-    }
-
-    public void handleCrash(ServerCrashEvent crashEvent) {
-
-    }
-
-    public void handleUnregistration() {
-        // Notify Listeners
-        fireUnregistration();
-    }
-
-    public void handleDeletion() {
+    public void unregister() {
         unregister.run();
     }
 

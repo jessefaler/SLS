@@ -6,10 +6,12 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.packets.ChatPackets;
+import net.slimelabs.vsls.server.Listener;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -23,11 +25,12 @@ public class Queue {
     Runnable remove;
     private ScheduledTask timeoutTask;
     private boolean flushed = false;
+    Listener.Handle handle;
 
     public Queue(Server server, Runnable remove) {
         this.server = server;
         this.remove = remove;
-        initListeners();
+        this.handle = initListeners();
         startTimeout();
     }
 
@@ -35,6 +38,7 @@ public class Queue {
         // Start a timeout task that will error if the server doesn't come online within the timeout period
         timeoutTask = SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
             if (!flushed) {
+                handle.remove();
                 flushQueueWithError();
             }
         }).delay(TIMEOUT, TimeUnit.SECONDS).schedule();
@@ -47,22 +51,19 @@ public class Queue {
         }
     }
 
-    public void initListeners() {
-        var unRegistration = server.onUnregistration(handle -> {
-            handle.remove();
-            cancelTimeout();
-            flushQueueWithError();
-        });
-        server.onStatusChange(((status, handle) -> {
+    public Listener.Handle initListeners() {
+        return server.onStatusChange(((status, handle) -> {
             if(status == ServerStatus.RUNNING) {
-                unRegistration.remove();
                 handle.remove();
                 cancelTimeout();
                 flushQueue();
             }
-            // Don't immediately error on STOPPING/OFFLINE - wait for the server to come back online
-            // or timeout. This allows reset operations to complete successfully.
-        }));
+            if(status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
+                handle.remove();
+                cancelTimeout();
+                flushQueueWithError();
+            }
+        })).timeout(TIMEOUT, TimeUnit.SECONDS);
     }
 
     public void enqueue(Player player) {

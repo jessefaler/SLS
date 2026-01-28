@@ -3,9 +3,13 @@ package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
+import com.protoxon.S4J.client.entites.ServerDeletedEvent;
+import com.velocitypowered.api.scheduler.ScheduledTask;
+import net.slimelabs.vsls.SLS;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 public class Listener {
 
@@ -13,8 +17,8 @@ public class Listener {
     private final List<ListenerEntry<StatusChangeListenerWithHandle>> statusListenersWithHandle = new CopyOnWriteArrayList<>();
     private final List<CrashListener> crashListeners = new CopyOnWriteArrayList<>();
     private final List<ListenerEntry<CrashListenerWithHandle>> crashListenersWithHandle = new CopyOnWriteArrayList<>();
-    private final List<UnregistrationListener> unregistrationListeners = new CopyOnWriteArrayList<>();
-    private final List<ListenerEntry<UnregistrationListenerWithHandle>> unregistrationListenersWithHandle = new CopyOnWriteArrayList<>();
+    private final List<DeletionListener> deletionListeners = new CopyOnWriteArrayList<>();
+    private final List<ListenerEntry<DeletionListenerWithHandle>> deletionListenersWithHandle = new CopyOnWriteArrayList<>();
 
     // Helper record to store listener with its handle
     private record ListenerEntry<T>(T listener, Handle handle) {}
@@ -27,6 +31,11 @@ public class Listener {
     @FunctionalInterface
     public interface CrashListener {
         void onCrash(ServerCrashEvent crash);
+    }
+
+    @FunctionalInterface
+    public interface DeletionListener {
+        void onDeletion(ServerDeletedEvent deletion);
     }
 
     @FunctionalInterface
@@ -50,6 +59,15 @@ public class Listener {
     @FunctionalInterface
     public interface CrashListenerWithHandle {
         void onCrash(ServerCrashEvent crash, Handle handle);
+    }
+
+    /**
+     * Deletion listener that receives its handle,
+     * allowing it to unregister itself from within the callback.
+     */
+    @FunctionalInterface
+    public interface DeletionListenerWithHandle {
+        void onDeletion(ServerDeletedEvent deletion, Handle handle);
     }
 
     /**
@@ -130,36 +148,36 @@ public class Listener {
     }
 
     /**
-     * Registers a listener that is invoked whenever the server is unregistered.
+     * Registers a listener that is invoked whenever the server is deleted.
      *
-     * @param listener the listener to notify on unregistration
+     * @param listener the listener to notify on deletion events
      * @return a handle that can be used to unregister the listener.
      *         The handle may be safely ignored if you intend for the listener
      *         to remain for the lifetime of the server, as it will be removed
      *         automatically when the server is unregistered.
      */
-    public Handle onUnregistration(UnregistrationListener listener) {
-        unregistrationListeners.add(listener);
+    public Handle onDeletion(DeletionListener listener) {
+        deletionListeners.add(listener);
         return new Handle(() -> {
-            unregistrationListeners.remove(listener);
+            deletionListeners.remove(listener);
         });
     }
 
     /**
-     * Registers a listener that is invoked whenever the server is unregistered.
+     * Registers a listener that is invoked whenever the server is deleted.
      * The listener receives its handle, allowing it to unregister itself.
      *
-     * @param listener the listener to notify on unregistration
+     * @param listener the listener to notify on deletion events
      * @return a handle that can be used to unregister the listener.
      *         The handle may be safely ignored if you intend for the listener
      *         to remain for the lifetime of the server, as it will be removed
      *         automatically when the server is unregistered.
      */
-    public Handle onUnregistration(UnregistrationListenerWithHandle listener) {
+    public Handle onDeletion(DeletionListenerWithHandle listener) {
         Handle handle = new Handle(() -> {
-            unregistrationListenersWithHandle.removeIf(entry -> entry.listener == listener);
+            deletionListenersWithHandle.removeIf(entry -> entry.listener == listener);
         });
-        unregistrationListenersWithHandle.add(new ListenerEntry<>(listener, handle));
+        deletionListenersWithHandle.add(new ListenerEntry<>(listener, handle));
         return handle;
     }
 
@@ -185,14 +203,14 @@ public class Listener {
         }
     }
 
-    protected void fireUnregistration() {
+    protected void fireDeletion(ServerDeletedEvent deletion) {
         // Fire regular listeners
-        for (UnregistrationListener l : unregistrationListeners) {
-            l.onUnregistration();
+        for (DeletionListener l : deletionListeners) {
+            l.onDeletion(deletion);
         }
         // Fire self-unregistering listeners with their stored handle
-        for (ListenerEntry<UnregistrationListenerWithHandle> entry : unregistrationListenersWithHandle) {
-            entry.listener.onUnregistration(entry.handle);
+        for (ListenerEntry<DeletionListenerWithHandle> entry : deletionListenersWithHandle) {
+            entry.listener.onDeletion(deletion, entry.handle);
         }
     }
 
@@ -206,20 +224,53 @@ public class Listener {
         statusListenersWithHandle.clear();
         crashListeners.clear();
         crashListenersWithHandle.clear();
-        unregistrationListeners.clear();
-        unregistrationListenersWithHandle.clear();
+        deletionListeners.clear();
+        deletionListenersWithHandle.clear();
     }
 
-    public class Handle {
+    public static class Handle {
 
         Runnable remove;
+        private ScheduledTask timeoutTask;
 
         public Handle(Runnable remove) {
             this.remove = remove;
         }
 
-        // Removes this listener handle
+        /**
+         * Automatically removes this listener handle after the specified duration.
+         * If the listener is manually removed before the timeout, the scheduled task is cancelled.
+         *
+         * @param duration the duration to wait before automatically removing the listener
+         * @param unit the time unit of the duration
+         * @return this handle for method chaining
+         */
+        public Handle timeout(long duration, TimeUnit unit) {
+            if (timeoutTask != null) {
+                // If a timeout is already set, cancel it first
+                timeoutTask.cancel();
+            }
+            
+            timeoutTask = SLS.proxy.getScheduler()
+                    .buildTask(SLS.plugin, () -> {
+                        remove();
+                        timeoutTask = null;
+                    })
+                    .delay(duration, unit)
+                    .schedule();
+            
+            return this;
+        }
+
+        /**
+         * Removes this listener handle.
+         * If a timeout was set, it will be cancelled.
+         */
         public void remove() {
+            if (timeoutTask != null) {
+                timeoutTask.cancel();
+                timeoutTask = null;
+            }
             remove.run();
         }
     }

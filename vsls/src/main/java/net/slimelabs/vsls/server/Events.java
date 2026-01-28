@@ -39,8 +39,6 @@ public class Events {
                 if(server == null) return;
                 // Update the servers status
                 server.status = status;
-                // Call the servers status change handler
-                server.handleStatusChange(status);
                 // Notify Listeners
                 server.fireStatusChange(status);
 
@@ -54,19 +52,19 @@ public class Events {
                         " - Exit Code: " + crashEvent.getExitCode() + "\n" +
                         " - Timestamp: " + TimeUtils.formatTimestamp(crashEvent.getTimestamp()));
                 if(server == null) return;
-                // Call the servers crash handler
-                server.handleCrash(crashEvent);
                 // Notify Listeners
                 server.fireCrash(crashEvent);
 
-            } else if (event instanceof ServerDeletedEvent) {
+            } else if (event instanceof ServerDeletedEvent deletionEvent) {
 
                 // ================================
                 // Deletion Event
                 // ================================
                 if(server == null) return;
+                // Notify Listeners
+                server.fireDeletion(deletionEvent);
                 // Handle server deletion events
-                server.handleDeletion();
+                server.unregister();
                 Log.info("Server {} was deleted", id);
 
             }
@@ -96,7 +94,7 @@ public class Events {
         });
 
         events.start();
-        Log.info("Initialized event listener");
+        Log.info("Initialized Event Listener");
     }
 
     /**
