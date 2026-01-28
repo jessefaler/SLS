@@ -50,6 +50,14 @@ public class Server extends Listener {
         });
     }
 
+    public SLSAction<Void> start() {
+        return client.start();
+    }
+
+    public SLSAction<Void> restart() {
+        return client.restart();
+    }
+
     public SLSAction<Void> kill() {
         SLSAction<Void> action = client.kill();
         return action.map(v -> {

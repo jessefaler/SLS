@@ -32,6 +32,7 @@ public class SLSCommand {
         root.then(CreateCommand.register());     // CREATE
         root.then(JoinCommand.register());       // JOIN
         root.then(StartCommand.register());      // START
+        root.then(RestartCommand.register());    // RESTART
         root.then(DebugCommand.register());      // DEBUG
         root.then(StopCommand.register());       // SHUTDOWN
         root.then(KillCommand.register());       // KILL
@@ -45,7 +46,7 @@ public class SLSCommand {
         root.then(VersionCommand.register());    // VERSION
         root.then(LogsCommand.register());       // LOGS
         root.then(NodeCommand.register());       // Node
-        root.then(ResetCommand.register());    // RESET
+        root.then(ResetCommand.register());      // RESET
         root.then(InfoCommand.register());       // INFO
         root.then(SystemCommand.register());     // SYSTEM
         //root.then(TailCommand.register());     // TAIL

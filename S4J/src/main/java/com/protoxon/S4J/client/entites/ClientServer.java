@@ -89,6 +89,14 @@ public interface ClientServer {
         return setPower(PowerAction.STOP);
     }
 
+    default SLSAction<Void> start() {
+        return setPower(PowerAction.START);
+    }
+
+    default SLSAction<Void> restart() {
+        return setPower(PowerAction.RESTART);
+    }
+
     default SLSAction<Void> kill() {
         return setPower(PowerAction.KILL);
     }
