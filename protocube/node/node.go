@@ -10,16 +10,18 @@ import (
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/internal/database"
 	"protoxon.com/sls/protocube/models"
+	"protoxon.com/sls/protocube/node/allocator"
 )
 
 type Node struct {
-	id       string
-	name     string
-	location string
-	url      string
-	drained  bool
-	mutex    sync.RWMutex
-	nc       client.NodeClient
+	id        string
+	name      string
+	location  string
+	url       string
+	drained   bool
+	Allocator *allocator.Allocator
+	mutex     sync.RWMutex
+	nc        client.NodeClient
 	*Health
 }
 

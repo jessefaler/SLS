@@ -261,10 +261,10 @@ func (s *Server) onBeforeStart() error {
 	if !s.Installer().IsInstalled(s.Filesystem().Overlay().Server) {
 		// If the base server folder doesn't exist install the server
 		// This will block until installation is complete or fails
-		//err := s.Installer().Install(s.Filesystem().Overlay().Server)
-		//if err != nil {
-		//	return errors.Wrap(err, "failed to install server")
-		//}
+		err := s.Installer().Install(s, s.Filesystem().Overlay().Server, s.client)
+		if err != nil {
+			return errors.Wrap(err, "failed to install server")
+		}
 	}
 
 	// Mount the overlay filesystem

@@ -2,7 +2,6 @@ package environment
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 
 	"github.com/docker/go-connections/nat"
@@ -106,39 +105,4 @@ func (a *Allocations) Exposed() nat.PortSet {
 	}
 
 	return out
-}
-
-// NewAllocation returns a new allocation with a random port on address 0.0.0.0
-// TODO:
-// - Support binding to specific IPs (not just 0.0.0.0)
-// - Support multiple port mappings
-// - Allocate ports from config-defined ranges instead of random OS ports
-func NewAllocation() Allocations {
-
-	// Ask the OS to give us a free port
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
-	if err != nil {
-		panic(err)
-	}
-	defer listener.Close()
-
-	// Extract the assigned port
-	addr := listener.Addr().(*net.TCPAddr)
-	randomPort := addr.Port
-
-	alloc := Allocations{
-		ForceOutgoingIP: false,
-		DefaultMapping: struct {
-			Ip   string `json:"ip"`
-			Port int    `json:"port"`
-		}{
-			Ip:   "0.0.0.0",
-			Port: randomPort,
-		},
-		Mappings: map[string][]int{
-			"0.0.0.0": {randomPort},
-		},
-	}
-
-	return alloc
 }

@@ -14,7 +14,11 @@ type Allocations struct {
 		Port int    `json:"port"`
 	} `json:"default"`
 
+	Alias string `json:"alias"`
+
 	// Mappings contains all the ports that should be assigned to a given server
 	// attached to the IP they correspond to.
 	Mappings map[string][]int `json:"mappings"`
+	// Releases allocations
+	Release func() `json:"-"`
 }

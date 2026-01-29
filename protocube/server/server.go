@@ -59,7 +59,7 @@ func (s *Server) BlueprintId() string {
 // SetStatus updates the server's status and publishes the change.
 func (s *Server) SetStatus(status Status) {
 	s.status = status
-	s.PublishEvent(StatusEvent, status.String())
+	s.PublishEvent(StatusEvent, status)
 }
 
 // Client returns the underlying server client used to interact with remote endpoints.
@@ -105,7 +105,7 @@ func (s *Server) GetStatus() Status {
 }
 
 // GetRemoteStatus fetches the servers status from the remote node
-func (s *Server) GetRemoteStatus(ctx context.Context) (gin.H, error) {
+func (s *Server) GetRemoteStatus(ctx context.Context) (Status, error) {
 	return s.Client().Status(ctx)
 }
 
@@ -126,8 +126,7 @@ func (s *Server) ServerData() models.ServerData {
 		BlueprintId: s.BlueprintId(),
 		NodeId:      s.NodeId(),
 		NodeName:    s.NodeName(),
-		Ip:          s.Allocations.DefaultMapping.Ip,
-		Port:        s.Allocations.DefaultMapping.Port,
+		Allocations: s.Allocations,
 	}
 }
 
@@ -140,6 +139,10 @@ func (s *Server) CleanupForDestroy() {
 	s.PublishEvent(DeletedEvent, nil)
 	s.Events().Destroy()
 	s.DestroyAllSinks()
+	// Release allocations if they exist
+	if s.Allocations.Release != nil {
+		s.Allocations.Release()
+	}
 	// Remove the server from the manager
 	s.Remove()
 	// Remove the server from the database

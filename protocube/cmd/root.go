@@ -45,7 +45,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Create the node manager
 	nodeManager := node.NewManager(remoteClient, loadBalancer)
 	// Create the server manager
-	serverManager, err := server.NewManager(nodeManager)
+	serverManager, err := server.NewManager(cmd.Context(), nodeManager)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

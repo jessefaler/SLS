@@ -33,12 +33,12 @@ type Manager struct {
 }
 
 // NewManager returns a new server manager instance.
-func NewManager(nm *node.Manager) (*Manager, error) {
+func NewManager(ctx context.Context, nm *node.Manager) (*Manager, error) {
 	m := &Manager{
 		servers: make(map[string]*Server),
 		emitter: events.NewBus(),
 	}
-	if err := m.init(nm); err != nil {
+	if err := m.init(ctx, nm); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -112,6 +112,12 @@ func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
 		server.sc.SetNodeClient(node.Client())
 		// Update the servers node name in case it changed
 		server.nodeName = node.Name()
+		// Also claim the servers allocation in the allocator
+		node.Allocator.Claim(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
+		// Set the release function in the allocation
+		server.Allocations.Release = func() {
+			node.Allocator.Release(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
+		}
 	}
 }
 
@@ -121,6 +127,12 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 
 	// Get the server client from the node
 	serverClient := node.Server(serverId)
+
+	// Create an allocation for the server
+	alloc, err := node.Allocator.NewAllocation()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create allocation")
+	}
 
 	// Instantiate the server
 	s := &Server{
@@ -134,6 +146,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		Remove: func() {
 			m.Remove(serverId)
 		},
+		Allocations: alloc,
 	}
 
 	// This will remove the server in the event any of the following steps fail
@@ -157,6 +170,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		NodeName:    node.Name(),
 		NodeId:      node.Id(),
 		BlueprintId: bp.Meta.ID,
+		Allocation:  alloc,
 		Overrides:   overrides,
 	}); err != nil {
 		return nil, err
@@ -177,17 +191,14 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		WorldFolder:          bp.World.Path,
 		Content:              bp.Server.Content,
 		Save:                 cfg.Save,
+		Allocations:          alloc,
 	}
 
 	// Request server creation on the remote node
-	resp, err := node.CreateServer(ctx, nodeReq)
+	_, err = node.CreateServer(ctx, nodeReq)
 	if err != nil {
 		return nil, err
 	}
-
-	// Set the servers allocation returned from the node response
-	// todo should probably switch to protocube assigning allocations
-	s.Allocations = resp.Allocation
 
 	// Indicate that the server was successfully created so that it is not removed by the defer function
 	created = true
@@ -254,7 +265,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 }
 
 // Loads in all servers stored in the database
-func (m *Manager) init(nm *node.Manager) error {
+func (m *Manager) init(ctx context.Context, nm *node.Manager) error {
 	servers, err := repository.GetAllServers()
 	if err != nil {
 		return errors.WrapIf(err, "failed to load servers from database")
@@ -269,7 +280,7 @@ func (m *Manager) init(nm *node.Manager) error {
 		data := data
 		n, _ := nm.Get(data.NodeId)
 		pool.Submit(func() {
-			s, err := m.InitServer(data, n)
+			s, err := m.InitServer(ctx, data, n)
 			if err != nil {
 				log.WithField("server", data.Id).WithField("error", err).Error("failed to load server, skipping...")
 				return
@@ -288,7 +299,7 @@ func (m *Manager) init(nm *node.Manager) error {
 	return nil
 }
 
-func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, error) {
+func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *node.Node) (*Server, error) {
 	// Create the server client.
 	// The node client is likely nil at startup because servers are loaded
 	// during program boot, before any nodes have connected. The node client will
@@ -299,6 +310,10 @@ func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, e
 		serverClient.SetNodeClient(n.Client())
 		// Update the servers node name in case it changed
 		data.NodeName = n.Name()
+		// Set the release function in the allocation
+		data.Allocation.Release = func() {
+			n.Allocator.Release(data.Allocation.DefaultMapping.Ip, data.Allocation.DefaultMapping.Port)
+		}
 	}
 
 	// Instantiate the server
@@ -310,10 +325,15 @@ func (m *Manager) InitServer(data *models.ServerStore, n *node.Node) (*Server, e
 		Overrides:    data.Overrides,
 		sc:           serverClient,
 		GlobalEvents: m.Events,
-
+		Allocations:  data.Allocation,
 		Remove: func() {
 			m.Remove(data.Id)
 		},
+	}
+
+	if n != nil {
+		// claim the servers allocation
+		n.Allocator.Claim(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
 	}
 
 	// Add the server to the manager

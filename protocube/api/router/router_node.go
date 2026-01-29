@@ -11,12 +11,13 @@ import (
 	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/models"
+	"protoxon.com/sls/protocube/node/allocator"
 	"protoxon.com/sls/protocube/server"
 	"protoxon.com/sls/protocube/system"
 )
 
 func (r *Router) postNodeRegister(c *gin.Context) {
-	var req NodeRegistration
+	var req models.NodeRegistration
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -24,12 +25,21 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 
 	// Validate the request fields
 	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, errors.Wrap(err, "invalid field"))
+		c.JSON(http.StatusBadRequest, gin.H{"error": errors.Wrap(err, "invalid field").Error()})
+		return
 	}
 
 	// Check if the node is already registered
 	node, exists := r.NodeManager.Get(req.Id)
 	if exists {
+		// Update the allocator for the existing node (in case it was nil or changed)
+		var err error
+		node.Allocator, err = allocator.NewAllocator(req.Allocations)
+		if err != nil {
+			log.WithError(err).Errorf("failed to update allocator for existing node %s", node.Id())
+			c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to update allocator"))
+			return
+		}
 		// Node is already registered return the current token
 		c.JSON(http.StatusOK, gin.H{
 			"token": node.Client().GetToken(),
@@ -44,8 +54,17 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 		return
 	}
 
+	// Create the allocator before registering the node (so it's available when the callback is invoked)
+	alloc, err := allocator.NewAllocator(req.Allocations)
+	if err != nil {
+		log.WithError(err).Errorf("failed to create allocator for node %s", req.Id)
+		c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to create allocator"))
+		return
+	}
+
 	// Connect the node in the node manager
-	node = r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String())
+	node = r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String(), alloc)
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": token.String(),
 	})

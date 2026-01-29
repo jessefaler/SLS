@@ -4,6 +4,7 @@ import com.protoxon.S4J.PowerAction;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.client.entites.Allocation;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
@@ -17,10 +18,13 @@ public class ClientServerImpl implements ClientServer {
 
     private final JSONObject json;
     private final SLSClientImpl impl;
+    private final Allocation allocation;
 
     public ClientServerImpl(JSONObject json, SLSClientImpl impl) {
         this.json = json;
         this.impl = impl;
+        JSONObject allocationsObj = json.optJSONObject("allocations");
+        this.allocation = allocationsObj != null ? new AllocationImpl(allocationsObj) : null;
     }
 
     @Override
@@ -41,6 +45,11 @@ public class ClientServerImpl implements ClientServer {
     @Override
     public String getNodeName() {
         return json.getString("node_name");
+    }
+
+    @Override
+    public Allocation getAllocation() {
+        return allocation;
     }
 
     @Override
@@ -82,12 +91,12 @@ public class ClientServerImpl implements ClientServer {
 
     @Override
     public String getIp() {
-        return json.getString("ip");
+        return allocation != null ? allocation.getIp() : null;
     }
 
     @Override
     public int getPort() {
-        return json.getInt("port");
+        return allocation != null ? allocation.getPort() : 0;
     }
 
     @Override

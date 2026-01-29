@@ -2,6 +2,7 @@ package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
+import com.protoxon.S4J.client.entites.Allocation;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.SLSClient;
 import com.protoxon.S4J.entites.Blueprint;
@@ -116,7 +117,12 @@ public class ServerManager implements ServerProvider {
     public void register(Server server) {
         servers.put(server.id, server);
         // Register the server with velocity
-        InetSocketAddress address = new InetSocketAddress(server.getIp(), server.getPort()); // Create socket address
+        // Create the socket address
+        // Use the alias as the address if present
+        InetSocketAddress address = new InetSocketAddress(
+                server.getAllocation().getAlias().isEmpty() ? server.getAllocation().getIp() : server.getAllocation().getAlias(),
+                server.getAllocation().getPort()
+        );
         ServerInfo serverInfo = new ServerInfo(server.id, address);
         SLS.proxy.registerServer(serverInfo);
         // Register the server with ViaVersion
@@ -152,7 +158,6 @@ public class ServerManager implements ServerProvider {
         // Unregister the server in velocity
         SLS.proxy.getServer(id).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
         ViaVersion.unregister(id);
-        Log.debug("Server " + id + " unregistered");
     }
 
     /**

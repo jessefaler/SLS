@@ -3,6 +3,7 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.client.entites.Allocation;
 import com.protoxon.S4J.client.entites.ClientServer;
 import com.protoxon.S4J.client.entites.ServerCrashEvent;
 import com.protoxon.S4J.entites.Blueprint;
@@ -79,12 +80,8 @@ public class Server extends Listener {
         return client.delete(force);
     }
 
-    public int getPort() {
-        return client.getPort();
-    }
-
-    public String getIp() {
-        return client.getIp();
+    public Allocation getAllocation() {
+        return client.getAllocation();
     }
 
     public SLSAction<ServerStats> getStats() {

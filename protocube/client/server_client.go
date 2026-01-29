@@ -24,7 +24,7 @@ type ServerClient interface {
 	Reset(ctx context.Context) error
 	Logs(ctx context.Context, size int) (gin.H, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
-	Status(ctx context.Context) (gin.H, error)
+	Status(ctx context.Context) (string, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
 	Commands(ctx context.Context, commands []string) error
 	DeleteServer(ctx context.Context) error
@@ -80,8 +80,8 @@ func (sc *serverClient) Stats(ctx context.Context, update bool) (models.Resource
 }
 
 // Status fetches the servers status from the remote node.
-func (sc *serverClient) Status(ctx context.Context) (gin.H, error) {
-	return Get[gin.H](sc, ctx, "/status", nil)
+func (sc *serverClient) Status(ctx context.Context) (string, error) {
+	return Get[string](sc, ctx, "/status", nil)
 }
 
 // GetServer fetches the servers data from the remote node.

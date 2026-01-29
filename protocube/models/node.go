@@ -1,5 +1,7 @@
 package models
 
+import "emperror.dev/errors"
+
 type NodeData struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -17,6 +19,36 @@ type Information struct {
 	Version string            `json:"version"`
 	Docker  DockerInformation `json:"docker"`
 	System  System            `json:"system"`
+}
+
+type NodeRegistration struct {
+	Id          string       `json:"id"`
+	Name        string       `json:"name"`
+	Location    string       `json:"location"`
+	Url         string       `json:"url"`
+	Version     string       `json:"version"`
+	Allocations []Allocation `json:"allocations"`
+}
+
+type Allocation struct {
+	Address         string `yaml:"address"`
+	Alias           string `yaml:"alias"`
+	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
+	Ports           string `yaml:"ports"`
+}
+
+type NodeRegistrationResponse struct {
+	SessionToken string `json:"token"`
+}
+
+func (r *NodeRegistration) Validate() error {
+	if r.Id == "" {
+		return errors.New("Node ID cannot be blank")
+	}
+	if r.Name == "" {
+		return errors.New("Node url cannot be blank")
+	}
+	return nil
 }
 
 type DockerInformation struct {

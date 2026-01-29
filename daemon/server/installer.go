@@ -103,10 +103,10 @@ func (i *Installer) Install(s *Server, serverPath string, client remote.Client) 
 
 	// install the base server
 	// get the installation script this server uses
-	_, err := client.GetServerInstallInfo(ctx, s.ID())
-	if err != nil {
-		return err
-	}
+	//info, err := client.GetServerInstallInfo(ctx, s.ID())
+	//if err != nil {
+	//	return err
+	//}
 
 	// run install script
 

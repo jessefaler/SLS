@@ -106,16 +106,14 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		m.Remove(s.id)
 	}
 	s.Config().Limits = req.Limits
-	// create an allocation for the server
-	alloc := environment.NewAllocation()
-	s.Config().Allocations = alloc
+	s.Config().Allocations = req.Allocations
 	s.installer = m.Installer()
 	s.id = req.ID
 
 	// Replace the server.build.default.port variable with the servers actual port
 	// todo add support for other variables in the invocation
 	invocation := req.Invocation
-	invocation = strings.ReplaceAll(invocation, "{{server.build.default.port}}", fmt.Sprintf("%d", alloc.DefaultMapping.Port))
+	invocation = strings.ReplaceAll(invocation, "{{server.build.default.port}}", fmt.Sprintf("%d", s.Config().Allocations.DefaultMapping.Port))
 
 	s.Config().Invocation = invocation
 	s.SetProcessConfiguration(req.ProcessConfiguration)
@@ -149,7 +147,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	// set the servers environment settings
 	settings := environment.Settings{
 		Mounts:      s.Mounts(),
-		Allocations: alloc,
+		Allocations: s.Config().Allocations,
 		Limits:      s.cfg.Limits,
 		Labels:      s.cfg.Labels,
 	}
@@ -282,7 +280,7 @@ func (s *Server) EnsureDataDirectoryExists() error {
 
 func (m *Manager) LoadServers(ctx context.Context) error {
 	// Create a new workerpool that limits us to 4 servers being bootstrapped at a time
-	// on Wings. This allows us to ensure the environment exists, write configurations,
+	// on the daemon. This allows us to ensure the environment exists, write configurations,
 	// and reboot processes without causing a slow-down due to sequential booting.
 	pool := workerpool.New(4)
 	for _, serv := range m.All() {

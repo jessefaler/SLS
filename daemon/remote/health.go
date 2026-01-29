@@ -22,11 +22,12 @@ var connected = system.NewAtomicBool(false)
 // Register will send a single register request to protocube
 func (c *client) Register(ctx context.Context) error {
 	req := NodeRegistration{
-		Id:       config.Get().Uuid,
-		Name:     config.Get().Name,
-		Location: config.Get().Location,
-		Url:      config.Get().Api.Url,
-		Version:  system.Version,
+		Id:          config.Get().Uuid,
+		Name:        config.Get().Name,
+		Location:    config.Get().Location,
+		Url:         config.Get().Api.Url,
+		Version:     system.Version,
+		Allocations: config.Get().Allocations,
 	}
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
@@ -40,6 +41,19 @@ func (c *client) Register(ctx context.Context) error {
 		return errors.Wrap(err, "failed to register")
 	}
 	defer resp.Body.Close()
+
+	// Check HTTP status code before parsing response
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Read error response body for better error message
+		body, _ := io.ReadAll(resp.Body)
+		var errorData map[string]interface{}
+		if err := json.Unmarshal(body, &errorData); err == nil {
+			if errorMsg, ok := errorData["error"].(string); ok {
+				return errors.Errorf("registration failed (HTTP %d): %s", resp.StatusCode, errorMsg)
+			}
+		}
+		return errors.Errorf("registration failed with HTTP status %d", resp.StatusCode)
+	}
 
 	// Read response body
 	body, err := io.ReadAll(resp.Body)

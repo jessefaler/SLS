@@ -12,20 +12,20 @@ type PowerAction struct {
 }
 
 type ServerData struct {
-	Id          string `json:"id"`
-	BlueprintId string `json:"blueprint_id"`
-	NodeName    string `json:"node_name"`
-	NodeId      string `json:"node_id"`
-	Ip          string `json:"ip"`
-	Port        int    `json:"port"`
+	Id          string                 `json:"id"`
+	BlueprintId string                 `json:"blueprint_id"`
+	NodeName    string                 `json:"node_name"`
+	NodeId      string                 `json:"node_id"`
+	Allocations enviroment.Allocations `json:"allocations"`
 }
 
 type ServerStore struct {
-	Id          string           `gorm:"primaryKey"`
-	NodeName    string           `gorm:"index"`
-	NodeId      string           `gorm:"index"`
-	BlueprintId string           `gorm:"index"`
-	Overrides   *ServerOverrides `gorm:"serializer:json"`
+	Id          string                 `gorm:"primaryKey"`
+	NodeName    string                 `gorm:"index"`
+	NodeId      string                 `gorm:"index"`
+	BlueprintId string                 `gorm:"index"`
+	Allocation  enviroment.Allocations `gorm:"serializer:json"`
+	Overrides   *ServerOverrides       `gorm:"serializer:json"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you
@@ -51,15 +51,16 @@ type ResourceUsage struct {
 }
 
 type ServerConfigurationResponse struct {
-	ID                   string                `json:"id"`
-	ProcessConfiguration *ProcessConfiguration `json:"process-configuration"`
-	Image                string                `json:"image"`
-	Invocation           string                `json:"invocation"`
-	Limits               *enviroment.Limits    `json:"limits"`
-	ServerFolder         string                `json:"server-folder"`
-	WorldFolder          string                `json:"world-folder"`
-	Content              []blueprint.Content   `json:"content,omitempty"`
-	Save                 bool                  `json:"save"`
+	ID                   string                 `json:"id"`
+	ProcessConfiguration *ProcessConfiguration  `json:"process-configuration"`
+	Image                string                 `json:"image"`
+	Invocation           string                 `json:"invocation"`
+	Limits               *enviroment.Limits     `json:"limits"`
+	ServerFolder         string                 `json:"server-folder"`
+	WorldFolder          string                 `json:"world-folder"`
+	Content              []blueprint.Content    `json:"content,omitempty"`
+	Save                 bool                   `json:"save"`
+	Allocations          enviroment.Allocations `json:"allocations"`
 }
 
 type CreateServerRequest struct {

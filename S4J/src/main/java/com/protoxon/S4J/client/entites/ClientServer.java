@@ -41,6 +41,13 @@ public interface ClientServer {
      */
     String getNodeName();
 
+    /**
+     * Retrieves the allocation information for this server.
+     *
+     * @return the server allocation, or null if not available
+     */
+    Allocation getAllocation();
+
     SLSAction<Void> setPower(PowerAction powerAction);
 
     /**

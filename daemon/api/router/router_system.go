@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"os"
 
@@ -38,18 +37,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		return
 	}
 
-	// todo handle allocations differently
-	// this just returns the computers ipv4 address which will only work for local network connections
-	Alloc := s.Config().Allocations
-	Alloc.DefaultMapping.Ip, err = GetLocalIPv4()
-	if err != nil {
-		Alloc.DefaultMapping.Ip = "unknown"
-	}
-
-	// Respond with a status accepted
-	c.JSON(http.StatusAccepted, models.CreateServerResponse{
-		Allocation: Alloc,
-	})
+	c.Status(http.StatusOK)
 
 	// Start the server
 	// Pass the actual heavy processing off to a separate thread to handle so that
@@ -79,35 +67,6 @@ func (r *Router) getAllServers(c *gin.Context) {
 		out[i] = v.ToAPIResponse()
 	}
 	c.JSON(http.StatusOK, out)
-}
-
-// GetLocalIPv4 returns the first non-loopback IPv4 address of the computer
-func GetLocalIPv4() (string, error) {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "", err
-	}
-
-	for _, addr := range addrs {
-		var ip net.IP
-
-		switch v := addr.(type) {
-		case *net.IPNet:
-			ip = v.IP
-		case *net.IPAddr:
-			ip = v.IP
-		}
-
-		if ip == nil || ip.IsLoopback() {
-			continue
-		}
-
-		if ip = ip.To4(); ip != nil {
-			return ip.String(), nil
-		}
-	}
-
-	return "", errors.New("no non-loopback IPv4 address found")
 }
 
 // Returns information about the system that wings is running on.

@@ -28,7 +28,7 @@ public class InfoCommand {
                     ProtoMessage message = ProtoMessage.chat();
                     message.addMiniMessage("<dark_gray><b><st>－－－－－</st></b> INFO <b><st>－－－－－\n</st></b></dark_gray>");
                     if(SLS.servers.getAll().isEmpty()) {
-                        ProtoMessage.chat().add(MessagePreset.SLS).add("No servers are currently online.", NamedTextColor.RED).sendMessage(source);
+                        ProtoMessage.chat().add(MessagePreset.SLS).add("No servers found.", NamedTextColor.RED).sendMessage(source);
                         return 1;
                     }
 

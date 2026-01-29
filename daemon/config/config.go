@@ -43,12 +43,11 @@ type Configuration struct {
 
 	Api ApiConfiguration `json:"api" yaml:"api"`
 
-	Allocations Allocations `json:"allocations" yaml:"allocations"`
+	Content ResourceConfig `json:"context" yaml:"context"`
+	Servers ResourceConfig `json:"servers" yaml:"servers"`
+	Worlds  ResourceConfig `json:"worlds" yaml:"worlds"`
 
-	Blueprints ResourceConfig `yaml:"blueprints"`
-	Worlds     ResourceConfig `yaml:"worlds"`
-	Servers    ResourceConfig `yaml:"servers"`
-	Content    ResourceConfig `yaml:"content"`
+	Allocations []Allocation `json:"allocations" yaml:"allocations"`
 
 	// Defines messages throttling configurations for server processes.
 	Throttles ConsoleThrottles
@@ -110,9 +109,11 @@ type ConsoleThrottles struct {
 	Period uint64 `json:"line_reset_interval" yaml:"line_reset_interval" default:"100"`
 }
 
-type Allocations struct {
-	Address string `json:"address"`
-	Ports   string `yaml:"ports"`
+type Allocation struct {
+	Address         string `yaml:"address"`
+	Alias           string `yaml:"alias"`
+	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
+	Ports           string `yaml:"ports"`
 }
 
 // ResourceConfig represents a generic resource directory

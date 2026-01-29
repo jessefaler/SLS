@@ -2,6 +2,8 @@ package remote
 
 import (
 	"time"
+
+	"protoxon.com/sls/daemon/config"
 )
 
 // A generic type allowing for easy binding use when making requests to API
@@ -34,11 +36,12 @@ type CreateServerResponse struct {
 }
 
 type NodeRegistration struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Location string `json:"location"`
-	Url      string `json:"url"`
-	Version  string `json:"version"`
+	Id          string              `json:"id"`
+	Name        string              `json:"name"`
+	Location    string              `json:"location"`
+	Url         string              `json:"url"`
+	Version     string              `json:"version"`
+	Allocations []config.Allocation `json:"allocations"`
 }
 
 type HeartBeat struct {
