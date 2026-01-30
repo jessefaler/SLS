@@ -1,7 +1,7 @@
 package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.utils.S4JLogger;
 import okhttp3.WebSocket;
 import org.slf4j.Logger;

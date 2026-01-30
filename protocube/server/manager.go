@@ -12,7 +12,7 @@ import (
 	"github.com/gammazero/workerpool"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/client"
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
@@ -242,7 +242,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 	// Handle Overrides
 	save := bp.Save
 	// We need to make a copy of the limits so we don't mutate the blueprints default limits
-	limits := enviroment.CopyLimits(bp.Server.Limits)
+	limits := environment.CopyLimits(bp.Server.Limits)
 	if s.Overrides != nil {
 		if s.Overrides.Save != nil {
 			save = *s.Overrides.Save
@@ -341,7 +341,7 @@ func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *n
 	return server, nil
 }
 
-func MergeLimits(base *enviroment.Limits, override *enviroment.Limits) *enviroment.Limits {
+func MergeLimits(base *environment.Limits, override *environment.Limits) *environment.Limits {
 	if override == nil {
 		return base
 	}

@@ -1,8 +1,8 @@
 package com.protoxon.S4J;
 
-import com.protoxon.S4J.client.entites.SLSClient;
-import com.protoxon.S4J.entites.S4J;
-import com.protoxon.S4J.entites.impl.S4JImpl;
+import com.protoxon.S4J.client.entities.SLSClient;
+import com.protoxon.S4J.entities.S4J;
+import com.protoxon.S4J.entities.impl.S4JImpl;
 import com.protoxon.S4J.utils.config.EndpointConfig;
 import com.protoxon.S4J.utils.config.SessionConfig;
 import com.protoxon.S4J.utils.config.ThreadingConfig;

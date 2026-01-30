@@ -1,8 +1,7 @@
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.SLSBuilder;
-import com.protoxon.S4J.client.actions.ServerCreationAction;
-import com.protoxon.S4J.client.entites.ClientServer;
-import com.protoxon.S4J.client.entites.SLSClient;
+import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.SLSClient;
 
 public class create {
 

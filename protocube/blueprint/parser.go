@@ -11,7 +11,7 @@ import (
 	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
 	"protoxon.com/sls/protocube/config"
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/software"
 )
 
@@ -234,7 +234,7 @@ func (s *Server) Validate() error {
 
 	// Verify Limits - only create new Limits if not already set from blueprint
 	if s.Limits == nil {
-		s.Limits = &enviroment.Limits{}
+		s.Limits = &environment.Limits{}
 	}
 	if err := Validate(s.Limits); err != nil {
 		return errors.Wrap(err, "server.limits")
@@ -251,7 +251,7 @@ func (s *Server) Validate() error {
 }
 
 // Validate Validates blueprint limits and sets default if a field is nil
-func Validate(limit *enviroment.Limits) error {
+func Validate(limit *environment.Limits) error {
 
 	// Fill in defaults for nil fields
 	if err := defaults.Set(limit); err != nil {

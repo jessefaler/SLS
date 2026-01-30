@@ -1,8 +1,8 @@
 package com.protoxon.S4J.client.actions;
 
 import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.client.entites.ClientServer;
-import com.protoxon.S4J.client.entites.ServerLimits;
+import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ServerLimits;
 
 public interface ServerCreationAction extends SLSAction<ClientServer> {
 

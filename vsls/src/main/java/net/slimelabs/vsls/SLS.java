@@ -2,7 +2,7 @@ package net.slimelabs.vsls;
 
 import com.google.inject.Inject;
 import com.protoxon.S4J.SLSBuilder;
-import com.protoxon.S4J.client.entites.SLSClient;
+import com.protoxon.S4J.client.entities.SLSClient;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;

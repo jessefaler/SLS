@@ -3,15 +3,15 @@ package parser
 import (
 	"fmt"
 	"strings"
-
-	"protoxon.com/sls/protocube/enviroment"
+	
+	"protoxon.com/sls/protocube/environment"
 )
 
 // ServerPlaceholderData contains server information that can be used to replace placeholders
 // in configuration values. Fields can be nil if the data is not yet available.
 type ServerPlaceholderData struct {
-	Limits     *enviroment.Limits
-	Allocation *enviroment.Allocations
+	Limits     *environment.Limits
+	Allocation *environment.Allocations
 }
 
 // ReplacePlaceholders replaces {{server.X}} and {{env.X}} placeholders in a value.

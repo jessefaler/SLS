@@ -1,7 +1,7 @@
 package blueprint
 
 import (
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 )
 
 // Blueprint is a high-level specification of a server environment.
@@ -35,7 +35,7 @@ type Server struct {
 	Image          string                `yaml:"image" json:"image"`
 	AllowedClients string                `yaml:"allowed_clients,omitempty" json:"allowed_clients,omitempty"`
 	Path           string                `yaml:"path" json:"path"`
-	Limits         *enviroment.Limits    `yaml:"limits,omitempty" json:"limits,omitempty"`
+	Limits         *environment.Limits   `yaml:"limits,omitempty" json:"limits,omitempty"`
 	Configs        map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 	Content        []Content             `yaml:"content,omitempty" json:"content,omitempty"`
 }

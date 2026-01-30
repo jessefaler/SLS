@@ -1,7 +1,7 @@
 package net.slimelabs.vsls.blueprints;
 
 import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.entites.Blueprint;
+import com.protoxon.S4J.entities.Blueprint;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 

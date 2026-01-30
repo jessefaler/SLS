@@ -17,7 +17,7 @@
 package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.exceptions.RateLimitedException;
 import com.protoxon.S4J.requests.action.operator.impl.PaginationActionImpl;
 

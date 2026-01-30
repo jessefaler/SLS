@@ -2,8 +2,8 @@ package net.slimelabs.vsls.server;
 
 
 import com.protoxon.S4J.ServerStatus;
-import com.protoxon.S4J.client.entites.ServerCrashEvent;
-import com.protoxon.S4J.client.entites.ServerDeletedEvent;
+import com.protoxon.S4J.client.entities.ServerCrashEvent;
+import com.protoxon.S4J.client.entities.ServerDeletedEvent;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.slimelabs.vsls.SLS;
 

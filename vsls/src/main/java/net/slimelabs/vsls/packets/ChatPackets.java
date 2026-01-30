@@ -70,6 +70,9 @@ public class ChatPackets implements PacketListener {
      * @param player the player
      */
     public static void sendSilentActionBarMessage(Component component, Player player) {
+        if (player == null || !player.isActive()) {
+            return;
+        }
         WrapperPlayServerActionBar actionBarPacket = new WrapperPlayServerActionBar(component); // build the packet
         User user = PacketEvents.getAPI().getPlayerManager().getUser(player); // Get the user
         user.sendPacketSilently(actionBarPacket); // Send the packet

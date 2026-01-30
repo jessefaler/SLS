@@ -6,6 +6,7 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entites.Allocation;
 import com.protoxon.S4J.client.entites.ClientServer;
+import com.protoxon.S4J.client.entities.impl.SLSClientImpl;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
 import org.json.JSONArray;

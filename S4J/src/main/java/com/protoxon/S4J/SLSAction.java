@@ -1,6 +1,6 @@
 package com.protoxon.S4J;
 
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.requests.action.operator.*;
 import com.protoxon.S4J.utils.Checks;
 import com.protoxon.S4J.exceptions.RateLimitedException;

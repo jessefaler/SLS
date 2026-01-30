@@ -22,7 +22,7 @@ import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.utils.LockUtils;
 import com.protoxon.S4J.utils.S4JLogger;
 import okhttp3.Headers;

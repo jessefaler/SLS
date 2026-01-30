@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"emperror.dev/errors"
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/models"
 )
 
@@ -72,16 +72,16 @@ func (a *Allocator) Release(address string, port int) {
 }
 
 // NewAllocation selects a random allocation and returns an Allocations struct.
-func (a *Allocator) NewAllocation() (enviroment.Allocations, error) {
+func (a *Allocator) NewAllocation() (environment.Allocations, error) {
 	if a == nil {
-		return enviroment.Allocations{}, errors.New("allocator is nil")
+		return environment.Allocations{}, errors.New("allocator is nil")
 	}
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if len(a.Allocations) == 0 {
-		return enviroment.Allocations{}, errors.New("no allocations configured")
+		return environment.Allocations{}, errors.New("no allocations configured")
 	}
 
 	// Collect all addresses
@@ -100,10 +100,10 @@ func (a *Allocator) NewAllocation() (enviroment.Allocations, error) {
 			if errors.Is(err, ErrNoFreePorts) {
 				continue
 			}
-			return enviroment.Allocations{}, err
+			return environment.Allocations{}, err
 		}
 
-		out := &enviroment.Allocations{
+		out := &environment.Allocations{
 			ForceOutgoingIP: alloc.ForceOutgoingIP,
 			Alias:           alloc.Alias,
 			Mappings: map[string][]int{
@@ -118,7 +118,7 @@ func (a *Allocator) NewAllocation() (enviroment.Allocations, error) {
 		return *out, nil
 	}
 
-	return enviroment.Allocations{}, errors.Wrap(ErrNoFreePorts, "no free ports available on any configured allocation")
+	return environment.Allocations{}, errors.Wrap(ErrNoFreePorts, "no free ports available on any configured allocation")
 }
 
 // allocate finds a free port for a given address and returns the allocation used.

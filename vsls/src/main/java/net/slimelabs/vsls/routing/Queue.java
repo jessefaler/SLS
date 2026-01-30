@@ -13,16 +13,22 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.sql.Time;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Queue {
 
     public Server server;
-    ArrayList<Player> players = new ArrayList<>();
+    // Tracks if the server was created by a queue
+    // This is so we know whether to stop the server or not if everyone leaves
+    // The queue before the server starts
+    private boolean queueCreated;
+    ConcurrentLinkedQueue<Player> players = new ConcurrentLinkedQueue<>();
     private final AnimationController loadingIcon = new AnimationController();
     Runnable remove;
     private ScheduledTask timeoutTask;
-    private boolean flushed = false;
+    private final AtomicBoolean flushed = new AtomicBoolean(false);
     Listener.Handle handle;
 
     public Queue(Server server, Runnable remove) {
@@ -32,13 +38,24 @@ public class Queue {
         startTimeout();
     }
 
+    // Sets if the server was created for this queue
+    public void setQueueCreated(boolean value) {
+        queueCreated = value;
+    }
+
+    // Returns true if the server in this queue was created by for the queue
+    public boolean getQueueCreate() {
+        return queueCreated;
+    }
+
     private void startTimeout() {
         // Start a timeout task that will error if the server doesn't come online within the timeout period
         timeoutTask = SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-            if (!flushed) {
-                handle.remove();
-                flushQueueWithError("Failed to join " + server.name + " queue timed out");
+            if (!flushed.compareAndSet(false, true)) {
+                return; // already flushed elsewhere
             }
+            handle.remove();
+            flushQueueWithError("Failed to join " + server.name + " queue timed out");
         }).delay(SLS.config.queue.timeout, TimeUnit.SECONDS).schedule();
     }
 
@@ -64,22 +81,27 @@ public class Queue {
         })).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS);
     }
 
-    public synchronized void enqueue(Player player) {
+    public void enqueue(Player player) {
         players.add(player);
         loadingIcon.start(player);
         ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>In queue for " + server.name + "</gradient>").sendMessage(player);
     }
 
-    public synchronized boolean dequeue(Player player) {
+    public boolean dequeue(Player player) {
         if(player == null) return false;
         ChatPackets.enableActionBarPackets(player.getUniqueId());
         loadingIcon.stop(player.getUniqueId());
-        return players.remove(player);
+        boolean value = players.remove(player);
+        if(players.isEmpty() || queueCreated) {
+            // The queue is empty or this server was just spawned for it, so no players need it.
+            // Stop the server asynchronously to avoid wasting resources on an idle instance.
+            server.stop().executeAsync();
+        }
+        return value;
     }
 
     public void flushQueue() {
-        if (flushed) return;
-        flushed = true;
+        if (!flushed.compareAndSet(false, true)) return;
         cancelTimeout();
         remove.run(); // remove this queue from the queue manager
         for(Player player : players) {
@@ -88,11 +110,11 @@ public class Queue {
             Connector.connectPlayer(player, server.id);
             loadingIcon.stop(player.getUniqueId());
         }
+        players.clear();
     }
 
     public void flushQueueWithError(String message) {
-        if (flushed) return;
-        flushed = true;
+        if (!flushed.compareAndSet(false, true)) return;
         cancelTimeout();
         remove.run(); // remove this queue from the queue manager
         for(Player player : players) {
@@ -100,5 +122,6 @@ public class Queue {
             ChatPackets.enableActionBarPackets(player.getUniqueId());
             loadingIcon.stop(player.getUniqueId());
         }
+        players.clear();
     }
 }

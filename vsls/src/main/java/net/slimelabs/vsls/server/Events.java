@@ -1,7 +1,7 @@
 package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.ServerStatus;
-import com.protoxon.S4J.client.entites.*;
+import com.protoxon.S4J.client.entities.*;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.TimeUtils;

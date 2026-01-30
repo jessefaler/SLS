@@ -2,7 +2,7 @@ package models
 
 import (
 	"protoxon.com/sls/protocube/blueprint"
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/system"
 )
 
@@ -12,20 +12,24 @@ type PowerAction struct {
 }
 
 type ServerData struct {
-	Id          string                 `json:"id"`
-	BlueprintId string                 `json:"blueprint_id"`
-	NodeName    string                 `json:"node_name"`
-	NodeId      string                 `json:"node_id"`
-	Allocations enviroment.Allocations `json:"allocations"`
+	Id          string                  `json:"id"`
+	BlueprintId string                  `json:"blueprint_id"`
+	NodeName    string                  `json:"node_name"`
+	NodeId      string                  `json:"node_id"`
+	Allocations environment.Allocations `json:"allocations"`
 }
 
 type ServerStore struct {
-	Id          string                 `gorm:"primaryKey"`
-	NodeName    string                 `gorm:"index"`
-	NodeId      string                 `gorm:"index"`
-	BlueprintId string                 `gorm:"index"`
-	Allocation  enviroment.Allocations `gorm:"serializer:json"`
-	Overrides   *ServerOverrides       `gorm:"serializer:json"`
+	Id          string                  `gorm:"primaryKey"`
+	NodeName    string                  `gorm:"index"`
+	NodeId      string                  `gorm:"index"`
+	BlueprintId string                  `gorm:"index"`
+	Allocation  environment.Allocations `gorm:"serializer:json"`
+	Overrides   *ServerOverrides        `gorm:"serializer:json"`
+}
+
+type StatusResponse struct {
+	Status string `json:"status"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you
@@ -34,7 +38,7 @@ type ServerStore struct {
 type ResourceUsage struct {
 
 	// Embed the current environment stats into this server specific resource usage struct.
-	enviroment.Stats
+	environment.Stats
 
 	// The current server status.
 	State *system.AtomicString `json:"state"`
@@ -51,16 +55,16 @@ type ResourceUsage struct {
 }
 
 type ServerConfigurationResponse struct {
-	ID                   string                 `json:"id"`
-	ProcessConfiguration *ProcessConfiguration  `json:"process-configuration"`
-	Image                string                 `json:"image"`
-	Invocation           string                 `json:"invocation"`
-	Limits               *enviroment.Limits     `json:"limits"`
-	ServerFolder         string                 `json:"server-folder"`
-	WorldFolder          string                 `json:"world-folder"`
-	Content              []blueprint.Content    `json:"content,omitempty"`
-	Save                 bool                   `json:"save"`
-	Allocations          enviroment.Allocations `json:"allocations"`
+	ID                   string                  `json:"id"`
+	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
+	Image                string                  `json:"image"`
+	Invocation           string                  `json:"invocation"`
+	Limits               *environment.Limits     `json:"limits"`
+	ServerFolder         string                  `json:"server-folder"`
+	WorldFolder          string                  `json:"world-folder"`
+	Content              []blueprint.Content     `json:"content,omitempty"`
+	Save                 bool                    `json:"save"`
+	Allocations          environment.Allocations `json:"allocations"`
 }
 
 type CreateServerRequest struct {
@@ -70,10 +74,10 @@ type CreateServerRequest struct {
 }
 
 type ServerOverrides struct {
-	Save   *bool              `json:"save,omitempty"`
-	Limits *enviroment.Limits `json:"limits,omitempty"`
+	Save   *bool               `json:"save,omitempty"`
+	Limits *environment.Limits `json:"limits,omitempty"`
 }
 
 type CreateServerResponse struct {
-	Allocation enviroment.Allocations `json:"allocations"`
+	Allocation environment.Allocations `json:"allocations"`
 }

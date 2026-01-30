@@ -2,10 +2,10 @@ package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
-import com.protoxon.S4J.client.entites.Allocation;
-import com.protoxon.S4J.client.entites.ClientServer;
-import com.protoxon.S4J.client.entites.SLSClient;
-import com.protoxon.S4J.entites.Blueprint;
+import com.protoxon.S4J.client.entities.Allocation;
+import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.SLSClient;
+import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;

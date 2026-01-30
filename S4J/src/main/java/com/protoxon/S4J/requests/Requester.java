@@ -24,7 +24,7 @@ import java.net.SocketTimeoutException;
 import java.util.function.Consumer;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.exceptions.HttpException;
 import com.protoxon.S4J.exceptions.LoginException;
 import com.protoxon.S4J.utils.S4JLogger;

@@ -7,11 +7,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import com.protoxon.S4J.SLSAction;
-import com.protoxon.S4J.entites.S4J;
+import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.exceptions.SLSException;
-import com.protoxon.S4J.requests.Request;
-import com.protoxon.S4J.requests.Response;
-import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.utils.S4JLogger;
 import okhttp3.RequestBody;
 import org.json.JSONArray;

@@ -5,7 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
-import com.protoxon.S4J.client.entites.ClientServer;
+import com.protoxon.S4J.client.entities.ClientServer;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;

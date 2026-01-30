@@ -8,6 +8,7 @@ import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,9 +17,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class QueueManager {
     private ConcurrentHashMap<String, Queue> queues = new ConcurrentHashMap<>();
 
-    public void enqueue(Player player, Server server) {
+    public Queue enqueue(Player player, Server server) {
         Queue queue = getQueue(server);
         queue.enqueue(player);
+        return queue;
     }
 
     public void dequeue(Player player, Server server) {
@@ -58,5 +60,9 @@ public class QueueManager {
             queues.put(server.id, queue);
         }
         return queue;
+    }
+
+    public Collection<Queue> getQueues() {
+        return queues.values();
     }
 }
