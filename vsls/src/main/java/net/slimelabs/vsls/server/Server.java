@@ -3,10 +3,10 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
-import com.protoxon.S4J.client.entites.Allocation;
-import com.protoxon.S4J.client.entites.ClientServer;
-import com.protoxon.S4J.client.entites.ServerCrashEvent;
-import com.protoxon.S4J.entites.Blueprint;
+import com.protoxon.S4J.client.entities.Allocation;
+import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ServerCrashEvent;
+import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -49,6 +49,14 @@ public class Server extends Listener {
 
     public SLSAction<Void> start() {
         return client.start();
+    }
+
+    public SLSAction<Void> pause() {
+        return client.pause();
+    }
+
+    public SLSAction<Void> unpause() {
+        return client.unpause();
     }
 
     public SLSAction<Void> restart() {

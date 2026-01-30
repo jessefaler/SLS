@@ -57,7 +57,7 @@ func getServerStatus(c *gin.Context) {
 		client.HandleError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, status)
+	c.JSON(http.StatusOK, gin.H{"status": status})
 }
 
 func getServerStats(c *gin.Context) {

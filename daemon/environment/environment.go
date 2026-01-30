@@ -20,6 +20,7 @@ const (
 	ProcessStartingState = "starting"
 	ProcessRunningState  = "running"
 	ProcessStoppingState = "stopping"
+	ProcessPausedState   = "paused"
 )
 
 // Defines the basic interface that all environments need to implement so that
@@ -61,6 +62,12 @@ type ProcessEnvironment interface {
 	// Stop stops a server instance. If the server is already stopped an error will
 	// not be returned, this function will act as a no-op.
 	Stop(ctx context.Context) error
+
+	// Pause pauses a running server container (e.g. Docker pause). No-op if already paused or stopped.
+	Pause(ctx context.Context) error
+
+	// Unpause resumes a paused server container. No-op if not paused.
+	Unpause(ctx context.Context) error
 
 	// WaitForStop waits for a server instance to stop gracefully. If the server is
 	// still detected as running after "duration", an error will be returned, or the server

@@ -58,6 +58,9 @@ public class StatsCommand {
                         } else if (state == ServerStatus.STARTING) {
                             statusColor = "<yellow>";
                             statusColorClose = "</yellow>";
+                        } else if (state == ServerStatus.PAUSED) {
+                            statusColor = "<aqua>";
+                            statusColorClose = "</aqua>";
                         } else {
                             statusColor = "<red>";
                             statusColorClose = "</red>";

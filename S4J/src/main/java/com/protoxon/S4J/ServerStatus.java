@@ -8,7 +8,8 @@ public enum ServerStatus {
     OFFLINE("offline"),
     STARTING("starting"),
     RUNNING("running"),
-    STOPPING("stopping");
+    STOPPING("stopping"),
+    PAUSED("paused");
 
     private final String status;
 

@@ -128,10 +128,9 @@ func (e *Environment) Exists() (bool, error) {
 	return true, nil
 }
 
-// IsRunning determines if the server's docker container is currently running.
-// If there is no container present, an error will be raised (since this
-// shouldn't be a case that ever happens under correctly developed
-// circumstances).
+// IsRunning determines if the server's docker container is currently running
+// and not paused. If the container is paused, state is synced to ProcessPausedState
+// and false is returned. If there is no container present, an error will be raised.
 //
 // You can confirm if the instance wasn't found by using client.IsErrNotFound
 // from the Docker API.
@@ -139,6 +138,10 @@ func (e *Environment) IsRunning(ctx context.Context) (bool, error) {
 	c, err := e.ContainerInspect(ctx)
 	if err != nil {
 		return false, err
+	}
+	if c.State.Paused {
+		e.SetState(environment.ProcessPausedState)
+		return false, nil
 	}
 	return c.State.Running, nil
 }
@@ -190,7 +193,8 @@ func (e *Environment) SetState(state string) {
 	if state != environment.ProcessOfflineState &&
 		state != environment.ProcessStartingState &&
 		state != environment.ProcessRunningState &&
-		state != environment.ProcessStoppingState {
+		state != environment.ProcessStoppingState &&
+		state != environment.ProcessPausedState {
 		panic(errors.New(fmt.Sprintf("invalid server state received: %s", state)))
 	}
 

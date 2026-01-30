@@ -81,7 +81,11 @@ func (sc *serverClient) Stats(ctx context.Context, update bool) (models.Resource
 
 // Status fetches the servers status from the remote node.
 func (sc *serverClient) Status(ctx context.Context) (string, error) {
-	return Get[string](sc, ctx, "/status", nil)
+	resp, err := Get[models.StatusResponse](sc, ctx, "/status", nil)
+	if err != nil {
+		return "", err
+	}
+	return resp.Status, nil
 }
 
 // GetServer fetches the servers data from the remote node.

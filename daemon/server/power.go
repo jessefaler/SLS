@@ -25,6 +25,8 @@ const (
 	PowerActionStop      = "stop"
 	PowerActionRestart   = "restart"
 	PowerActionTerminate = "kill"
+	PowerActionPause     = "pause"
+	PowerActionUnpause   = "unpause"
 )
 
 // IsValid checks if the power action being received is valid.
@@ -32,7 +34,9 @@ func (pa PowerAction) IsValid() bool {
 	return pa == PowerActionStart ||
 		pa == PowerActionStop ||
 		pa == PowerActionTerminate ||
-		pa == PowerActionRestart
+		pa == PowerActionRestart ||
+		pa == PowerActionPause ||
+		pa == PowerActionUnpause
 }
 
 func (pa PowerAction) IsStart() bool {
@@ -73,7 +77,7 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 	// to process a power action but has gotten stuck you still should be able to pass through the
 	// terminate event. The good news here is that doing that oftentimes will get the stuck process to
 	// move again, and naturally continue through the process.
-	if action != PowerActionTerminate {
+	if action != PowerActionTerminate && action != PowerActionPause && action != PowerActionUnpause {
 		// Determines if we should wait for the lock or not. If a value greater than 0 is passed
 		// into this function we will wait that long for a lock to be acquired.
 		if wait > 0 {
@@ -113,7 +117,13 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 
 	switch action {
 	case PowerActionStart:
-		if s.Environment.State() != environment.ProcessOfflineState {
+		switch s.Environment.State() {
+		case environment.ProcessPausedState:
+			// Start on a paused container means unpause (resume).
+			return s.Environment.Unpause(s.Context())
+		case environment.ProcessOfflineState:
+			// continue
+		default:
 			return ErrIsRunning
 		}
 
@@ -137,7 +147,7 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 	case PowerActionRestart:
 		// We're specifically waiting for the process to be stopped here, otherwise the lock is
 		// released too soon, and you can rack up all sorts of issues.
-		if err := s.Environment.WaitForStop(s.Context(), time.Minute*10, true); err != nil {
+		if err := s.Environment.WaitForStop(s.Context(), time.Minute*5, true); err != nil {
 			// Even timeout errors should be bubbled back up the stack. If the process didn't stop
 			// nicely, but the terminate argument was passed then the server is stopped without an
 			// error being returned.
@@ -179,6 +189,29 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 			go s.Delete()
 		}
 		return err
+	case PowerActionPause:
+		if s.Environment.State() == environment.ProcessPausedState {
+			return nil // already paused
+		}
+		if s.Environment.State() != environment.ProcessRunningState {
+			// Sync state in case we're running but state was stale
+			if running, _ := s.Environment.IsRunning(s.Context()); !running {
+				return nil // not running (or already paused)
+			}
+		}
+		return s.Environment.Pause(s.Context())
+	case PowerActionUnpause:
+		if s.Environment.State() != environment.ProcessPausedState {
+			// Sync state in case we're paused but state was stale
+			if running, _ := s.Environment.IsRunning(s.Context()); running {
+				return nil // already running (not paused)
+			}
+			// IsRunning may have synced state to ProcessPausedState
+			if s.Environment.State() != environment.ProcessPausedState {
+				return nil // not paused
+			}
+		}
+		return s.Environment.Unpause(s.Context())
 	}
 
 	return errors.New("attempting to handle unknown power action")

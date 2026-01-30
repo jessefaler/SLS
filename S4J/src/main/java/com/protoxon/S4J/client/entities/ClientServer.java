@@ -1,4 +1,4 @@
-package com.protoxon.S4J.client.entites;
+package com.protoxon.S4J.client.entities;
 
 
 import com.protoxon.S4J.PowerAction;

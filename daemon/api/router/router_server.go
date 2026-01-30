@@ -37,7 +37,7 @@ func postServerPower(c *gin.Context) {
 
 	if !data.Action.IsValid() {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "The power action provided was not valid, should be one of \"stop\", \"start\", \"restart\", \"kill\"",
+			"error": "The power action provided was not valid, should be one of \"start\", \"stop\", \"restart\", \"kill\", \"pause\", \"unpause\"",
 		})
 		return
 	}
@@ -65,8 +65,8 @@ func postServerPower(c *gin.Context) {
 		if err := s.HandlePowerAction(data.Action, data.WaitSeconds); err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				s.Log().WithField("action", data.Action).WithField("error", err).Warn("could not process server power action")
-			} else if errors.Is(err, server.ErrIsRunning) {
-				// Do nothing, this isn't something we care about for logging,
+			} else if errors.Is(err, server.ErrIsRunning) || errors.Is(err, server.ErrIsPaused) {
+				// Do nothing, these aren't something we care about for logging
 			} else {
 				s.Log().WithFields(log.Fields{"action": data.Action, "wait_seconds": data.WaitSeconds, "error": err}).
 					Error("encountered error processing a server power action in the background")

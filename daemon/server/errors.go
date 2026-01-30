@@ -6,6 +6,7 @@ import (
 
 var (
 	ErrIsRunning = errors.New("server is running")
+	ErrIsPaused  = errors.New("server is paused")
 	ErrSuspended = errors.New("server is currently in a suspended state")
 )
 

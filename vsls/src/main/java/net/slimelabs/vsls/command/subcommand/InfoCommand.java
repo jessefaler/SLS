@@ -5,8 +5,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
-import com.protoxon.S4J.entites.Blueprint;
-import com.protoxon.S4J.entites.impl.BlueprintImpl;
+import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.entities.impl.BlueprintImpl;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -84,6 +84,8 @@ public class InfoCommand {
                                 statusColor = "red";
                             } else if(server.status == ServerStatus.STARTING) {
                                 statusColor = "yellow";
+                            } else if(server.status == ServerStatus.PAUSED) {
+                                statusColor = "aqua";
                             }
                             ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.id + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +

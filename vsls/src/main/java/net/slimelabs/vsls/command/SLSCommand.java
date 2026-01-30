@@ -32,6 +32,8 @@ public class SLSCommand {
         root.then(CreateCommand.register());     // CREATE
         root.then(JoinCommand.register());       // JOIN
         root.then(StartCommand.register());      // START
+        root.then(PauseCommand.register());      // PAUSE
+        root.then(ResumeCommand.register());     // RESUME
         root.then(RestartCommand.register());    // RESTART
         root.then(DebugCommand.register());      // DEBUG
         root.then(StopCommand.register());       // SHUTDOWN

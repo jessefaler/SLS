@@ -24,5 +24,7 @@ public enum PowerAction {
 	START,
 	STOP,
 	RESTART,
-	KILL
+	KILL,
+	PAUSE,
+	UNPAUSE
 }

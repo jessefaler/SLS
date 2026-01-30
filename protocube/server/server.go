@@ -7,7 +7,7 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/client"
-	"protoxon.com/sls/protocube/enviroment"
+	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/server/repository"
@@ -39,7 +39,7 @@ type Server struct {
 	// A server client can only access its own endpoints and control itself.
 	sc client.ServerClient
 
-	Allocations enviroment.Allocations
+	Allocations environment.Allocations
 }
 
 func (s *Server) Id() string {
@@ -85,6 +85,16 @@ func (s *Server) Stop(ctx context.Context) error {
 // Kill forcefully terminates the server by sending a "kill" power action.
 func (s *Server) Kill(ctx context.Context) error {
 	return s.Power(ctx, models.PowerAction{Action: "kill"})
+}
+
+// Pause pauses the server container (Docker pause). Server must be running.
+func (s *Server) Pause(ctx context.Context) error {
+	return s.Power(ctx, models.PowerAction{Action: "pause"})
+}
+
+// Unpause resumes a paused server container.
+func (s *Server) Unpause(ctx context.Context) error {
+	return s.Power(ctx, models.PowerAction{Action: "unpause"})
 }
 
 // Reset sends a request to reset the server on the node

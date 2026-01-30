@@ -71,10 +71,14 @@ func (e *Environment) Start(ctx context.Context) error {
 			return errors.WrapIf(err, "environment/docker: failed to inspect container")
 		}
 	} else {
-		// If the server is running update our messages state and continue on with the attach.
+		// If the server is running update our state and continue on with the attach.
+		// If the container is paused, sync state and return so the caller can use Unpause.
 		if c.State.Running {
+			if c.State.Paused {
+				e.SetState(environment.ProcessPausedState)
+				return errors.New("environment/docker: container is paused, use unpause to resume")
+			}
 			e.SetState(environment.ProcessRunningState)
-
 			return e.Attach(ctx)
 		}
 
@@ -315,5 +319,50 @@ func (e *Environment) Terminate(ctx context.Context, signal string) error {
 	// so go ahead and mark it as dead and clean up
 	e.SetState(environment.ProcessOfflineState)
 
+	return nil
+}
+
+// Pause pauses the container using Docker's pause (cgroups freezer). The container
+// remains in memory but does not run. No-op if the container is already paused or not running.
+func (e *Environment) Pause(ctx context.Context) error {
+	c, err := e.ContainerInspect(ctx)
+	if err != nil {
+		if client.IsErrNotFound(err) {
+			return nil
+		}
+		return errors.WithStack(err)
+	}
+	if !c.State.Running || c.State.Paused {
+		if c.State.Paused {
+			e.SetState(environment.ProcessPausedState)
+		}
+		return nil
+	}
+	if err := e.client.ContainerPause(ctx, e.Id); err != nil && !client.IsErrNotFound(err) {
+		return errors.WrapIf(err, "environment/docker: cannot pause container")
+	}
+	e.SetState(environment.ProcessPausedState)
+	return nil
+}
+
+// Unpause resumes a paused container. No-op if the container is not paused.
+func (e *Environment) Unpause(ctx context.Context) error {
+	c, err := e.ContainerInspect(ctx)
+	if err != nil {
+		if client.IsErrNotFound(err) {
+			return nil
+		}
+		return errors.WithStack(err)
+	}
+	if !c.State.Paused {
+		if c.State.Running {
+			e.SetState(environment.ProcessRunningState)
+		}
+		return nil
+	}
+	if err := e.client.ContainerUnpause(ctx, e.Id); err != nil && !client.IsErrNotFound(err) {
+		return errors.WrapIf(err, "environment/docker: cannot unpause container")
+	}
+	e.SetState(environment.ProcessRunningState)
 	return nil
 }
