@@ -2,9 +2,12 @@ package net.slimelabs.vsls.routing;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
+import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.requests.Route;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.blueprints.BlueprintRegistry;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -71,15 +74,17 @@ public class Connector {
 
         // Check paused servers
         for (Server server : SLS.servers.getAll()) {
-            if(server.status == ServerStatus.PAUSED) {
-                server.unpause().executeAsync(success -> {
-                    connectPlayer(player, server.getId());
-                }, failure -> {
-                    ProtoMessage.chat().add(MessagePreset.SLS)
-                            .add("Failed to join " + server.name + " \n  - failed to unpause server container", NamedTextColor.RED)
-                            .sendMessage(player);
-                });
-                return;
+            if (Objects.equals(server.blueprintId, blueprintId)) {
+                if(server.status == ServerStatus.PAUSED) {
+                    server.unpause().executeAsync(success -> {
+                        connectPlayer(player, server.getId());
+                    }, failure -> {
+                        ProtoMessage.chat().add(MessagePreset.SLS)
+                                .add("Failed to join " + server.name + " \n  - failed to unpause server container", NamedTextColor.RED)
+                                .sendMessage(player);
+                    });
+                    return;
+                }
             }
         }
 
@@ -91,7 +96,9 @@ public class Connector {
             SLS.queue.enqueue(player, server).setQueueCreated(true);
         }, failure -> {
             ProtoMessage.chat()
-                    .add("Failed to join server " + blueprintId + " reason: " + failure.getMessage(), NamedTextColor.RED)
+                    .add("Failed to join server " + (SLS.blueprints.getBlueprint(blueprintId)
+                            != null ? SLS.blueprints.getBlueprint(blueprintId).getName() : blueprintId)
+                            + " reason: " + failure.getMessage(), NamedTextColor.RED)
                     .sendMessage(player);
             Log.error("Failed to start server from blueprint {} reason: {}", blueprintId, failure.getMessage());
         });

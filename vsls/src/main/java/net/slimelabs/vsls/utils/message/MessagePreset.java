@@ -2,6 +2,7 @@ package net.slimelabs.vsls.utils.message;
 
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.slimelabs.vsls.utils.PluginInfo;
 
 // Enum to define common presets
 public enum MessagePreset {
@@ -9,9 +10,7 @@ public enum MessagePreset {
     SLS {
         @Override
         public ProtoMessage applyPreset(ProtoMessage message) {
-            message.add("[", NamedTextColor.GRAY)
-                    .add("SLS", TextColor.color(99, 255, 122))
-                    .add("] ", NamedTextColor.GRAY);
+            message.addMiniMessage("<hover:show_text:'<red>Server Launch System</red>\n<color:#3d98ff>By " + PluginInfo.getAuthors() + "</color>'><dark_gray>[<gradient:#2e70ff:#4797ff>SLS</gradient>] </dark_gray></hover>");
             return message;
         }
     },

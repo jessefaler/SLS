@@ -39,8 +39,8 @@ public class InfoCommand {
                             color = NamedTextColor.GREEN;
                         } else if (server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
                             color = NamedTextColor.RED;
-                        } else if (server.status == ServerStatus.STARTING) {
-                            color = NamedTextColor.YELLOW;
+                        } else if (server.status == ServerStatus.PAUSED) {
+                            color = NamedTextColor.AQUA;
                         }
                         message.add(server.id, color);
                         message.add(": ", NamedTextColor.WHITE);
