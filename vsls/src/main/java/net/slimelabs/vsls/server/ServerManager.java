@@ -56,26 +56,7 @@ public class ServerManager implements ServerProvider {
         api.getAllServers().executeAsync(servers -> {
             SLS.blueprints.whenLoaded(blueprints -> {
                 for (ClientServer clientServer : servers) {
-                    Blueprint blueprint = blueprints.getBlueprint(clientServer.getBlueprintId());
-                    Server server;
-                    if (blueprint != null) {
-                        server = new Server(
-                                blueprint.getName(),
-                                clientServer,
-                                blueprint.getId() != null ? blueprint.getId() : "Unknown",
-                                () -> registry.unRegister(clientServer.getId())
-                        );
-                        registry.register(server);
-                    } else {
-                        // Blueprint not found, register with default values
-                        server = new Server("Unknown", clientServer, "Unknown", () -> registry.unRegister(clientServer.getId()));
-                        registry.register(server);
-                        Log.warn("Blueprint not found for server {} with blueprint ID: {}", clientServer.getId(), clientServer.getBlueprintId());
-                    }
-                    // Fetch the servers status and update it locally
-                    clientServer.getStatus().executeAsync(status -> {
-                        server.status = status;
-                    });
+                    registry.loadServer(clientServer);
                 }
                 Log.info("Initialized server registry. Loaded {} servers", servers.size());
             });
@@ -86,6 +67,29 @@ public class ServerManager implements ServerProvider {
                 loadServers(registry, api);
             }).delay(30, TimeUnit.SECONDS).schedule();
         });
+    }
+
+    public Server loadServer(ClientServer clientServer) {
+        Blueprint blueprint = SLS.blueprints.getBlueprint(clientServer.getBlueprintId());
+        Server server;
+        if (blueprint != null) {
+            server = new Server(
+                    blueprint.getName(),
+                    clientServer,
+                    clientServer.getBlueprintId(),
+                    () -> unRegister(clientServer.getId())
+            );
+        } else {
+            // Blueprint not found, register it with the clientServers provided blueprint id
+            server = new Server(clientServer.getBlueprintId(), clientServer, clientServer.getBlueprintId(), () -> unRegister(clientServer.getId()));
+            Log.warn("Blueprint not found for server {} with blueprint ID: {}", clientServer.getId(), clientServer.getBlueprintId());
+        }
+        register(server);
+        // Fetch the servers status and update it locally
+        clientServer.getStatus().executeAsync(status -> {
+            server.status = status;
+        });
+        return server;
     }
 
     public Server getServer(String id) {

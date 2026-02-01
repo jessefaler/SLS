@@ -2,7 +2,12 @@ package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.*;
+import com.protoxon.S4J.exceptions.NotFoundException;
+import com.protoxon.S4J.exceptions.SLSException;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.TimeUtils;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -11,9 +16,11 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 public class Events {
 
     WebSocketEventStream events;
+    SLSClient api;
     ServerProvider provider;
 
     public Events(SLSClient api, ServerProvider provider) {
+        this.api = api;
         this.events = api.getEventStream();
         this.provider = provider;
         initEventStream();
@@ -28,6 +35,22 @@ public class Events {
             String id = event.getServerId();
             Server server = provider.getServer(id);
 
+            // If the server is null try to fetch the server from the api and register before proceeding
+            if(server == null) {
+                try {
+                    ClientServer clientServer = api.getServer(id).execute();
+                    // The server was returned by the api add it to the manager and proceed
+                    server = SLS.servers.loadServer(clientServer);
+                } catch (NotFoundException e) {
+                    // If the server was not found skip this event and log a message
+                    Log.warn("Events: unknown server with id " + event.getServerId() + " emitted a " + event.getClass());
+                    return;
+                } catch (SLSException e) {
+                    Log.warn("Events: failed to fetch server " + id + ": " + e.getMessage());
+                    return;
+                }
+            }
+
             if (event instanceof StatusUpdateEvent statusEvent) {
 
                 // ================================
@@ -36,7 +59,6 @@ public class Events {
                 ServerStatus status = statusEvent.getStatus();
                 // Log the status change to debug output channels
                 logStatusChange(status.getStatus(), id);
-                if(server == null) return;
                 // Update the servers status
                 server.status = status;
                 // Notify Listeners
@@ -51,7 +73,6 @@ public class Events {
                         " - Reason: " + crashEvent.getReason() + "\n" +
                         " - Exit Code: " + crashEvent.getExitCode() + "\n" +
                         " - Timestamp: " + TimeUtils.formatTimestamp(crashEvent.getTimestamp()));
-                if(server == null) return;
                 // Notify Listeners
                 server.fireCrash(crashEvent);
 
@@ -60,7 +81,6 @@ public class Events {
                 // ================================
                 // Deletion Event
                 // ================================
-                if(server == null) return;
                 // Fire an offline status change for the server
                 server.fireStatusChange(ServerStatus.OFFLINE);
                 // Notify deletion event listeners
