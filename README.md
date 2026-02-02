@@ -7,8 +7,6 @@ SLS runs every game server inside its own **Docker container**, keeping environm
 
 SLS is **free and open-source** software licensed under **AGPL-3.0**.
 
-## Components
-
 ### **Protocube**
 
 Protocube is the core controller for SLS, responsible for managing all server instances across the system. It provides a REST API for creating, managing, and monitoring servers.
@@ -26,16 +24,6 @@ The server control plane for SLS. Each Daemon is responsible for provisioning, c
 
 A Java wrapper for the Protocube API, providing a clean interface for plugins and external tools.
 
-## Extras
-
-### **vSLS**
-
-A Velocity proxy plugin that lets you manage SLS servers directly through in-game commands.
-
-### **SlimePacks**
-
-A resource pack management system that exposes API endpoints for resource pack downloads and automatically converts resource packs to the requested version using [ResourcePackConverter](https://github.com/agentdid127/ResourcePackConverter).
-
 ## Blueprints
 
 Blueprints are **declarative specifications** describing *exactly* how a game server should run:
@@ -46,20 +34,20 @@ Below is a full example Blueprint.
 ```yaml
 # Blueprint metadata
 blueprint:
-  id: 'block_hunt'               # Unique slug ID
-  name: 'Block Hunt'             # Human-readable name
-  type: 'minigame'               # Arbitrary grouping tag
+  id: 'blueprint'                # Unique slug ID
+  name: 'Blueprint Name'         # Human-readable name
+  type: 'game'                   # Arbitrary grouping tag
 
 # World configuration
 world:
-  name: "Block Hunt"
-  authors: "Protoxon"
-  path: "minigames/block_hunt"
+  name: "Blueprint World"
+  authors: "Author"
+  path: "blueprint_world"
 
 # Server configuration
 server:
-  software: "Paper"
-  version: "1.18.2"
+  software: "platform"
+  version: "1.0.0"
   image: "sls:java_21"
 
   # Resource limits
@@ -68,7 +56,7 @@ server:
     swap: 1024
     io_weight: 500
     cpu_limit: 200
-    disk_space: 10000
+    disk_space: 5120
     threads: ""
     oom_disabled: false
 
@@ -77,16 +65,35 @@ server:
     server.properties:
       parser: properties
       find:
-        motd: "Block Hunt Server"
+        motd: "Blueprint Server"
 
-  # Additional files/folders bundled with the server.
+# Additional folders to include in the server directory. 
+# These are copy-on-write mounts and will be mounted at the root 
+# of the server folder. 
+# 
+# To have a folder appear as a subdirectory in the server, 
+# create a folder with the desired name on the host and place 
+# your files or subfolders inside it. 
+# For example, to include something in the "plugins" folder, 
+# create a folder named "plugins" on the host, place your 
+# plugin folder inside it, and mount the directory container 
+# container your "plugins" here.
   content:
     - name: "WorldEdit"
-      source: "plugins/bukkit/worldedit"
-    - name: "Terralith"
-      source: "datapacks/terralith"
-    - name: "Distant Horizons"
-      source: "mods/fabric/distant_horizons"
+      source: "platform/data"
+  
+  # Additional mount points for the server container.
+  # Specify mounts in the format: HostPath:ContainerPath:ro
+  # (ro = read-only)
+  #
+  # Important: The mount must be permitted in the daemon's configuration
+  # file for it to function. For example:
+  #
+  # system:
+  #   allowed_mounts:
+  #     - /host/path
+  mounts:
+    - /host/path:/home/container
 
 # Whether to persist servers created from this blueprint.
 # If false, the server is deleted on shutdown.
@@ -94,10 +101,8 @@ save: false
 
 # Arbitrary metadata for external systems
 annotations:
-  resource_pack: "block_hunt"
-  allowed_clients: "1.12..1.15, !1.13, 1.20"
-  maintainer: "Protoxon"
-  tags: ["hide n seek", "pvp"]
+  maintainer: "Maintainer"
+  tags: ["game", "example"]
 ```
 
 ## Development Status
