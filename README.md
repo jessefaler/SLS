@@ -79,7 +79,7 @@ server:
 # plugin folder inside it, and mount the directory container 
 # container your "plugins" here.
   content:
-    - name: "WorldEdit"
+    - name: "data"
       source: "platform/data"
   
   # Additional mount points for the server container.
@@ -109,3 +109,8 @@ annotations:
 
 > [!WARNING]
 > This version of ```SLS``` is in **active development** and is not yet ready for use.
+
+## Daemon Banner
+<img width="734" height="257" alt="Screenshot From 2026-02-02 17-57-48" src="https://github.com/user-attachments/assets/b9a0bdaa-378b-477d-9bd9-58a09672092b" />
+
+
