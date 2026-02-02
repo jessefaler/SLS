@@ -24,6 +24,7 @@ type ServerConfigurationResponse struct {
 	Content              []Content               `json:"content,omitempty"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
+	Mounts               []environment.Mount     `json:"mounts,omitempty"`
 }
 
 type InstallationScript struct {

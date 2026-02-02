@@ -265,3 +265,21 @@ func Validate(limit *environment.Limits) error {
 
 	return nil
 }
+
+func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+
+	parts := strings.Split(s, ":")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid mount: %s", s)
+	}
+
+	m.Host = parts[0]
+	m.Container = parts[1]
+	m.ReadOnly = len(parts) > 2 && parts[2] == "ro"
+
+	return nil
+}

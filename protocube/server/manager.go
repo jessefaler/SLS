@@ -192,6 +192,7 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		Content:              bp.Server.Content,
 		Save:                 cfg.Save,
 		Allocations:          alloc,
+		Mounts:               blueprintMountsToConfig(bp.Server.Mounts),
 	}
 
 	// Request server creation on the remote node
@@ -260,8 +261,25 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		WorldFolder:          bp.World.Path,
 		Content:              bp.Server.Content,
 		Save:                 save,
+		Mounts:               blueprintMountsToConfig(bp.Server.Mounts),
 	}
 	return &nodeReq, nil
+}
+
+// blueprintMountsToConfig converts blueprint mounts (host/container) to wire format (source/target).
+func blueprintMountsToConfig(mounts []blueprint.Mount) []models.MountConfig {
+	if len(mounts) == 0 {
+		return nil
+	}
+	out := make([]models.MountConfig, len(mounts))
+	for i, m := range mounts {
+		out[i] = models.MountConfig{
+			Source:   m.Host,
+			Target:   m.Container,
+			ReadOnly: m.ReadOnly,
+		}
+	}
+	return out
 }
 
 // Loads in all servers stored in the database

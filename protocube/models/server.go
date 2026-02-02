@@ -54,6 +54,13 @@ type ResourceUsage struct {
 	Overlay int64 `json:"overlay_bytes"`
 }
 
+// MountConfig is the wire format for a bind mount (source/target match daemon environment.Mount).
+type MountConfig struct {
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"read_only"`
+}
+
 type ServerConfigurationResponse struct {
 	ID                   string                  `json:"id"`
 	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
@@ -65,6 +72,7 @@ type ServerConfigurationResponse struct {
 	Content              []blueprint.Content     `json:"content,omitempty"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
+	Mounts               []MountConfig           `json:"mounts,omitempty"`
 }
 
 type CreateServerRequest struct {

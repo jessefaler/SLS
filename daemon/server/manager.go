@@ -119,6 +119,13 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.SetProcessConfiguration(req.ProcessConfiguration)
 	s.Config().Container.Image = req.Image
 
+	// Apply custom mounts from the blueprint (validated against AllowedMounts in s.Mounts()).
+	mounts := make([]Mount, 0, len(req.Mounts))
+	for _, m := range req.Mounts {
+		mounts = append(mounts, Mount(m))
+	}
+	s.cfg.Mounts = mounts
+
 	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
 	worldFolder := filepath.Join(config.Get().Worlds.Root, req.WorldFolder)
 	volume := filepath.Join(config.Get().System.Data, s.id)

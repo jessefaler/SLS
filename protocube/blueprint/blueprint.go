@@ -38,6 +38,13 @@ type Server struct {
 	Limits         *environment.Limits   `yaml:"limits,omitempty" json:"limits,omitempty"`
 	Configs        map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 	Content        []Content             `yaml:"content,omitempty" json:"content,omitempty"`
+	Mounts         []Mount               `yaml:"mounts,omitempty" json:"mounts,omitempty"`
+}
+
+type Mount struct {
+	Host      string `yaml:"host" json:"host"`           // Host path
+	Container string `yaml:"container" json:"container"` // Container path
+	ReadOnly  bool   `yaml:"read_only,omitempty" json:"read_only,omitempty"`
 }
 
 type ConfigFile struct {
