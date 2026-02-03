@@ -34,69 +34,82 @@ Below is a full example Blueprint.
 ```yaml
 # Blueprint metadata
 blueprint:
-  id: 'blueprint'                # Unique slug ID
-  name: 'Blueprint Name'         # Human-readable name
-  type: 'game'                   # Arbitrary grouping tag
+  id: "blueprint"                # Unique slug ID
+  name: "Blueprint Name"         # Human-readable name
+  type: "game"                   # Arbitrary grouping tag
 
-# World configuration
-world:
-  name: "Blueprint World"
-  authors: "Author"
-  path: "blueprint_world"
+# Declarative server state
+# Volumes are managed storage units.
+# All volume sources are resolved relative to the sls
+# configured volumes directory (e.g. /sls/volumes).
+#
+# Volumes cannot escape this directory and are never arbitrary host paths.
+state:
+  volumes:
+    # Primary server filesystem
+    - name: "world"
+      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
+      mount: "/world"            # Mount point inside the container
+      mode: cow                  # cow | ro | rw (default: cow)
 
-# Server configuration
+    # Read-only plugins or assets
+    - name: "plugins"
+      source: "plugins"
+      mount: "/plugins"
+      mode: ro
+
+    # Example persistent data volume
+    # (useful for databases, player data, etc.)
+    - name: "data"
+      source: "shared/data"
+      mount: "/data"
+      mode: rw
+
+# Server runtime configuration
+# The server base files are automatically installed or pre-installed
+# at /servers/<software>/<version> (or custom path).
 server:
   software: "platform"
   version: "1.0.0"
   image: "sls:java_21"
 
-  # Resource limits
+  # optional override
+  # path: "custom/path"
+
+  # Resource limits applied to the container
   limits:
-    memory_limit: 4096
-    swap: 1024
+    memory_limit: 4096           # MB
+    swap: 1024                   # MB
     io_weight: 500
-    cpu_limit: 200
-    disk_space: 5120
+    cpu_limit: 200               # Percentage (200 = 2 cores)
+    disk_space: 5120             # MB
     threads: ""
     oom_disabled: false
 
-  # Configuration patches
+  # Configuration patches applied at startup
   configs:
     server.properties:
       parser: properties
       find:
         motd: "Blueprint Server"
 
-# Additional folders to include in the server directory. 
-# These are copy-on-write mounts and will be mounted at the root 
-# of the server folder. 
-# 
-# To have a folder appear as a subdirectory in the server, 
-# create a folder with the desired name on the host and place 
-# your files or subfolders inside it. 
-# For example, to include something in the "plugins" folder, 
-# create a folder named "plugins" on the host, place your 
-# plugin folder inside it, and mount the directory container 
-# container your "plugins" here.
-  content:
-    - name: "data"
-      source: "platform/data"
-  
-  # Additional mount points for the server container.
-  # Specify mounts in the format: HostPath:ContainerPath:ro
-  # (ro = read-only)
-  #
-  # Important: The mount must be permitted in the daemon's configuration
-  # file for it to function. For example:
-  #
-  # system:
-  #   allowed_mounts:
-  #     - /host/path
-  mounts:
-    - /host/path:/home/container
+# Explicit host mounts
+# These mount arbitrary host paths directly into the container.
+# They must be explicitly allowed in the daemon configuration.
+# (ro = read-only) omit to allow writing to files
+mounts:
+  - /host/path:/home/container:ro
 
-# Whether to persist servers created from this blueprint.
-# If false, the server is deleted on shutdown.
+# Copy files into server filesystem at creation
+# - Files inside the SLS folder can always be copied
+# - Files outside the SLS folder require the source path to be listed in the daemon's allowed_mounts
+# Destinations are always relative to the server filesystem
+copy:
+  - sls/files/config.yml:plugins/config.yml
+
+# Whether servers created from this blueprint persist after shutdown.
+# If false, the server instance and all non-persistent volume state
+# are destroyed when the server stops.
 save: false
 
 # Arbitrary metadata for external systems
