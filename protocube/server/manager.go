@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -182,17 +183,15 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 	}
 
 	nodeReq := models.ServerConfigurationResponse{
-		ID:                   serverId,
+		Id:                   s.Id(),
 		ProcessConfiguration: cfg.ProcessConfiguration,
-		Image:                bp.Server.Image,
+		Image:                cfg.Image,
 		Invocation:           cfg.Invocation,
 		Limits:               cfg.Limits,
-		ServerFolder:         bp.Server.Path,
-		WorldFolder:          bp.World.Path,
-		Content:              bp.Server.Content,
-		Save:                 cfg.Save,
+		State:                bp.State,
+		ServerFolder:         cfg.ServerFolder,
 		Allocations:          alloc,
-		Mounts:               blueprintMountsToConfig(bp.Server.Mounts),
+		Save:                 cfg.Save,
 	}
 
 	// Request server creation on the remote node
@@ -207,18 +206,34 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 }
 
 func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, error) {
-	sw := swr.Get(bp.Server.Software)
+	effectiveSoftware := bp.Server.Software
+	effectiveVersion := bp.Server.Version
+	if s.Overrides != nil {
+		if s.Overrides.Software != nil {
+			effectiveSoftware = *s.Overrides.Software
+		}
+		if s.Overrides.Version != nil {
+			effectiveVersion = *s.Overrides.Version
+		}
+	}
+
+	sw := swr.Get(effectiveSoftware)
+	if sw == nil {
+		return nil, errors.Errorf("software not found: %s", effectiveSoftware)
+	}
 
 	matcher, err := models.NewOutputLineMatcher(sw.OnlineSignal)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create output line matcher for the start configuration: %s", sw.OnlineSignal)
 	}
 
-	// Convert software and blueprint configuration patches
-	// to config file patches
-	// if an error occurs the server will still be created but an error
-	// will be logged when the server is created
-	configFiles, cfgErr := GetConfigFiles(sw, bp)
+	// Convert software, blueprint, and optional request override patches
+	// to config file patches (overrides merge/override when applied last).
+	var overrideConfigs map[string]blueprint.ConfigFile
+	if s.Overrides != nil && s.Overrides.Configs != nil {
+		overrideConfigs = s.Overrides.Configs
+	}
+	configFiles, cfgErr := GetConfigFiles(sw, bp, overrideConfigs)
 
 	// log any errors that occurred when converting configuration patches
 	if cfgErr != nil {
@@ -251,35 +266,28 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		limits = MergeLimits(limits, s.Overrides.Limits)
 	}
 
+	serverFolder := bp.Server.Path
+	if s.Overrides != nil && (s.Overrides.Software != nil || s.Overrides.Version != nil) {
+		serverFolder = filepath.Join(effectiveSoftware, effectiveVersion)
+	}
+
+	image := bp.Server.Image
+	if s.Overrides != nil && s.Overrides.Image != nil {
+		image = *s.Overrides.Image
+	}
+
 	nodeReq := models.ServerConfigurationResponse{
-		ID:                   s.Id(),
+		Id:                   s.Id(),
 		ProcessConfiguration: pc,
-		Image:                bp.Server.Image,
+		Image:                image,
 		Invocation:           sw.Invocation,
 		Limits:               limits,
-		ServerFolder:         bp.Server.Path,
-		WorldFolder:          bp.World.Path,
-		Content:              bp.Server.Content,
+		State:                bp.State,
+		ServerFolder:         serverFolder,
+		Allocations:          s.Allocations,
 		Save:                 save,
-		Mounts:               blueprintMountsToConfig(bp.Server.Mounts),
 	}
 	return &nodeReq, nil
-}
-
-// blueprintMountsToConfig converts blueprint mounts (host/container) to wire format (source/target).
-func blueprintMountsToConfig(mounts []blueprint.Mount) []models.MountConfig {
-	if len(mounts) == 0 {
-		return nil
-	}
-	out := make([]models.MountConfig, len(mounts))
-	for i, m := range mounts {
-		out[i] = models.MountConfig{
-			Source:   m.Host,
-			Target:   m.Container,
-			ReadOnly: m.ReadOnly,
-		}
-	}
-	return out
 }
 
 // Loads in all servers stored in the database

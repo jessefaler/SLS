@@ -1,5 +1,7 @@
 package com.protoxon.S4J.client.entities;
 
+import org.json.JSONObject;
+
 /**
  * Represents resource limits for a server instance.
  * All fields are optional and can be set individually.
@@ -155,6 +157,39 @@ public class ServerLimits {
     public ServerLimits setOomDisabled(Boolean oomDisabled) {
         this.oomDisabled = oomDisabled;
         return this;
+    }
+
+    /**
+     * Creates a ServerLimits instance from a JSON object (e.g. from a get-server overrides response).
+     * Missing keys are left as null.
+     */
+    public static ServerLimits fromJson(JSONObject json) {
+        if (json == null) {
+            return null;
+        }
+        ServerLimits limits = new ServerLimits();
+        if (json.has("memory_limit")) {
+            limits.setMemoryLimit(json.optLong("memory_limit"));
+        }
+        if (json.has("swap")) {
+            limits.setSwap(json.optLong("swap"));
+        }
+        if (json.has("io_weight")) {
+            limits.setIoWeight(json.optInt("io_weight"));
+        }
+        if (json.has("cpu_limit")) {
+            limits.setCpuLimit(json.optLong("cpu_limit"));
+        }
+        if (json.has("disk_space")) {
+            limits.setDiskSpace(json.optLong("disk_space"));
+        }
+        if (json.has("threads")) {
+            limits.setThreads(json.optString("threads", null));
+        }
+        if (json.has("oom_disabled")) {
+            limits.setOomDisabled(json.optBoolean("oom_disabled"));
+        }
+        return limits;
     }
 
 }

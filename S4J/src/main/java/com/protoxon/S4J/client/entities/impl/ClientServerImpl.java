@@ -6,6 +6,7 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ServerOverrides;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
 import org.json.JSONArray;
@@ -19,12 +20,14 @@ public class ClientServerImpl implements ClientServer {
     private final JSONObject json;
     private final SLSClientImpl impl;
     private final Allocation allocation;
+    private final ServerOverrides overrides;
 
     public ClientServerImpl(JSONObject json, SLSClientImpl impl) {
         this.json = json;
         this.impl = impl;
         JSONObject allocationsObj = json.optJSONObject("allocations");
         this.allocation = allocationsObj != null ? new AllocationImpl(allocationsObj) : null;
+        this.overrides = ServerOverrides.fromJson(json.optJSONObject("overrides"));
     }
 
     @Override
@@ -50,6 +53,11 @@ public class ClientServerImpl implements ClientServer {
     @Override
     public Allocation getAllocation() {
         return allocation;
+    }
+
+    @Override
+    public ServerOverrides getOverrides() {
+        return overrides;
     }
 
     @Override

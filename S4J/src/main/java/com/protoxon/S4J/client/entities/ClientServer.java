@@ -48,6 +48,14 @@ public interface ClientServer {
      */
     Allocation getAllocation();
 
+    /**
+     * Returns the overrides that were set when this server was created (save, limits, configs,
+     * software, version, image). Null if no overrides were set.
+     *
+     * @return the server creation overrides, or null
+     */
+    ServerOverrides getOverrides();
+
     SLSAction<Void> setPower(PowerAction powerAction);
 
     /**

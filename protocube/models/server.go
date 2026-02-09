@@ -17,6 +17,8 @@ type ServerData struct {
 	NodeName    string                  `json:"node_name"`
 	NodeId      string                  `json:"node_id"`
 	Allocations environment.Allocations `json:"allocations"`
+	// Overrides that were set when the server was created (nil if none).
+	Overrides *ServerOverrides `json:"overrides,omitempty"`
 }
 
 type ServerStore struct {
@@ -54,6 +56,12 @@ type ResourceUsage struct {
 	Overlay int64 `json:"overlay_bytes"`
 }
 
+// ContentItem is the wire format for content to copy into a server (replaces blueprint.Content).
+type ContentItem struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+}
+
 // MountConfig is the wire format for a bind mount (source/target match daemon environment.Mount).
 type MountConfig struct {
 	Source   string `json:"source"`
@@ -62,17 +70,15 @@ type MountConfig struct {
 }
 
 type ServerConfigurationResponse struct {
-	ID                   string                  `json:"id"`
+	Id                   string                  `json:"id"`
 	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
 	Image                string                  `json:"image"`
 	Invocation           string                  `json:"invocation"`
+	State                *blueprint.State        `json:"state"`
 	Limits               *environment.Limits     `json:"limits"`
 	ServerFolder         string                  `json:"server-folder"`
-	WorldFolder          string                  `json:"world-folder"`
-	Content              []blueprint.Content     `json:"content,omitempty"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
-	Mounts               []MountConfig           `json:"mounts,omitempty"`
 }
 
 type CreateServerRequest struct {
@@ -82,8 +88,17 @@ type CreateServerRequest struct {
 }
 
 type ServerOverrides struct {
-	Save   *bool               `json:"save,omitempty"`
-	Limits *environment.Limits `json:"limits,omitempty"`
+	Save   *bool                        `json:"save,omitempty"`
+	Limits *environment.Limits          `json:"limits,omitempty"`
+	// Configs are configuration file patches applied after software and blueprint
+	// patches. Same file/key is overridden; new keys are merged.
+	Configs map[string]blueprint.ConfigFile `json:"configs,omitempty"`
+	// Software overrides the blueprint's server.software (registry lookup and path).
+	Software *string `json:"software,omitempty"`
+	// Version overrides the blueprint's server.version (path segment).
+	Version *string `json:"version,omitempty"`
+	// Image overrides the blueprint's server.image (container image).
+	Image *string `json:"image,omitempty"`
 }
 
 type CreateServerResponse struct {

@@ -2,7 +2,10 @@ package com.protoxon.S4J.client.actions;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.protoxon.S4J.client.entities.ServerLimits;
+
+import java.util.Map;
 
 public interface ServerCreationAction extends SLSAction<ClientServer> {
 
@@ -87,5 +90,44 @@ public interface ServerCreationAction extends SLSAction<ClientServer> {
      * @return This instance for method chaining
      */
     ServerCreationAction setLimits(ServerLimits limits);
+
+    /**
+     * Sets configuration file patch overrides. Keys are file paths (e.g. "server.properties");
+     * values define the parser and find/replace map. These are applied after software and
+     * blueprint configs (same key is overridden, new keys are merged).
+     *
+     * @param configs Map of file path to config patch, or null to clear
+     * @return This instance for method chaining
+     */
+    ServerCreationAction setConfigOverrides(Map<String, ConfigPatch> configs);
+
+    /**
+     * Overrides the blueprint's server software (registry id used for invocation and path).
+     *
+     * @param software The software id, or null to use the blueprint value
+     * @return This instance for method chaining
+     */
+    ServerCreationAction setSoftware(String software);
+
+    /**
+     * Overrides the blueprint's server version (path segment, e.g. "1.0.0").
+     *
+     * @param version The version string, or null to use the blueprint value
+     * @return This instance for method chaining
+     */
+    ServerCreationAction setVersion(String version);
+
+    /**
+     * Returns the version override if one has been set, otherwise an empty string.
+     */
+    String getVersion();
+
+    /**
+     * Overrides the blueprint's container image.
+     *
+     * @param image The container image (e.g. "sls:java_21"), or null to use the blueprint value
+     * @return This instance for method chaining
+     */
+    ServerCreationAction setImage(String image);
 
 }

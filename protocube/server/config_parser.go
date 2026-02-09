@@ -7,7 +7,10 @@ import (
 	"protoxon.com/sls/protocube/software"
 )
 
-func GetConfigFiles(sw *software.Software, blueprint *blueprint.Blueprint) ([]parser.ConfigurationFile, error) {
+// GetConfigFiles builds the ordered list of config file patches: software, then
+// blueprint, then optional request overrides. Later entries for the same file
+// override earlier ones when applying.
+func GetConfigFiles(sw *software.Software, blueprint *blueprint.Blueprint, overrideConfigs map[string]blueprint.ConfigFile) ([]parser.ConfigurationFile, error) {
 	var configFiles []parser.ConfigurationFile
 
 	// Add software configs first
@@ -28,9 +31,17 @@ func GetConfigFiles(sw *software.Software, blueprint *blueprint.Blueprint) ([]pa
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to convert blueprint config file %s", fileName)
 			}
-			// When both software and blueprint modify the same key in a file,
-			// blueprint's modification should overwrite software's. This can be
-			// handled in mergeReplacements if needed when applying.
+			configFiles = append(configFiles, *cf)
+		}
+	}
+
+	// Add request overrides last so they merge/override software and blueprint
+	if overrideConfigs != nil {
+		for fileName, configFile := range overrideConfigs {
+			cf, err := convertConfigFile(fileName, configFile.Parser, configFile.Find, nil)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to convert override config file %s", fileName)
+			}
 			configFiles = append(configFiles, *cf)
 		}
 	}

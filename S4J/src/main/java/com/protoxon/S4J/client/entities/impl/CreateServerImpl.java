@@ -2,8 +2,11 @@ package com.protoxon.S4J.client.entities.impl;
 
 import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.protoxon.S4J.client.entities.ServerLimits;
 import com.protoxon.S4J.requests.Route;
+
+import java.util.Map;
 import com.protoxon.S4J.requests.SLSActionImpl;
 import okhttp3.RequestBody;
 import org.jetbrains.annotations.NotNull;
@@ -15,6 +18,10 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
     private String nodeId;
     private Boolean save;
     private ServerLimits limits;
+    private Map<String, ConfigPatch> configOverrides;
+    private String software;
+    private String version;
+    private String image;
 
     private SLSClientImpl impl;
 
@@ -126,6 +133,35 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
         return this;
     }
 
+    @Override
+    public ServerCreationAction setConfigOverrides(Map<String, ConfigPatch> configs) {
+        this.configOverrides = configs;
+        return this;
+    }
+
+    @Override
+    public ServerCreationAction setSoftware(String software) {
+        this.software = software;
+        return this;
+    }
+
+    @Override
+    public ServerCreationAction setVersion(String version) {
+        this.version = version;
+        return this;
+    }
+
+    @Override
+    public String getVersion() {
+        return this.version != null ? this.version : "";
+    }
+
+    @Override
+    public ServerCreationAction setImage(String image) {
+        this.image = image;
+        return this;
+    }
+
     /**
      * Checks if the limits object has any non-null values set.
      */
@@ -153,8 +189,12 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
         // Build overrides object only if there are actual values to override
         boolean hasSave = save != null;
         boolean hasLimits = hasLimitsValues(limits);
+        boolean hasConfigs = configOverrides != null && !configOverrides.isEmpty();
+        boolean hasSoftware = software != null && !software.isEmpty();
+        boolean hasVersion = version != null && !version.isEmpty();
+        boolean hasImage = image != null && !image.isEmpty();
 
-        if (hasSave || hasLimits) {
+        if (hasSave || hasLimits || hasConfigs || hasSoftware || hasVersion || hasImage) {
             JSONObject overrides = new JSONObject();
             if (hasSave) {
                 overrides.put("save", save);
@@ -162,6 +202,18 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
             if (hasLimits) {
                 JSONObject limitsObj = getLimitsObject();
                 overrides.put("limits", limitsObj);
+            }
+            if (hasConfigs) {
+                overrides.put("configs", getConfigsObject());
+            }
+            if (hasSoftware) {
+                overrides.put("software", software);
+            }
+            if (hasVersion) {
+                overrides.put("version", version);
+            }
+            if (hasImage) {
+                overrides.put("image", image);
             }
             obj.put("overrides", overrides);
         }
@@ -194,6 +246,19 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
             limitsObj.put("oom_disabled", limits.getOomDisabled());
         }
         return limitsObj;
+    }
+
+    @NotNull
+    private JSONObject getConfigsObject() {
+        JSONObject configsObj = new JSONObject();
+        for (Map.Entry<String, ConfigPatch> entry : configOverrides.entrySet()) {
+            ConfigPatch patch = entry.getValue();
+            JSONObject patchObj = new JSONObject();
+            patchObj.put("parser", patch.getParser());
+            patchObj.put("find", new JSONObject(patch.getFind()));
+            configsObj.put(entry.getKey(), patchObj);
+        }
+        return configsObj;
     }
 
 }

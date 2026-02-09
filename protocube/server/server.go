@@ -137,6 +137,7 @@ func (s *Server) ServerData() models.ServerData {
 		NodeId:      s.NodeId(),
 		NodeName:    s.NodeName(),
 		Allocations: s.Allocations,
+		Overrides:   s.Overrides,
 	}
 }
 

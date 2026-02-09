@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
+import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
@@ -13,6 +14,7 @@ import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,7 +71,7 @@ public class CreateCommand {
                                 .add(MessagePreset.SLS)
                                 .add("Created " + blueprint, NamedTextColor.GREEN)
                                 .add(" (", NamedTextColor.GRAY)
-                                .add(server.id, NamedTextColor.DARK_GRAY)
+                                .add(server.getShortId(), NamedTextColor.DARK_GRAY)
                                 .add(")", NamedTextColor.GRAY)
                                 .sendMessage(source);
                     }, failure -> {
@@ -83,16 +85,22 @@ public class CreateCommand {
     }
 
     // Define the available overrides
-    private static final Map<String, String> OVERRIDES = Map.of(
-            "--node=", "The id of the node to create the server on",
-            "--save=", "Enable or disable saving",
-            "--cpu=", "The percentage of CPU that this instance is allowed to consume",
-            "--memory=", "The total amount of memory in mebibytes that this server is allowed to use",
-            "--swap=", "The amount of additional swap space to be provided to a container instance.",
-            "--io_weight=", "The relative weight for IO operations in a container",
-            "--disk_space=", "The amount of disk space in megabytes that a server is allowed to use",
-            "--threads=", "Sets which CPU threads can be used by the docker instance.",
-            "--oom_disabled=", "If true, disables the OOM killer for this container."
+    private static final Map<String, String> OVERRIDES = Map.ofEntries(
+            Map.entry("--node=", "The id of the node to create the server on"),
+            Map.entry("--save=", "Enable or disable saving"),
+            Map.entry("--cpu=", "The percentage of CPU that this instance is allowed to consume"),
+            Map.entry("--memory=", "The total amount of memory in mebibytes that this server is allowed to use"),
+            Map.entry("--swap=", "The amount of additional swap space to be provided to a container instance."),
+            Map.entry("--io_weight=", "The relative weight for IO operations in a container"),
+            Map.entry("--disk_space=", "The amount of disk space in megabytes that a server is allowed to use"),
+            Map.entry("--threads=", "Sets which CPU threads can be used by the docker instance."),
+            Map.entry("--oom_disabled=", "If true, disables the OOM killer for this container."),
+            Map.entry("--software=", "Sets the software to use when running this server"),
+            Map.entry("--version=", "Sets the software to use when running this server"),
+            Map.entry("--image=", "Sets the software to use when running this server"),
+            Map.entry("--seed=", "Patches the server.properties config with a custom seed"),
+            Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance"),
+            Map.entry("--hardcore=", "Patches the server.properties config to set if hardcore should be enabled")
     );
 
     private static RequiredArgumentBuilder<CommandSource, String> overrides() {
@@ -152,6 +160,9 @@ public class CreateCommand {
                     ServerCreationAction creation = SLS.api.createServer();
                     creation.setBlueprintId(blueprint);
 
+                    // Accumulate server.properties patches so multiple flags (seed, view-distance, etc.) are merged
+                    Map<String, Object> serverPropertiesFind = new HashMap<>();
+
                     // Set overrides if present
                     String[] overrides = StringArgumentType.getString(context, "overrides").trim().split("\\s+");
                     String nodeValue = null;
@@ -167,6 +178,24 @@ public class CreateCommand {
                                 break;
                             case "--save=":
                                 creation.setSave(Boolean.valueOf(value));
+                                break;
+                            case "--software=":
+                                creation.setSoftware(value);
+                                break;
+                            case "--version=":
+                                creation.setVersion(value);
+                                break;
+                            case "--image=":
+                                creation.setImage(value);
+                                break;
+                            case "--seed=":
+                                serverPropertiesFind.put("level-seed", value);
+                                break;
+                            case "--view-distance=":
+                                serverPropertiesFind.put("view-distance", value);
+                                break;
+                            case "--hardcore=":
+                                serverPropertiesFind.put("hardcore", value);
                                 break;
                             case "--cpu=":
                                 try {
@@ -233,6 +262,15 @@ public class CreateCommand {
                         }
                     }
 
+                    // Apply accumulated server.properties patches in one go
+                    if (!serverPropertiesFind.isEmpty()) {
+                        Map<String, ConfigPatch> configs = Map.of(
+                                "server.properties",
+                                new ConfigPatch("properties", serverPropertiesFind)
+                        );
+                        creation.setConfigOverrides(configs);
+                    }
+
                     // Helper method to create the server
                     Runnable createServer = () -> {
                         SLS.servers.createServer(creation).executeAsync(server -> {
@@ -240,7 +278,7 @@ public class CreateCommand {
                                     .add(MessagePreset.SLS)
                                     .add("Created " + blueprint, NamedTextColor.GREEN)
                                     .add(" (", NamedTextColor.GRAY)
-                                    .add(server.id, NamedTextColor.DARK_GRAY)
+                                    .add(server.getShortId(), NamedTextColor.DARK_GRAY)
                                     .add(")", NamedTextColor.GRAY)
                                     .sendMessage(source);
                         }, failure -> {
