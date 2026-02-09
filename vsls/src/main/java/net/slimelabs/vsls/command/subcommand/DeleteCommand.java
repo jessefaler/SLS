@@ -6,15 +6,19 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class DeleteCommand {
@@ -24,11 +28,34 @@ public class DeleteCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
-                    ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls delete", "server"))
-                            .sendMessage(source);
-                    return 1;
+                    if(!(source instanceof Player)) {
+                        Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                        return 0;
+                    }
+                    Server server = ServerUtils.getServer((Player) source);
+                    if (server != null) {
+                        server.delete().executeAsync(
+                                success -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Deleted " + server.getShortId(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                },
+                                failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to delete server " + server.getShortId(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    Log.warn("Failed to delete server " + server.getShortId() + " reason: " + failure.getMessage());
+                                }
+                        );
+                    } else {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                .sendMessage(source);
+                    }
+                    return 0;
                 })
                 .then(server());
     }
@@ -37,7 +64,7 @@ public class DeleteCommand {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
                     builder.suggest("all");
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
@@ -56,7 +83,7 @@ public class DeleteCommand {
                                 .sendMessage(source);
                         return 1;
                     }
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.delete().executeAsync(
                                 success -> {
@@ -106,7 +133,7 @@ public class DeleteCommand {
                                 .sendMessage(source);
                         return 1;
                     }
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.delete(true).executeAsync(
                                 success -> {

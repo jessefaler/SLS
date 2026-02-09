@@ -34,13 +34,13 @@ public class LogsCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "server");
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.getLogs().executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();
@@ -82,7 +82,7 @@ public class LogsCommand {
                         ProtoMessage.chat().add(MessagePreset.SLS).add("Invalid number " + linesString, NamedTextColor.RED).sendMessage(source);
                         return 0;
                     }
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.getLogs(lines).executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();

@@ -3,11 +3,13 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.routing.Connector;
+import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -50,15 +52,28 @@ public class JoinCommand {
     private static RequiredArgumentBuilder<CommandSource, String> blueprint() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("blueprint", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    String type = StringArgumentType.getString(context, "type");
-                    SLS.blueprints.getIds(type).stream().toList().forEach(builder::suggest);
+                    String input = builder.getRemaining();
+                    if (!input.contains(".")) {
+                        // Suggest blueprint id's for the given type
+                        String type = StringArgumentType.getString(context, "type");
+                        SLS.blueprints.getIds(type).stream().toList().forEach(builder::suggest);
+                    } else {
+                        // Suggest server id's for the given blueprint
+                        String[] parts = input.split("\\.", 2);
+                        String blueprintPart = parts[0];
+                        String serverPart = parts.length > 1 ? parts[1] : "";
+                        SLS.servers.getAll().stream()
+                                .filter(s -> s.getBlueprintId().equals(blueprintPart))
+                                .map(Server::getShortId)
+                                .filter(id -> id.startsWith(serverPart))
+                                .forEach(id -> builder.suggest(blueprintPart + "." + id));
+                    }
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
-
                     Connector.join((Player) source, blueprint);
 
                     return 0;

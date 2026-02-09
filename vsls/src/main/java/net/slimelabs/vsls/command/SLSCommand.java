@@ -47,9 +47,10 @@ public class SLSCommand {
         root.then(BlueprintCommand.register());  // BLUEPRINT
         root.then(VersionCommand.register());    // VERSION
         root.then(LogsCommand.register());       // LOGS
-        root.then(NodeCommand.register());       // Node
+        root.then(NodeCommand.register());       // NODE
         root.then(ResetCommand.register());      // RESET
         root.then(InfoCommand.register());       // INFO
+        root.then(ListCommand.register());       // LIST
         root.then(SystemCommand.register());     // SYSTEM
         //root.then(TailCommand.register());     // TAIL
 
@@ -75,12 +76,16 @@ public class SLSCommand {
 
         if (source.hasPermission("sls.command.admin")) {
             ProtoMessage.chat()
-                    .add(MessageFormatter.commandUsage("/sls", "join", "start", "shutdown", "config", "console", "debug", "info"))
+                    .add(MessageFormatter.commandUsage("/sls",
+                            "join", "create", "start", "pause", "resume", "restart", "debug",
+                            "stop", "kill", "reload", "status", "stats", "delete", "console",
+                            "dequeue", "blueprint", "version", "logs", "node", "reset", "info",
+                            "list", "system"))
                     .sendMessage(source);
             return 1;
         } else {
             ProtoMessage.chat()
-                    .add(MessageFormatter.commandUsage("/sls", "join", "info"))
+                    .add(MessageFormatter.commandUsage("/sls", "join", "list", "dequeue"))
                     .sendMessage(source);
         }
         return 0;

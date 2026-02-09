@@ -24,7 +24,7 @@ public class StartCommand {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls start","type"))
+                            .add(MessageFormatter.commandUsage("/sls start","id"))
                             .sendMessage(source);
                     return 1;
                 })
@@ -34,13 +34,13 @@ public class StartCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "server");
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.start().executeAsync(
                                 success -> {

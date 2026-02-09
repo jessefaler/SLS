@@ -82,7 +82,7 @@ public class ResetCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
@@ -127,7 +127,7 @@ public class ResetCommand {
      * @throws ServerNotFoundException if the server doesn't exist in sls
      */
     public static void reset(String serverId, CommandSource source, ArrayList<Player> players) throws ServerNotFoundException {
-        Server server = SLS.servers.getServer(serverId);
+        Server server = SLS.servers.resolve(serverId);
         if(server == null) {
             throw new ServerNotFoundException(serverId);
         }
@@ -156,7 +156,7 @@ public class ResetCommand {
         }, failure -> {
             ProtoMessage.chat()
                     .add(MessagePreset.SLS)
-                    .add("Failed to reset " + serverId + " Reason: " + failure.getMessage(), NamedTextColor.RED)
+                    .add("Failed to reset " + server.getShortId() + " Reason: " + failure.getMessage(), NamedTextColor.RED)
                     .sendMessage(source);
         });
     }

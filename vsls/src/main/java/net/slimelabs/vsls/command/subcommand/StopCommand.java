@@ -3,16 +3,20 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 
 import java.util.Objects;
+import java.util.Optional;
 
 public class StopCommand {
 
@@ -21,11 +25,34 @@ public class StopCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(context.getSource());
-                    ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls shutdown", "server"))
-                            .sendMessage(source);
-                    return 1;
+                    if(!(source instanceof Player)) {
+                        Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                        return 0;
+                    }
+                    Server server = ServerUtils.getServer((Player) source);
+                    if (server != null) {
+                        server.stop().executeAsync(
+                                success -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Stopped " + server.getShortId(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                },
+                                failure -> {
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to stop server " + server.getShortId(), NamedTextColor.GRAY)
+                                            .sendMessage(source);
+                                    Log.warn("Failed to stop server " + server.getShortId() + " reason: " + failure.getMessage());
+                                }
+                        );
+                    } else {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                .sendMessage(source);
+                    }
+                    return 0;
                 })
                 .then(server());
     }
@@ -34,7 +61,7 @@ public class StopCommand {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
                     builder.suggest("all");
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
@@ -61,7 +88,7 @@ public class StopCommand {
                         return 1;
                     }
                     // Shutdown server
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.stop().executeAsync(
                                 success -> {
@@ -120,15 +147,10 @@ public class StopCommand {
                         }
                         SLS.servers.getAll().forEach(server ->
                                 server.stop().executeAsync(
-                                        success -> {
-                                            // Ensure the server is unregistered
-                                            if(SLS.servers.getServer(id) != null) {
-                                                SLS.servers.unRegister(server.id);
-                                            }
-                                        },
+                                        success -> {},
                                         failure -> {
                                             Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
-                                            SLS.servers.unRegister(server.id);
+                                            SLS.servers.unRegister(server.getId());
                                         }
                                 )
                         );
@@ -138,7 +160,7 @@ public class StopCommand {
                                 .sendMessage(source);
                         return 1;
                     }
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         server.stop().executeAsync(
                                 success -> {
@@ -146,10 +168,6 @@ public class StopCommand {
                                             .add(MessagePreset.SLS)
                                             .add("Shutdown " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
-                                    // Ensure the server is unregistered
-                                    if(SLS.servers.getServer(id) != null) {
-                                        SLS.servers.unRegister(server.id);
-                                    }
                                 },
                                 failure -> {
                                     ProtoMessage.chat()
@@ -157,7 +175,7 @@ public class StopCommand {
                                             .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                     Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
-                                    SLS.servers.unRegister(server.id);
+                                    SLS.servers.unRegister(server.getId());
                                 }
                         );
                     } else {

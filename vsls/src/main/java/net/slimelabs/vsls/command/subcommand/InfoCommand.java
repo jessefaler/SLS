@@ -6,55 +6,37 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.entities.Blueprint;
-import com.protoxon.S4J.entities.impl.BlueprintImpl;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
-import net.slimelabs.vsls.utils.message.MessageFormatter;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
-
 import java.util.stream.Collectors;
 
 public class InfoCommand {
 
     public static LiteralArgumentBuilder<CommandSource> register() {
         return LiteralArgumentBuilder.<CommandSource>literal("info")
+                .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    ProtoMessage message = ProtoMessage.chat();
-                    message.addMiniMessage("<dark_gray><b><st>－－－－－</st></b> INFO <b><st>－－－－－\n</st></b></dark_gray>");
-                    if(SLS.servers.getAll().isEmpty()) {
-                        ProtoMessage.chat().add(MessagePreset.SLS).add("No servers found.", NamedTextColor.RED).sendMessage(source);
-                        return 1;
+                    if(!(source instanceof Player)) {
+                        Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                        return 0;
                     }
-
-                    for(Server server : SLS.servers.getAll()) {
-                        message.add(" - ", NamedTextColor.GOLD);
-                        NamedTextColor color = NamedTextColor.YELLOW;
-                        if(server.status == ServerStatus.RUNNING) {
-                            color = NamedTextColor.GREEN;
-                        } else if (server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
-                            color = NamedTextColor.RED;
-                        } else if (server.status == ServerStatus.PAUSED) {
-                            color = NamedTextColor.AQUA;
-                        }
-                        message.add(server.id, color);
-                        message.add(": ", NamedTextColor.WHITE);
-                        int count = server.getPlayerCount();
-                        message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'>" + count + "</hover></dark_aqua>");
-                        if(count == 1) {
-                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'> player</hover></dark_aqua>");
-                        } else {
-                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'> players</hover></dark_aqua>");
-                        }
-                        message.add("\n");
+                    Server server = ServerUtils.getServer((Player) source);
+                    if (server != null) {
+                        showStats(server, source);
+                    } else {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                .sendMessage(source);
                     }
-                    message.addMiniMessage("<dark_gray><b><st>－－－－－－－－－－－－－</st></b></dark_gray>");
-                    message.sendMessage(source);
                     return 1;
                 })
                 .then(server());
@@ -62,56 +44,17 @@ public class InfoCommand {
 
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
-                .requires(source -> source.hasPermission("sls.command.admin"))
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "server");
                     // Shutdown server
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
-                        server.getStats(true).executeAsync(stats -> {
-                            Blueprint blueprint = SLS.blueprints.getBlueprint(server.blueprintId);
-                            String type        = blueprint != null ? blueprint.getType() : "Unknown";
-                            String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
-                            String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
-                            String name        = blueprint != null ? blueprint.getName() : server.blueprintId;
-                            String statusColor = "green";
-                            if(server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
-                                statusColor = "red";
-                            } else if(server.status == ServerStatus.STARTING) {
-                                statusColor = "yellow";
-                            } else if(server.status == ServerStatus.PAUSED) {
-                                statusColor = "aqua";
-                            }
-                            ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.id + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
-                                    "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
-                                    " <hover:show_text:'<dark_purple>" + getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
-                                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.status.getStatus() + "</" + statusColor + ">\n" +
-                                    " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><hover:show_text:'<dark_purple>" + server.blueprintId + "</dark_purple>'><blue> " + name + "</blue></hover>\n" +
-                                    " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
-                                    " <gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue>\n" +
-                                    " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
-                                    " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
-                                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
-                                    "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
-                                    "   <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
-                                    "   <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
-                                    "</dark_purple>'><dark_gray>[</dark_gray><dark_red>Cpu:</dark_red> <red>" + stats.getCpuFormatted() + "</red><dark_gray>,</dark_gray> <dark_red>Mem:</dark_red> <red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>]</dark_gray></hover>\n" +
-                                    " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
-                                    "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
-                        },  failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to fetch server stats reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        showStats(server, source);
                     } else {
                         // No such server exists
                         ProtoMessage.chat()
@@ -123,12 +66,50 @@ public class InfoCommand {
                 });
     }
 
-    public static String getPlayers(Server server) {
-        return SLS.proxy.getServer(server.id)
-                .map(rs -> rs.getPlayersConnected().stream()
-                        .map(Player::getUsername)
-                        .collect(Collectors.joining(", ")))
-                .orElse("");
+    public static void showStats(Server server, CommandSource source) {
+        server.getStats(true).executeAsync(stats -> {
+            Blueprint blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
+            String type        = blueprint != null ? blueprint.getType() : "Unknown";
+            String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
+            String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
+            String name        = blueprint != null ? blueprint.getName() : server.getBlueprintId();
+            String statusColor = "green";
+            if(server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
+                statusColor = "red";
+            } else if(server.status == ServerStatus.STARTING) {
+                statusColor = "yellow";
+            } else if(server.status == ServerStatus.PAUSED) {
+                statusColor = "aqua";
+            }
+            String allocation = (!server.getAllocation().getAlias().isEmpty()
+                    ? server.getAllocation().getAlias()
+                    : server.getAllocation().getIp())
+                    + ":" + server.getAllocation().getPort();
+            ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
+                    "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
+                    " <hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
+                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.status.getStatus() + "</" + statusColor + ">\n" +
+                    " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><hover:show_text:'<dark_purple>" + server.getBlueprintId() + "</dark_purple>'><blue> " + name + "</blue></hover>\n" +
+                    " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
+                    " <hover:show_text:'<dark_purple>Allocation: " + allocation + "</dark_purple>'><gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue></hover>\n" +
+                    " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
+                    " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
+                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                    "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Uptime:</dark_gray> <red>" + stats.formatUptime() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
+                    "   <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
+                    "</dark_purple>'><dark_gray>[</dark_gray><dark_red>Cpu:</dark_red> <red>" + stats.getCpuFormatted() + "</red><dark_gray>,</dark_gray> <dark_red>Mem:</dark_red> <red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>]</dark_gray></hover>\n" +
+                    " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
+                    "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
+        },  failure -> {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .add("Failed to fetch server stats reason: " + failure.getMessage(), NamedTextColor.RED)
+                    .sendMessage(source);
+        });
     }
 
 }

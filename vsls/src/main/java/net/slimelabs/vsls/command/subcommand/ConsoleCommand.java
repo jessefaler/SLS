@@ -11,7 +11,6 @@ import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -34,7 +33,7 @@ public class ConsoleCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
@@ -56,7 +55,7 @@ public class ConsoleCommand {
                     String command = StringArgumentType.getString(context, "command");
                     command = command.startsWith("/") ? command.substring(1) : command;
                     command = command.strip();
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if (server != null) {
                         String finalCommand = command;
                         server.sendCommand(command).executeAsync(success -> {

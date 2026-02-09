@@ -4,9 +4,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -18,11 +21,24 @@ public class StatusCommand {
                 .requires(source -> source.hasPermission("sls.command.admin"))
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
+                    if(!(source instanceof Player)) {
+                        Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                        return 0;
+                    }
+                    Server server = ServerUtils.getServer((Player) source);
+                    if(server == null) {
+                        ProtoMessage.chat()
+                                .add(MessagePreset.SLS)
+                                .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                .sendMessage(source);
+                        return 0;
+                    }
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls status", "id"))
+                            .add(MessagePreset.SLS)
+                            .add("Status: ", NamedTextColor.DARK_AQUA)
+                            .add(server.status.getStatus(), NamedTextColor.GRAY)
                             .sendMessage(source);
-                    return 1;
+                    return 0;
                 })
                 .then(id());
     }
@@ -30,14 +46,14 @@ public class StatusCommand {
     private static RequiredArgumentBuilder<CommandSource, String> id() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("id", StringArgumentType.string())
                 .suggests((context, builder) -> {
-                    SLS.servers.getIds().forEach(builder::suggest);
+                    SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "id");
 
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if(server == null) {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
@@ -66,7 +82,7 @@ public class StatusCommand {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "id");
 
-                    Server server = SLS.servers.getServer(id);
+                    Server server = SLS.servers.resolve(id);
                     if(server == null) {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
