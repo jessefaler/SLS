@@ -3,7 +3,9 @@ package overlay
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"emperror.dev/errors"
 	"golang.org/x/sys/unix"
@@ -16,21 +18,28 @@ type Overlay struct {
 	Merged string
 	Work   string
 	Upper  string
+	sync.Mutex
 }
 
 // AddLower is a helper to add a lowerdir to the overlay filesystem
-func (o *Overlay) AddLower(path string) {
-	o.Lower = append(o.Lower, path)
+func (o *Overlay) AddLower(path ...string) {
+	o.Lock()
+	defer o.Unlock()
+	o.Lower = append(o.Lower, path...)
 }
 
 // Mount mounts an overlay filesystem on the provided overlay dirs
 func (o *Overlay) Mount() error {
+	o.Lock()
+	defer o.Unlock()
+
+	// Validate the overlay fields
 	if err := o.validate(); err != nil {
 		return errors.Wrap(err, "overlay validation failed")
 	}
 
 	// Call unmount to ensure that the overlay isn't already mounted
-	err := o.Unmount()
+	err := o.unmountLocked()
 	if err != nil {
 		return errors.Wrap(err, "failed to unmount existing overlay")
 	}
@@ -55,6 +64,22 @@ func (o *Overlay) Mount() error {
 
 // Unmount unmounts the overlay file system
 func (o *Overlay) Unmount() error {
+	o.Lock()
+	defer o.Unlock()
+
+	err := unix.Unmount(o.Merged, unix.MNT_DETACH)
+	if err != nil {
+		if err == unix.EINVAL || err == unix.ENOENT {
+			// Not mounted or path doesn't exist, ignore
+			return nil
+		}
+		return errors.Wrapf(err, "failed to unmount %s", o.Merged)
+	}
+	return nil
+}
+
+// unmountLocked assumes the mutex is held
+func (o *Overlay) unmountLocked() error {
 	err := unix.Unmount(o.Merged, unix.MNT_DETACH)
 	if err != nil {
 		if err == unix.EINVAL || err == unix.ENOENT {
@@ -121,4 +146,18 @@ func DirExists(path string) (bool, error) {
 		return false, err
 	}
 	return info.IsDir(), nil
+}
+
+// New creates a new overlay
+// root is the directory where the overlay's work and upper directories will exist
+// lowerDirs are the lower directories to include
+// merged is the target directory where the merged view will be visible
+func New(root string, lowerDirs []string, merged string) *Overlay {
+	o := &Overlay{
+		Lower:  lowerDirs,
+		Merged: merged,
+		Work:   filepath.Join(root, "work"),
+		Upper:  filepath.Join(root, "upper"),
+	}
+	return o
 }

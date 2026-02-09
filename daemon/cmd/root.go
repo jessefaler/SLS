@@ -29,6 +29,7 @@ func Execute() {
 }
 
 func run(cmd *cobra.Command, _ []string) {
+	// The config and logger are initialized in command.go
 
 	// Ensure the program is running with sufficient capabilities.
 	// CAP_SYS_ADMIN is required to perform mount operations.

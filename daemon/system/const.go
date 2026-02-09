@@ -1,5 +1,5 @@
 package system
 
-var Version = "develop"
+var Version = "1.0.0"
 
 var Authors = "Jesse Faler & Contributors"

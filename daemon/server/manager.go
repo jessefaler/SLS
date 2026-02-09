@@ -22,6 +22,7 @@ import (
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/server/filesystem"
+	"protoxon.com/sls/daemon/system"
 )
 
 type Manager struct {
@@ -101,6 +102,15 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		return nil, err
 	}
 
+	// This will delete the server if saving is false and any of the following steps fail
+	created := false
+	defer func() {
+		if !created {
+			s.Events().Destroy()
+			s.DestroyAllSinks()
+		}
+	}()
+
 	s.save = req.Save
 	s.Remove = func() {
 		m.Remove(s.id)
@@ -108,7 +118,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.Config().Limits = req.Limits
 	s.Config().Allocations = req.Allocations
 	s.installer = m.Installer()
-	s.id = req.ID
+	s.id = req.Id
 
 	// Replace the server.build.default.port variable with the servers actual port
 	// todo add support for other variables in the invocation
@@ -119,35 +129,119 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.SetProcessConfiguration(req.ProcessConfiguration)
 	s.Config().Container.Image = req.Image
 
-	// Apply custom mounts from the blueprint (validated against AllowedMounts in s.Mounts()).
-	mounts := make([]Mount, 0, len(req.Mounts))
-	for _, m := range req.Mounts {
+	// Get the path of the base server folder
+	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
+
+	// create the overlay volume
+	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay2", s.id), serverFolder)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply custom host mounts from the state configuration (validated against AllowedMounts in s.Mounts()).
+	mounts := make([]Mount, 0, len(req.State.Mounts))
+	for _, m := range req.State.Mounts {
 		mounts = append(mounts, Mount(m))
 	}
 	s.cfg.Mounts = mounts
 
-	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
-	worldFolder := filepath.Join(config.Get().Worlds.Root, req.WorldFolder)
-	volume := filepath.Join(config.Get().System.Data, s.id)
-
-	// create the overlay volume
-	o, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay2", s.id), volume, serverFolder, worldFolder, req.Content)
-	if err != nil {
-		// If saving is false delete the server on failure
-		if req.Save == false {
-			_ = s.Delete()
+	// Set environment variables from the state configuration
+	if len(req.State.Env) > 0 {
+		envVars := make(environment.Variables, len(req.State.Env))
+		for k, v := range req.State.Env {
+			envVars[k] = v
 		}
-		return nil, err
+		s.cfg.EnvVars = envVars
 	}
+
+	// Create the path to the servers volume
+	volume := filepath.Join(config.Get().System.VolumesDirectory, s.id)
+
+	// Set volume mounts from the state configuration
+	volumesRoot := filepath.Join(config.Get().System.StateDirectory, "volumes")
+	volumeMounts := make([]Mount, 0, len(req.State.Volumes))
+	for _, v := range req.State.Volumes {
+		switch v.Mode {
+		case models.VolumeModeCOW:
+			continue
+		case models.VolumeModeRO, models.VolumeModeRW:
+			// RW/RO mounts
+			resolved := filepath.Join(volumesRoot, filepath.Clean(v.Source))
+			absResolved, err := filepath.Abs(resolved)
+			if err != nil {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s", v.Name, v.Source)
+			}
+			if !filesystem.WithinPath(absResolved, volumesRoot) {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, v.Source, volumesRoot)
+			}
+			target := filepath.Clean(v.Target)
+			if target == "." {
+				target = "/"
+			}
+			// Target must be the path inside the container; the server root in the container is /home/container
+			containerTarget := filepath.Join("/home/container", strings.TrimPrefix(target, "/"))
+			volumeMounts = append(volumeMounts, Mount(environment.Mount{
+				Source:   absResolved,
+				Target:   containerTarget,
+				ReadOnly: v.Mode == models.VolumeModeRO,
+			}))
+		default:
+			return nil, errors.Wrapf(ErrInvalidServerConfig, "invalid volume mode %s for volume %s", v.Mode, v.Name)
+		}
+	}
+	s.cfg.VolumeMounts = volumeMounts
+
+	// Create the server's main overlay
+	serverOverlay := ov.NewOverlay(system.PathId("/"), []string{serverFolder}, volume)
+
+	// Group COW volumes by their target path
+	cowGroups := make(map[string][]models.Volume)
+	for _, v := range req.State.Volumes {
+		if v.Mode == models.VolumeModeCOW {
+			cowGroups[v.Target] = append(cowGroups[v.Target], v)
+		}
+	}
+
+	// Create overlays for each target path
+	for target, vols := range cowGroups {
+		if len(vols) == 0 {
+			continue
+		}
+
+		// Combine sources (validate each COW source is under volumesRoot)
+		sources := make([]string, 0, len(vols))
+		for _, v := range vols {
+			resolved := filepath.Join(volumesRoot, filepath.Clean(v.Source))
+			absResolved, err := filepath.Abs(resolved)
+			if err != nil {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s", v.Name, v.Source)
+			}
+			if !filesystem.WithinPath(absResolved, volumesRoot) {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, resolved, volumesRoot)
+			}
+			sources = append(sources, absResolved)
+		}
+
+		// If the target is root ("/", ".", ""), append to the server overlay's lowerdirs
+		cleanTarget := filepath.Clean(target)
+		if cleanTarget == "/" || cleanTarget == "." || cleanTarget == "" {
+			serverOverlay.AddLower(sources...)
+			continue
+		}
+
+		// Otherwise, create a new overlay
+		name := system.PathId(target)
+		overlayTarget := filepath.Join(volume, strings.TrimPrefix(cleanTarget, "/"))
+		ov.NewOverlay(name, sources, overlayTarget)
+	}
+
+	// Copy files into the server filesystem at start (source:destination entries; applied after overlay mount)
+	s.cfg.Copy = req.State.Copy
 
 	// create the filesystem
 	// denylist is not used for now so it is set to nil
-	s.fs, err = filesystem.New(volume, o, s.DiskSpace(), nil)
+	s.fs, err = filesystem.New(volume, ov, s.DiskSpace(), nil)
 	if err != nil {
-		// If saving is false delete the server on failure
-		if req.Save == false {
-			_ = s.Delete()
-		}
 		return nil, errors.WithStackIf(err)
 	}
 
@@ -164,18 +258,17 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		Image: s.Config().Container.Image,
 	}
 
-	if env, err := docker.New(s.id, &meta, envCfg); err != nil {
-		// If saving is false delete the server on failure
-		if req.Save == false {
-			_ = s.Delete()
-		}
+	env, err := docker.New(s.id, &meta, envCfg)
+	if err != nil {
 		return nil, err
-	} else {
-		s.Environment = env
-		s.StartEventListeners()
 	}
 
-	// Add the server to this manager instance
+	s.Environment = env
+	s.StartEventListeners()
+
+	// Indicate that the server was successfully created so that it is not removed by the defer function
+	created = true
+	// Add the server to the manager
 	m.Add(s)
 	return s, nil
 }
@@ -241,13 +334,13 @@ func (m *Manager) Sync(ctx context.Context) error {
 	pool := workerpool.New(runtime.NumCPU())
 	log.Debugf("using %d workerpools to instantiate server instances", runtime.NumCPU())
 	for _, data := range servers {
+		s := data
 		pool.Submit(func() {
-			s, err := m.InitServer(data)
+			_, err := m.InitServer(s)
 			if err != nil {
-				log.WithField("server", data.ID).WithField("error", err).Error("failed to load server, skipping...")
+				log.WithField("server", s.Id).WithField("error", err).Error("failed to load server, skipping...")
 				return
 			}
-			m.Add(s)
 		})
 	}
 
@@ -263,25 +356,6 @@ func (m *Manager) Sync(ctx context.Context) error {
 	diff := time.Now().Sub(start)
 	log.WithField("duration", fmt.Sprintf("%s", diff)).Info("finished processing server configurations")
 
-	return nil
-}
-
-// EnsureDataDirectoryExists ensures that the data directory for the server
-// instance exists.
-func (s *Server) EnsureDataDirectoryExists() error {
-	if _, err := os.Lstat(s.fs.Path()); err != nil {
-		if os.IsNotExist(err) {
-			s.Log().Debug("server: creating root directory and setting permissions")
-			if err := os.MkdirAll(s.fs.Path(), 0o700); err != nil {
-				return errors.WithStack(err)
-			}
-			if err := s.fs.Chown("/"); err != nil {
-				s.Log().WithField("error", err).Warn("server: failed to chown server data directory")
-			}
-		} else {
-			return errors.WrapIf(err, "server: failed to stat server root directory")
-		}
-	}
 	return nil
 }
 

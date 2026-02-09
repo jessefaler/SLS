@@ -2,10 +2,10 @@ package server
 
 import (
 	"path/filepath"
-	"strings"
 
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/server/filesystem"
 )
 
 // Mount To avoid confusion when working with mounts, assume that a server.Mount has not been properly
@@ -27,8 +27,20 @@ func (s *Server) Mounts() []environment.Mount {
 		},
 	}
 
-	// Also include any of this server's custom mounts when returning them.
-	return append(m, s.customMounts()...)
+	// Include custom mounts (validated against AllowedMounts) and volume mounts (validated against data/state/volumes only).
+	return append(append(m, s.customMounts()...), s.volumeMounts()...)
+}
+
+func (s *Server) volumeMounts() []environment.Mount {
+	volMounts := s.Config().VolumeMounts
+	if len(volMounts) == 0 {
+		return nil
+	}
+	out := make([]environment.Mount, len(volMounts))
+	for i := range volMounts {
+		out[i] = environment.Mount(volMounts[i])
+	}
+	return out
 }
 
 // Returns the custom mounts for a given server after verifying that they are within a list of
@@ -79,25 +91,10 @@ func isSourceAllowed(source string, allowed []string) bool {
 			continue
 		}
 
-		if withinPath(source, absoluteRoot) {
+		if filesystem.WithinPath(source, absoluteRoot) {
 			return true
 		}
 	}
 
 	return false
-}
-
-func withinPath(path string, root string) bool {
-	path = filepath.Clean(path)
-	root = filepath.Clean(root)
-
-	if path == root {
-		return true
-	}
-
-	if !strings.HasSuffix(root, string(filepath.Separator)) {
-		root = root + string(filepath.Separator)
-	}
-
-	return strings.HasPrefix(path, root)
 }

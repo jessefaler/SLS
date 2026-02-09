@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -16,7 +17,6 @@ import (
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/server/filesystem"
 	"protoxon.com/sls/daemon/system"
-	"protoxon.com/sls/daemon/system/id"
 )
 
 // Server is the high level definition for a server instance being controlled
@@ -72,7 +72,6 @@ func New(client remote.Client) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	server := &Server{
-		id:        id.New(),
 		ctx:       ctx,
 		ctxCancel: &cancel,
 		client:    client,
@@ -354,5 +353,24 @@ func (s *Server) SyncWithConfiguration(cfg models.ServerConfigurationResponse) e
 	s.Lock()
 	s.procConfig = cfg.ProcessConfiguration
 	s.Unlock()
+	return nil
+}
+
+// EnsureDataDirectoryExists ensures that the data directory for the server
+// instance exists.
+func (s *Server) EnsureDataDirectoryExists() error {
+	if _, err := os.Lstat(s.fs.Path()); err != nil {
+		if os.IsNotExist(err) {
+			s.Log().Debug("server: creating root directory and setting permissions")
+			if err := os.MkdirAll(s.fs.Path(), 0o700); err != nil {
+				return errors.WithStack(err)
+			}
+			if err := s.fs.Chown("/"); err != nil {
+				s.Log().WithField("error", err).Warn("server: failed to chown server data directory")
+			}
+		} else {
+			return errors.WrapIf(err, "server: failed to stat server root directory")
+		}
+	}
 	return nil
 }

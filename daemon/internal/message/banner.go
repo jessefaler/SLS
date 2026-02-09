@@ -15,7 +15,7 @@ func Start() {
 [green] \__ \ |__\__ \[dark_gray] Server Launch System
 [green] |___/____|___/[light_blue] Copyright © 2022 - %d [magenta]%s
 
-[light_blue]Website: [reset]https://slimelabs.net
+[light_blue]Website: [reset]https://protoxon.com
 [light_blue] Source: [reset]https://github.com/jessefaler/SLS
 [light_blue]License: [reset]https://github.com/jessefaler/SLS/blob/main/LICENSE
 

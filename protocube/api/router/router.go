@@ -17,7 +17,7 @@ func (r *Router) Configure() *gin.Engine {
 	router.GET("", postBanner)
 	router.GET("/nodes", r.getNodes)
 
-	// All the routes beyond this mount will use an authorization middleware
+	// All the routes beyond this point will use an authorization middleware
 	// and will not be accessible without the correct Authorization header provided.
 	protected := router.Group("/api")
 	protected.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application))

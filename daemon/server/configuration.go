@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/models"
 )
 
 type ConfigurationMeta struct {
@@ -34,6 +35,10 @@ type Configuration struct {
 	Limits                environment.Limits      `json:"limits"`
 	CrashDetectionEnabled bool                    `json:"crash_detection_enabled"`
 	Mounts                []Mount                 `json:"mounts"`
+	// VolumeMounts are RO/RW binds from State.Volumes
+	VolumeMounts []Mount `json:"volume_mounts"`
+	// Copy is a list of source/target entries to copy into the server filesystem at start
+	Copy []models.Copy `json:"copy,omitempty"`
 
 	Container struct {
 		// Defines the Docker image that will be used for this server

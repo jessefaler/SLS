@@ -17,7 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var Path = "/mnt/c/slime/config.yml"
+var Path = "/etc/sls/config.yml"
 
 var (
 	mutex  sync.RWMutex   // protects concurrent access to the config
@@ -197,7 +197,57 @@ type SystemConfiguration struct {
 	OpenatMode string `default:"auto" yaml:"openat_mode"`
 
 	// Directory where the server data is stored at.
-	Data string `default:"/var/lib/sls/volumes" json:"-" yaml:"data"`
+	Data string `default:"/var/lib/sls/data" json:"-" yaml:"data"`
+	// Directory where server volumes are stored
+	VolumesDirectory string `default:"/var/lib/sls/data/volumes" json:"-" yaml:"volumes"`
+	// Directory where state data is stored
+	StateDirectory string `default:"/var/lib/sls/data/state" json:"-" yaml:"state"`
+}
+
+// ConfigureDirectories ensures that all the system directories exist on the
+// system. These directories are created so that only the owner can read the data,
+// and no other users.
+//
+// This function IS NOT thread-safe.
+func ConfigureDirectories() error {
+	root := config.System.RootDirectory
+	log.WithField("path", root).Debug("ensuring root data directory exists")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
+
+	// There are a non-trivial number of users out there whose data directories are actually a
+	// symlink to another location on the disk. If we do not resolve that final destination at this
+	// point things will appear to work, but endless errors will be encountered when we try to
+	// verify accessed paths since they will all end up resolving outside the expected data directory.
+	//
+	// For the sake of automating away as much of this as possible, see if the data directory is a
+	// symlink, and if so resolve to its final real path, and then update the configuration to use
+	// that.
+	if d, err := filepath.EvalSymlinks(config.System.Data); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else if d != config.System.Data {
+		config.System.Data = d
+	}
+
+	log.WithField("path", config.System.Data).Debug("ensuring server data directory exists")
+	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.VolumesDirectory).Debug("ensuring server volumes directory exists")
+	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.StateDirectory).Debug("ensuring state directory exists")
+	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var (
@@ -235,7 +285,7 @@ func UseOpenat2() bool {
 
 // InitConfig Reads the configuration from the disk and then sets up the global singleton
 // with all the configuration values.
-func InitConfig() {
+func InitConfig() error {
 	var configPath = Path
 	if !filepath.IsAbs(configPath) {
 		absolutePath, err := filepath.Abs(configPath)
@@ -252,6 +302,11 @@ func InitConfig() {
 		}
 		log2.Fatalf("config/config: error while reading configuration file: %s", err)
 	}
+
+	if err = ConfigureDirectories(); err != nil {
+		return errors.Wrap(err, "config/config: Failed to configure directories")
+	}
+	return nil
 }
 
 // RemoteQueryConfiguration defines the configuration settings for remote requests

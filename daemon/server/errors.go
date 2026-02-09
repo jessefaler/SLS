@@ -5,9 +5,10 @@ import (
 )
 
 var (
-	ErrIsRunning = errors.New("server is running")
-	ErrIsPaused  = errors.New("server is paused")
-	ErrSuspended = errors.New("server is currently in a suspended state")
+	ErrIsRunning           = errors.New("server is running")
+	ErrIsPaused            = errors.New("server is paused")
+	ErrSuspended           = errors.New("server is currently in a suspended state")
+	ErrInvalidServerConfig = errors.Sentinel("invalid server configuration")
 )
 
 type crashTooFrequent struct{}

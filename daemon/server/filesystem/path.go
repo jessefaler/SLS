@@ -41,3 +41,18 @@ func (fs *Filesystem) unsafeFilePath(p string) string {
 func (fs *Filesystem) unsafeIsInDataDirectory(p string) bool {
 	return strings.HasPrefix(strings.TrimSuffix(p, "/")+"/", strings.TrimSuffix(fs.Path(), "/")+"/")
 }
+
+func WithinPath(path string, root string) bool {
+	path = filepath.Clean(path)
+	root = filepath.Clean(root)
+
+	if path == root {
+		return true
+	}
+
+	if !strings.HasSuffix(root, string(filepath.Separator)) {
+		root = root + string(filepath.Separator)
+	}
+
+	return strings.HasPrefix(path, root)
+}

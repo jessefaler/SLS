@@ -111,12 +111,12 @@ func (bp *Blueprint) String() (string, error) {
 }
 
 // UnmarshalYAML implements a custom YAML unmarshaler for Blueprint.
-// It ensures required sections (blueprint, server, world) are present,
+// It ensures required sections (blueprint, server) are present,
 // validates their contents, and applies defaults for optional fields.
 func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type rawBlueprint struct {
 		Meta        *Meta                  `yaml:"blueprint"`
-		World       *World                 `yaml:"world"`
+		State       *State                 `yaml:"state"`
 		Server      *Server                `yaml:"server"`
 		Save        bool                   `yaml:"save"`
 		Annotations map[string]interface{} `yaml:"annotations"`
@@ -141,19 +141,15 @@ func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	if raw.World == nil {
-		return errors.New("missing required section: world")
-	}
-
-	if raw.World != nil {
-		if err := raw.World.Validate(); err != nil {
+	if raw.State != nil {
+		if err := raw.State.Validate(); err != nil {
 			return err
 		}
 	}
 
 	// Commit validated data
 	bp.Meta = *raw.Meta
-	bp.World = raw.World
+	bp.State = raw.State
 	bp.Server = raw.Server
 	bp.Save = raw.Save
 	bp.Annotations = raw.Annotations
@@ -174,22 +170,27 @@ func (m *Meta) Validate() error {
 	return nil
 }
 
-func (c *Content) Validate() error {
-	if c.Name == "" {
-		return errors.New("content.name cannot be empty")
+func (v *Volume) Validate() error {
+	if v.Name == "" {
+		return errors.New("volume.name cannot be empty")
 	}
-	if c.Source == "" {
-		return errors.New("missing required field: content.Source for content `" + c.Name + "`")
+	if v.Source == "" {
+		return errors.New("missing required field: volume.source for volume " + v.Name)
+	}
+	if v.Target == "" {
+		return errors.New("missing required field: volume.target for volume " + v.Name)
+	}
+	if v.Mode != "" && v.Mode != VolumeModeCOW && v.Mode != VolumeModeRO && v.Mode != VolumeModeRW {
+		return errors.New("volume.mode must be one of: cow, ro, rw")
 	}
 	return nil
 }
 
-func (w *World) Validate() error {
-	if w.Name == "" {
-		return errors.New("missing required field: world.name")
-	}
-	if w.Path == "" {
-		return errors.New("missing required field: world.path")
+func (s *State) Validate() error {
+	for i := range s.Volumes {
+		if err := s.Volumes[i].Validate(); err != nil {
+			return errors.Wrap(err, "state.volumes")
+		}
 	}
 	return nil
 }
@@ -201,9 +202,8 @@ func (s *Server) Validate() error {
 	if s.Software == "" {
 		return errors.New("missing required field: server.software")
 	}
-	// Sets Path to "<Software>/<Version>" if it is not specified
-	if s.Path == "" {
-		s.Path = filepath.Join(s.Software, s.Version)
+	if s.Image == "" {
+		return errors.New("missing required field: server.image")
 	}
 
 	// Make the software name all lowercase
@@ -232,26 +232,23 @@ func (s *Server) Validate() error {
 		return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
 	}
 
-	// Verify Limits - only create new Limits if not already set from blueprint
-	if s.Limits == nil {
-		s.Limits = &environment.Limits{}
-	}
-	if err := Validate(s.Limits); err != nil {
-		return errors.Wrap(err, "server.limits")
+	// Verify Limits (apply defaults if present)
+	if s.Limits != nil {
+		if err := ValidateLimits(s.Limits); err != nil {
+			return errors.Wrap(err, "server.limits")
+		}
 	}
 
-	// Verify Content
-	for _, c := range s.Content {
-		if err := c.Validate(); err != nil {
-			return errors.Wrap(err, "server.content")
-		}
+	// Sets Path to "<Software>/<Version>" if it is not specified
+	if s.Path == "" {
+		s.Path = filepath.Join(s.Software, s.Version)
 	}
 
 	return nil
 }
 
-// Validate Validates blueprint limits and sets default if a field is nil
-func Validate(limit *environment.Limits) error {
+// ValidateLimits validates blueprint limits and sets defaults for nil fields.
+func ValidateLimits(limit *environment.Limits) error {
 
 	// Fill in defaults for nil fields
 	if err := defaults.Set(limit); err != nil {
@@ -259,7 +256,7 @@ func Validate(limit *environment.Limits) error {
 	}
 
 	// Ensure IoWeight is between 10-1000
-	if *limit.IoWeight < 10 || *limit.IoWeight > 1000 {
+	if limit.IoWeight != nil && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
 		return errors.New("io_weight must be between 10 and 1000")
 	}
 
@@ -277,9 +274,33 @@ func (m *Mount) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("invalid mount: %s", s)
 	}
 
-	m.Host = parts[0]
-	m.Container = parts[1]
+	m.Source = parts[0]
+	m.Target = parts[1]
 	m.ReadOnly = len(parts) > 2 && parts[2] == "ro"
 
+	return nil
+}
+
+func (m *Copy) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type copyAlias Copy
+	var tmp copyAlias
+	if err := unmarshal(&tmp); err == nil {
+		*m = Copy(tmp)
+		return nil
+	}
+
+	// Fallback to string shorthand
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+
+	parts := strings.SplitN(s, ":", 2)
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid copy shorthand: %s", s)
+	}
+
+	m.Source = parts[0]
+	m.Target = parts[1]
 	return nil
 }

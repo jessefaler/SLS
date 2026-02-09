@@ -1,102 +1,123 @@
-
-# Blueprints are a high-level specification of a Minecraft server environment.
-#
-# A Blueprint acts as a complete, portable recipe that describes everything
-# required to launch and run a server instance. It combines metadata,
-# world information, and server configuration into a single definition.
-
 # Blueprint metadata
 blueprint:
-  id: 'block_hunt'      # Unique slug ID
-  name: 'Block Hunt'    # Human-readable name
-  type: "minigame"      # the type can be anything (e.g. minigame, adventure) it's just a way to group blueprints
+  id: "blueprint"                # Unique slug ID
+  name: "Blueprint Name"         # Human-readable name
+  type: "game"                   # Arbitrary grouping tag
 
-# World configuration
-world:
-  name: "Block Hunt"                # World name
-  authors: "Protoxon"               # World authors OPTIONAL
-  path: "minigames/block_hunt"      # Path under worlds root directory
+# Traits are reusable configuration layers applied to this blueprint.
+# Traits are merged in order from top to bottom.
+# If multiple traits define the same field, the last trait listed wins.
+# Values defined directly in this blueprint always override trait values.
+traits:
+  - Plugins:
+      - ViaVersion
+  - LightWeight
+  - MotdPatch
+  - PluginAnnotations
 
-# Server configuration
+# Server runtime configuration
+# If the software includes an installation script the servers base files
+# will be installed once per version at /servers/<software>/<version>
+# (or a custom path if specified).
 server:
-  software: "Paper"
-  version: "1.18.2"                          # Minecraft server version
-  image: "ghcr.io/pterodactyl/yolks:java_21" # Docker image to use
-  path: "paper/1.18.2"                 # Path under servers root directory
+  software: "platform"
+  version: "1.0.0"
+  image: "sls:java_21"
 
-  # Resource limits (defaults used if omitted) OPTIONAL
+  # optional override
+  # path: "custom/path"
+
+  # Resource limits applied to the container
   limits:
-
-    # The total amount of memory in mebibyte's that this server is allowed to use
-    # Setting this to 0 will allow unlimited memory in a container.
-    memory_limit: 4096      # in MiB
-
+    # The total amount of memory in mebibytes that this server is allowed to
+    # use on the host system.
+    memory_limit: 4096
     # The amount of additional swap space to be provided to a container instance.
-    # Setting this to 0 will disable swap space on this server. Setting to -1 will allow unlimited swap.
-    swap: 1024              # in MiB
-
+    swap: 1024
     # The relative weight for IO operations in a container. This is relative to other
     # containers on the system and should be a value between 10 and 1000.
     io_weight: 500
-
     # The percentage of CPU that this instance is allowed to consume relative to
     # the host. A value of 200% represents complete utilization of two cores. This
     # should be a value between 1 and THREAD_COUNT * 100.
-    # If you do not want to limit CPU usage, set the value to 0
-    cpu_limit: 200           # 200% = 2 cores
-
+    cpu_limit: 200
     # The amount of disk space in megabytes that a server is allowed to use.
-    # Set to 0 to allow unlimited disk usage.
-    disk_space: 10000       # in MB
-
+    disk_space: 5120
     # Sets which CPU threads can be used by the docker instance.
-    threads: ""             # CPU threads
-
-    # Disables the Out-Of-Memory (OOM) killer
+    threads: ""
+    # Terminates the server if it breaches the memory limits.
+    # Enabling OOM killer may cause server processes to exit unexpectedly.
     oom_disabled: false
 
-  # File-level configs to patch when building the server OPTIONAL
+  # Configuration patches applied at startup
   configs:
     server.properties:
       parser: properties
       find:
-        motd: "Block Hunt"
-    spigot.yml:
-      parser: yaml
-      find:
-        settings.bungeecord: true
+        motd: "Blueprint Server"
 
-  # Optional content bundled with this blueprint (e.g., plugins, datapacks, mods)
-  # Content is placed at the root of the servers volume.
-  # To place a plugins in the server's plugins folder,
-  # you need to create a folder called "plugins" and place the plugins file inside it.
-  # The source path should point to the folder containing the "plugins" folder you just made.
-  # For example, to place worldedit.jar in the server's "plugins" folder,
-  # the path inside the content folder should be something like:
-  # plugins/worldedit/plugins/worldedit.jar
-  # And the source path you specify here would be: plugins/worldedit
-  # OverlayFS will combine folders with the same path automatically
-  content:
-    - name: "WorldEdit"
-      source: "plugins/bukkit/worldedit"   # Relative path under the content directory
+# Declarative server state
+state:
 
-    - name: "Terralith"
-      source: "datapacks/terralith"
+  # Volumes are managed storage units.
+  # All volume sources are resolved relative to the sls
+  # configured volumes directory (e.g. /sls/volumes).
+  #
+  # Volumes cannot escape this directory and are never arbitrary host paths.
+  volumes:
+    # Primary server filesystem
+    - name: "world"
+      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
+      target: "/world"            # Mount point inside the container
+      mode: cow                  # cow | ro | rw (default: cow)
 
-    - name: "Distant Horizons"
-      source: "mods/fabric/distant_horizons"
+    # Read-only plugins or assets
+    - name: "plugins"
+      source: "plugins"
+      target: "/plugins"
+      mode: ro
 
+    # Example persistent data volume
+    # (useful for databases, player data, etc.)
+    - name: "data"
+      source: "shared/data"
+      target: "/data"
+      mode: rw
 
-# Settings for saving server and world data for instances of this blueprint.
-# If this is false the container and server volume will be deleted when the server stops
-# If true the server container and volume will be saved and the server can be re-started using the servers id
-# OPTIONAL (default false)
+  # Explicit host mounts
+  # These mount arbitrary host paths directly into the container.
+  # They must be explicitly allowed in the daemon configuration.
+  # ro = read-only, rw = read-write (default)
+  mounts:
+    - /host/path:/home/container:ro
+
+  # Copy files into server filesystem at creation
+  # - Files inside the SLS folder can always be copied
+  # - Files outside the SLS folder require the source path to be listed in the daemon's allowed_mounts
+  # Destinations are always relative to the server filesystem
+  copy:
+    - sls/files/config.yml:plugins/config.yml
+
+  # Lifecycle hooks executed at specific events
+  hooks:
+    start:
+      - echo "Server starting"
+    running:
+      - echo "Server started successfully"
+    stopping:
+      - echo "Server stopping server"
+
+  # Environment variables for the server
+  env:
+    VAR: "var"
+    ENABLE_FEATURE_X: "true"
+
+# Whether servers created from this blueprint persist after shutdown.
+# If false, the server instance and all non-persistent volume state
+# are destroyed when the server stops.
 save: false
 
-# Custom annotations: arbitrary metadata for external tools or custom logic
+# Arbitrary metadata for external systems
 annotations:
-  resource_pack: "block_hunt" # Handled by the SlimePacks plugin
-  allowed_clients: "1.12..1.15, !1.13, 1.20" # Example: external systems can fetch this value via API and use it for custom logic
-  authors: "Protoxon"
-  maintainer: "Protoxon"
-  tags: ["hide n seek", "pvp"]
+  maintainer: "Maintainer"
+  tags: ["game", "example"]

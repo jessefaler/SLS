@@ -291,10 +291,10 @@ func (s *Server) onBeforeStart() error {
 	s.SyncWithEnvironment()
 
 	// Check if the base server folder has been installed
-	if !s.Installer().IsInstalled(s.Filesystem().Overlay().Server) {
+	if !s.Installer().IsInstalled(s.Filesystem().Overlay().ServerPath) {
 		// If the base server folder doesn't exist install the server
 		// This will block until installation is complete or fails
-		err := s.Installer().Install(s, s.Filesystem().Overlay().Server, s.client)
+		err := s.Installer().Install(s, s.Filesystem().Overlay().ServerPath, s.client)
 		if err != nil {
 			return errors.Wrap(err, "failed to install server")
 		}
@@ -304,6 +304,11 @@ func (s *Server) onBeforeStart() error {
 	err := s.Filesystem().Overlay().Mount()
 	if err != nil {
 		return errors.Wrap(err, "failed to mount filesystem")
+	}
+
+	// Copy files into the server filesystem from state configuration (source:destination)
+	if err := s.PerformCopy(); err != nil {
+		s.Log().WithError(err).Warn("failed to perform state copy entries")
 	}
 
 	// Update the configuration files defined for the server before beginning the boot process.

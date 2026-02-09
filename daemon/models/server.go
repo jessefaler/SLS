@@ -14,18 +14,47 @@ import (
 // without too much hassle, so long as the daemon is aware of what servers should
 // exist on it.
 type ServerConfigurationResponse struct {
-	ID                   string                  `json:"id"`
+	Id                   string                  `json:"id"`
 	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
 	Image                string                  `json:"image"`
 	Invocation           string                  `json:"invocation"`
+	State                State                   `json:"state"`
 	Limits               environment.Limits      `json:"limits"`
 	ServerFolder         string                  `json:"server-folder"`
-	WorldFolder          string                  `json:"world-folder"`
-	Content              []Content               `json:"content,omitempty"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
-	Mounts               []environment.Mount     `json:"mounts,omitempty"`
 }
+
+// Server data state configuration
+type State struct {
+	Volumes []Volume            `yaml:"volumes,omitempty" json:"volumes,omitempty"`
+	Mounts  []environment.Mount `yaml:"mounts,omitempty" json:"mounts,omitempty"`
+	Copy    []Copy              `yaml:"copy,omitempty" json:"copy,omitempty"`
+	Env     map[string]string
+}
+
+type Copy struct {
+	Source string `yaml:"source" json:"source"`
+	Target string `yaml:"target" json:"target"`
+}
+
+// Volumes are managed storage units.
+// They must exist within the configured volumes directory
+// (e.g. /sls/volumes).
+type Volume struct {
+	Name   string     `yaml:"name" json:"name"`
+	Source string     `yaml:"source" json:"source"`
+	Target string     `yaml:"target" json:"target"`
+	Mode   VolumeMode `yaml:"mode,omitempty" json:"mode,omitempty"`
+}
+
+type VolumeMode string
+
+const (
+	VolumeModeCOW VolumeMode = "cow" // copy-on-write overlay
+	VolumeModeRO  VolumeMode = "ro"  // read-only bind
+	VolumeModeRW  VolumeMode = "rw"  // read-write bind
+)
 
 type InstallationScript struct {
 	ContainerImage string `yaml:"image"`

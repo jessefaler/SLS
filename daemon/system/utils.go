@@ -3,6 +3,8 @@ package system
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -248,4 +250,10 @@ func (a *Atomic[T]) UnmarshalJSON(b []byte) error {
 // MarshalJSON marshals the Atomic[T] value into JSON.
 func (a *Atomic[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(a.Load())
+}
+
+// PathId generates an id given a folder path
+func PathId(target string) string {
+	h := sha1.Sum([]byte(target))
+	return hex.EncodeToString(h[:])[:8]
 }

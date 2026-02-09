@@ -38,36 +38,19 @@ blueprint:
   name: "Blueprint Name"         # Human-readable name
   type: "game"                   # Arbitrary grouping tag
 
-# Declarative server state
-# Volumes are managed storage units.
-# All volume sources are resolved relative to the sls
-# configured volumes directory (e.g. /sls/volumes).
-#
-# Volumes cannot escape this directory and are never arbitrary host paths.
-state:
-  volumes:
-    # Primary server filesystem
-    - name: "world"
-      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
-      mount: "/world"            # Mount point inside the container
-      mode: cow                  # cow | ro | rw (default: cow)
-
-    # Read-only plugins or assets
-    - name: "plugins"
-      source: "plugins"
-      mount: "/plugins"
-      mode: ro
-
-    # Example persistent data volume
-    # (useful for databases, player data, etc.)
-    - name: "data"
-      source: "shared/data"
-      mount: "/data"
-      mode: rw
+# Traits are reusable configuration layers applied to this blueprint.
+# Traits are merged in order from top to bottom.
+# If multiple traits define the same field, the last trait listed wins.
+# Values defined directly in this blueprint always override trait values.
+traits:
+  - LightWeight
+  - CFGPatch
+  - PluginAnnotations
 
 # Server runtime configuration
-# The server base files are automatically installed or pre-installed
-# at /servers/<software>/<version> (or custom path).
+# If the software includes an installation script the servers base files
+# will be installed once per version at /servers/<software>/<version>
+# (or a custom path if specified).
 server:
   software: "platform"
   version: "1.0.0"
@@ -78,12 +61,24 @@ server:
 
   # Resource limits applied to the container
   limits:
-    memory_limit: 4096           # MB
-    swap: 1024                   # MB
+    # The total amount of memory in mebibytes that this server is allowed to
+    # use on the host system.
+    memory_limit: 4096
+    # The amount of additional swap space to be provided to a container instance.
+    swap: 1024
+    # The relative weight for IO operations in a container. This is relative to other
+    # containers on the system and should be a value between 10 and 1000.
     io_weight: 500
-    cpu_limit: 200               # Percentage (200 = 2 cores)
-    disk_space: 5120             # MB
+    # The percentage of CPU that this instance is allowed to consume relative to
+    # the host. A value of 200% represents complete utilization of two cores. This
+    # should be a value between 1 and THREAD_COUNT * 100.
+    cpu_limit: 200
+    # The amount of disk space in megabytes that a server is allowed to use.
+    disk_space: 5120
+    # Sets which CPU threads can be used by the docker instance.
     threads: ""
+    # Terminates the server if it breaches the memory limits.
+    # Enabling OOM killer may cause server processes to exit unexpectedly.
     oom_disabled: false
 
   # Configuration patches applied at startup
@@ -93,19 +88,61 @@ server:
       find:
         motd: "Blueprint Server"
 
-# Explicit host mounts
-# These mount arbitrary host paths directly into the container.
-# They must be explicitly allowed in the daemon configuration.
-# (ro = read-only) omit to allow writing to files
-mounts:
-  - /host/path:/home/container:ro
+# Declarative server state
+state:
 
-# Copy files into server filesystem at creation
-# - Files inside the SLS folder can always be copied
-# - Files outside the SLS folder require the source path to be listed in the daemon's allowed_mounts
-# Destinations are always relative to the server filesystem
-copy:
-  - sls/files/config.yml:plugins/config.yml
+  # Volumes are managed storage units.
+  # All volume sources are resolved relative to the sls
+  # configured volumes directory (e.g. /sls/volumes).
+  #
+  # Volumes cannot escape this directory and are never arbitrary host paths.
+  volumes:
+    # Server world state
+    - name: "world"
+      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
+      target: "/world"           # Mount point inside the container
+      mode: cow                  # cow | ro | rw (default: cow)
+
+    # Read-only plugins or assets
+    - name: "plugins"
+      source: "plugins"
+      target: "/plugins"
+      mode: ro
+
+    # Example persistent data volume
+    # (useful for databases, player data, etc.)
+    - name: "data"
+      source: "shared/data"
+      target: "/data"
+      mode: rw
+
+  # Explicit host mounts
+  # These mount arbitrary host paths directly into the container.
+  # They must be explicitly allowed in the daemon configuration.
+  # ro = read-only, rw = read-write (default)
+  mounts:
+    - /host/path:/home/container:ro
+
+  # Copy files into server filesystem at creation
+  # - Files inside the SLS folder can always be copied
+  # - Files outside the SLS folder require the source path to be listed in the daemon's allowed_mounts
+  # Destinations are always relative to the server filesystem
+  copy:
+    - sls/files/config.yml:plugins/config.yml
+
+  # Lifecycle hooks executed at specific events
+  hooks:
+    start:
+      - echo "Server starting"
+    running:
+      - echo "Server started successfully"
+    stopping:
+      - echo "Server stopping server"
+
+  # Environment variables for the server
+  env:
+    VAR: "var"
+    ENABLE_FEATURE_X: "true"
 
 # Whether servers created from this blueprint persist after shutdown.
 # If false, the server instance and all non-persistent volume state

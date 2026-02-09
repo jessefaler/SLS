@@ -25,12 +25,16 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	// create the server
 	s, err := r.ServerManager.InitServer(req)
 	if err != nil {
+		log.WithError(err).WithField("server_id", req.Id).Error("failed to create server")
 		if errors.Is(err, os.ErrNotExist) {
 			// A not exists error usually means the blueprints server or world paths don't exist
 			c.JSON(http.StatusConflict, gin.H{
 				"error": "The specified path to the server or world directory does not exist on this daemon instance.",
 			})
-			log.WithError(err).Errorf("Failed to create server %s", req.ID)
+			return
+		}
+		if errors.Is(err, server.ErrInvalidServerConfig) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
