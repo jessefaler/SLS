@@ -1,0 +1,22 @@
+services:
+  protocube:
+    image: ghcr.io/jessefaler/protocube:latest
+    container_name: SLS
+    restart: always
+    ports:
+      - "5620:5620"
+    tty: true
+    environment:
+      TZ: "UTC"
+    volumes:
+      - "/etc/protocube/:/etc/protocube/"
+      - "/var/lib/protocube/:/var/lib/protocube/"
+      - "/var/log/protocube/:/var/log/protocube/"
+      - "/tmp/protocube/:/tmp/protocube/"
+      - "/etc/ssl/certs:/etc/ssl/certs:ro"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
