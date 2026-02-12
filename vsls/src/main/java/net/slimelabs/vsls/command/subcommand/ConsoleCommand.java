@@ -103,7 +103,7 @@ public class ConsoleCommand {
         if (attempt >= delays.length) {
             // All attempts failed, show "No output found"
             ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                    + server.name
+                    + server.getName()
                     + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>No output found</gray>")
                     .sendMessage(source);
             return;
@@ -204,7 +204,7 @@ public class ConsoleCommand {
      */
     private static ProtoMessage formatCommandOutput(Server server, String outputLine, List<String> logs, int commandIndex) {
         // Check for special two-line error case: "Unknown or incomplete command" followed by line with "<--[HERE]"
-        if (outputLine.contains("Unknown or incomplete command") && commandIndex + 2 < logs.size()) {
+                if (outputLine.contains("Unknown or incomplete command") && commandIndex + 2 < logs.size()) {
             String nextLine = logs.get(commandIndex + 2);
             if (nextLine != null && nextLine.contains("<--[HERE]")) {
                 nextLine = nextLine.trim();
@@ -213,7 +213,7 @@ public class ConsoleCommand {
                 }
                 String combinedOutput = stripLegacyFormatting(outputLine) + "\n" + stripLegacyFormatting(nextLine);
                 return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                        + server.name
+                        + server.getName()
                         + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                         + combinedOutput + "</red>");
             }
@@ -222,7 +222,7 @@ public class ConsoleCommand {
         // Check for "Unknown or incomplete command"
         if (outputLine.contains("Unknown or incomplete command")) {
             return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                    + server.name
+                    + server.getName()
                     + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                     + stripLegacyFormatting(outputLine) + "</red>");
         }
@@ -230,14 +230,14 @@ public class ConsoleCommand {
         // Check for "<--[HERE]" error indicator
         if (outputLine.contains("<--[HERE]")) {
             return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                    + server.name
+                    + server.getName()
                     + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                     + stripLegacyFormatting(outputLine) + "</red>");
         }
         
         // Normal output
         return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                + server.name
+                + server.getName()
                 + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>"
                 + stripLegacyFormatting(outputLine) + "</gray>");
     }
@@ -294,7 +294,7 @@ public class ConsoleCommand {
             if (commandIndex == -1 || commandIndex >= logs.size() - 1) {
                 // Command not found or no output after command
                 return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                        + server.name
+                        + server.getName()
                         + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>No output found</gray>");
             }
             
@@ -302,7 +302,7 @@ public class ConsoleCommand {
             String outputLine = logs.get(commandIndex + 1);
             if (outputLine == null) {
                 return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                        + server.name
+                        + server.getName()
                         + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>No output found</gray>");
             }
             
@@ -338,7 +338,7 @@ public class ConsoleCommand {
                     }
                 } else {
                     return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                            + server.name
+                            + server.getName()
                             + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>No output found</gray>");
                 }
             }
@@ -346,7 +346,7 @@ public class ConsoleCommand {
             // Check for special two-line error case: "Unknown or incomplete command" followed by line with "<--[HERE]"
             if (outputLine.contains("Unknown or incomplete command") && commandIndex + 2 < logs.size()) {
                 String nextLine = logs.get(commandIndex + 2);
-                if (nextLine != null && nextLine.contains("<--[HERE]")) {
+                    if (nextLine != null && nextLine.contains("<--[HERE]")) {
                     // Remove leading ">" if present from next line
                     nextLine = nextLine.trim();
                     if (nextLine.startsWith(">")) {
@@ -355,7 +355,7 @@ public class ConsoleCommand {
                     // Include both lines
                     String combinedOutput = stripLegacyFormatting(outputLine) + "\n" + stripLegacyFormatting(nextLine);
                     return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                            + server.name
+                            + server.getName()
                             + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                             + combinedOutput + "</red>");
                 }
@@ -372,14 +372,14 @@ public class ConsoleCommand {
             // Check for "<--[HERE]" error indicator
             if (outputLine.contains("<--[HERE]")) {
                 return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                        + server.name
+                        + server.getName()
                         + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><red>"
                         + stripLegacyFormatting(outputLine) + "</red>");
             }
             
             // Normal output
             return ProtoMessage.chat().addMiniMessage("<hover:show_text:'<dark_purple>"
-                    + server.name
+                    + server.getName()
                     + "</dark_purple>'><dark_gray>[</dark_gray><gold>console</gold><dark_gray>] </dark_gray></hover><gray>"
                     + stripLegacyFormatting(outputLine) + "</gray>");
         });

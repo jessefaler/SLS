@@ -2,10 +2,11 @@ package com.protoxon.S4J.client.entities;
 
 import org.json.JSONObject;
 
-public class ServerDeletedEvent implements ServerEvent {
+public final class ServerDeletedEvent extends ServerEvent {
     private final String serverId;
 
     public ServerDeletedEvent(String serverId, JSONObject payload) {
+        super(serverId);
         this.serverId = serverId;
     }
 

@@ -1,18 +1,19 @@
 package net.slimelabs.vsls.routing;
 
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.client.entities.ServerCrashEvent;
+import com.protoxon.S4J.client.entities.StatusUpdateEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.packets.ChatPackets;
-import net.slimelabs.vsls.server.Listener;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.loader.Animation;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
-import java.sql.Time;
-import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,11 +26,11 @@ public class Queue {
     // The queue before the server starts
     private boolean queueCreated;
     ConcurrentLinkedQueue<Player> players = new ConcurrentLinkedQueue<>();
-    private final AnimationController loadingIcon = new AnimationController();
+    private final Animation loadingIcon = new Animation();
     Runnable remove;
     private ScheduledTask timeoutTask;
     private final AtomicBoolean flushed = new AtomicBoolean(false);
-    Listener.Handle handle;
+    Event.Handle handle;
 
     public Queue(Server server, Runnable remove) {
         this.server = server;
@@ -55,7 +56,7 @@ public class Queue {
                 return; // already flushed elsewhere
             }
             handle.remove();
-            flushQueueWithError("Failed to join " + server.name + " queue timed out");
+            flushQueueWithError("Failed to join " + server.getName() + " queue timed out");
         }).delay(SLS.config.queue.timeout, TimeUnit.SECONDS).schedule();
     }
 
@@ -66,8 +67,8 @@ public class Queue {
         }
     }
 
-    public Listener.Handle initListeners() {
-        return server.onStatusChange(((status, handle) -> {
+    public Event.Handle initListeners() {
+        return server.getEvents().onStatusChange(((status, handle) -> {
             if(status == ServerStatus.RUNNING) {
                 handle.remove();
                 cancelTimeout();
@@ -76,7 +77,7 @@ public class Queue {
             if(status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
                 handle.remove();
                 cancelTimeout();
-                flushQueueWithError("Failed to join " + server.name);
+                flushQueueWithError("Failed to join " + server.getName());
             }
         })).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS);
     }
@@ -84,7 +85,7 @@ public class Queue {
     public void enqueue(Player player) {
         players.add(player);
         loadingIcon.start(player);
-        ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>In queue for " + server.name + "</gradient>").sendMessage(player);
+        ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>In queue for " + server.getName() + "</gradient>").sendMessage(player);
     }
 
     public boolean dequeue(Player player) {
@@ -105,9 +106,9 @@ public class Queue {
         cancelTimeout();
         remove.run(); // remove this queue from the queue manager
         for(Player player : players) {
-            ProtoMessage.actionBar().add("Joining " + server.name, NamedTextColor.GREEN).sendMessage(player);
+            ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(player);
             ChatPackets.enableActionBarPackets(player.getUniqueId());
-            Connector.connectPlayer(player, server.id);
+            Connector.connectPlayer(player, server.getShortId());
             loadingIcon.stop(player.getUniqueId());
         }
         players.clear();

@@ -2,12 +2,9 @@ package net.slimelabs.vsls.routing;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
-import com.protoxon.S4J.entities.Blueprint;
-import com.protoxon.S4J.requests.Route;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.blueprints.BlueprintRegistry;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -45,9 +42,9 @@ public class Connector {
     public static void join(Player player, String blueprintId) {
         Queue currentQueue = SLS.queue.getQueue(player);
         if(currentQueue != null) {
-            if(Objects.equals(currentQueue.server.blueprintId, blueprintId)) {
+            if(Objects.equals(currentQueue.server.getBlueprintId(), blueprintId)) {
                 // If the player is trying to queue to the same server they are currently queued for send a message and exit
-                ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>You are already in queue for " + currentQueue.server.name + "</gradient>").sendMessage(player);
+                ProtoMessage.chat().add(MessagePreset.SLS).addMiniMessage("<gradient:#9d70ff:#00ffff>You are already in queue for " + currentQueue.server.getName() + "</gradient>").sendMessage(player);
                 return;
             }
             // If the player is currently in queue for a different server dequeue them
@@ -56,9 +53,9 @@ public class Connector {
 
         // Check running servers
         for (Server server : SLS.servers.getAll()) {
-            if (Objects.equals(server.blueprintId, blueprintId)) {
-                if(server.status == ServerStatus.RUNNING) {
-                    connectPlayer(player, server.getId());
+            if (Objects.equals(server.getBlueprintId(), blueprintId)) {
+                if(server.getStatus() == ServerStatus.RUNNING) {
+                    connectPlayer(player, server.getShortId());
                     return;
                 }
             }
@@ -66,7 +63,7 @@ public class Connector {
 
         // Check existing queues
         for (Queue queue : SLS.queue.getQueues()) {
-            if (Objects.equals(queue.server.blueprintId, blueprintId)) {
+            if (Objects.equals(queue.server.getBlueprintId(), blueprintId)) {
                 queue.enqueue(player);
                 return;
             }
@@ -74,13 +71,13 @@ public class Connector {
 
         // Check paused servers
         for (Server server : SLS.servers.getAll()) {
-            if (Objects.equals(server.blueprintId, blueprintId)) {
-                if(server.status == ServerStatus.PAUSED) {
+            if (Objects.equals(server.getBlueprintId(), blueprintId)) {
+                if(server.getStatus() == ServerStatus.PAUSED) {
                     server.unpause().executeAsync(success -> {
-                        connectPlayer(player, server.getId());
+                        connectPlayer(player, server.getShortId());
                     }, failure -> {
                         ProtoMessage.chat().add(MessagePreset.SLS)
-                                .add("Failed to join " + server.name + " \n  - failed to unpause server container", NamedTextColor.RED)
+                                .add("Failed to join " + server.getStatus() + " \n  - failed to unpause server container", NamedTextColor.RED)
                                 .sendMessage(player);
                     });
                     return;

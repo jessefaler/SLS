@@ -29,14 +29,13 @@ public class ChatPackets implements PacketListener {
     private static final Set<UUID> disabledActionBars = new HashSet<>();
 
     /**
-     * Initializes the packet events api and registers the packet listener
+     * Initializes the packet events api and registers a listener.
      */
-    public static ChatPackets init() {
+    public static void init() {
         // Register packet listeners
         ChatPackets chatPackets = new ChatPackets();
         PacketEvents.getAPI().getEventManager().registerListener(chatPackets, PacketListenerPriority.NORMAL);
         PacketEvents.getAPI().init(); // Initialize PacketEvents API
-        return chatPackets;
     }
 
     public void onPacketSend(PacketSendEvent event) {

@@ -1,4 +1,4 @@
-package net.slimelabs.vsls.routing;
+package net.slimelabs.vsls.utils.loader;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;

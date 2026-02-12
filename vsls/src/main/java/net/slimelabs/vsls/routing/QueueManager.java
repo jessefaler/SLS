@@ -1,18 +1,10 @@
 package net.slimelabs.vsls.routing;
 
-import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.proxy.Player;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.slimelabs.vsls.server.Listener;
 import net.slimelabs.vsls.server.Server;
-import net.slimelabs.vsls.utils.message.MessagePreset;
-import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class QueueManager {
     private ConcurrentHashMap<String, Queue> queues = new ConcurrentHashMap<>();
@@ -24,7 +16,7 @@ public class QueueManager {
     }
 
     public void dequeue(Player player, Server server) {
-        Queue queue = queues.get(server.id);
+        Queue queue = queues.get(server.getId());
         if(queue == null) return;
         queue.dequeue(player);
     }
@@ -52,12 +44,12 @@ public class QueueManager {
 
     // Return a server's queue or creates it if it doesn't exist
     public Queue getQueue(Server server) {
-        Queue queue = queues.get(server.id);
+        Queue queue = queues.get(server.getId());
         if(queue == null) {
             queue = new Queue(server, () -> {
-                remove(server.id);
+                remove(server.getId());
             });
-            queues.put(server.id, queue);
+            queues.put(server.getId(), queue);
         }
         return queue;
     }

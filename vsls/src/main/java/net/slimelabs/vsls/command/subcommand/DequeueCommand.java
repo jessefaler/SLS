@@ -24,7 +24,7 @@ public class DequeueCommand {
                     Queue queue = SLS.queue.getQueue(player);
                     if (queue != null && queue.dequeue(player)) {
                         ProtoMessage.chat().add(MessagePreset.SLS)
-                                .add("You have been dequeued from " + queue.server.name, NamedTextColor.RED)
+                                .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
                                 .sendMessage(player);
                     } else {
                         ProtoMessage.chat().add(MessagePreset.SLS).add("You are not in queue.", NamedTextColor.GRAY).sendMessage(source);
@@ -53,7 +53,7 @@ public class DequeueCommand {
                             Queue queue = SLS.queue.getQueue(player);
                             if(queue != null && queue.dequeue(player)) {
                                 ProtoMessage.chat().add(MessagePreset.SLS)
-                                        .add("You have been dequeued from " + queue.server.name, NamedTextColor.RED)
+                                        .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
                                         .sendMessage(player);
                             }
                         }
@@ -65,7 +65,7 @@ public class DequeueCommand {
                             Queue queue = SLS.queue.getQueue(targetPlayer);
                             if(queue != null && queue.dequeue(targetPlayer)) {
                                 ProtoMessage.chat().add(MessagePreset.SLS)
-                                        .add("You have been dequeued from " + queue.server.name, NamedTextColor.RED)
+                                        .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
                                         .sendMessage(player);
                             }
                         }
@@ -79,7 +79,7 @@ public class DequeueCommand {
                         Queue queue = SLS.queue.getQueue(player.get());
                         if (queue != null && queue.dequeue(player.get())) {
                             ProtoMessage.chat().add(MessagePreset.SLS)
-                                    .add("You have been dequeued from " + queue.server.name, NamedTextColor.RED)
+                                    .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
                                     .sendMessage(player.get());
                             ProtoMessage.chat().add(MessagePreset.SLS).add("Dequeued " + playerName, NamedTextColor.DARK_AQUA).sendMessage(source);
                         } else {

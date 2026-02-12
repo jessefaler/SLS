@@ -12,12 +12,12 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.slimelabs.vsls.blueprints.BlueprintRegistry;
 import net.slimelabs.vsls.command.SLSCommand;
 import net.slimelabs.vsls.config.Config;
+import net.slimelabs.vsls.events.EventRouter;
+import net.slimelabs.vsls.events.EventStream;
 import net.slimelabs.vsls.internal.Message;
 import net.slimelabs.vsls.packets.ChatPackets;
-import net.slimelabs.vsls.routing.AnimationController;
 import net.slimelabs.vsls.routing.QueueManager;
 import net.slimelabs.vsls.server.ServerManager;
-import org.slf4j.Logger;
 
 @Plugin(
         id = "vsls",
@@ -26,27 +26,34 @@ import org.slf4j.Logger;
         description = "Server Management Plugin",
         authors = {"Protoxon & Contributors"},
         dependencies = {
+                // PacketEvents is used by ChatPackets for actionbar control
                 @Dependency(id = "packetevents"),
+                // ViaVersion is used to register servers
+                // with Via's protocol detection service
                 @Dependency(id = "viaversion", optional = true)
         }
 )
+
 public class SLS {
 
     public static ProxyServer       proxy;
     public static SLS               plugin;
-    public static ServerManager servers;
-    public static BlueprintRegistry blueprints;
     public static Config            config;
+
+    public static ServerManager     servers;
+    public static BlueprintRegistry blueprints;
     public static SLSClient         api;
     public static ChatPackets       chatPackets;
     public static QueueManager      queue;
 
-    //todo implement database
+    private static EventStream eventStream;
+
+    // todo implement database
     // Use the Hibernate library to abstract database logic
     // and have a choice in the config to use either a sqlite database or a sql server (MySQL, PostgreSQL, ect)
 
-    @Inject // injects the proxy server and logger into the plugin class
-    public SLS(ProxyServer proxy, Logger logger) {
+    @Inject // injects the proxy server into the plugin class
+    public SLS(ProxyServer proxy) {
         SLS.proxy = proxy;
         SLS.plugin = this;
     }
@@ -58,23 +65,35 @@ public class SLS {
         // Initialize the config
         config = Config.initConfig();
         // Create the S4J api client
-        api = SLSBuilder.createClient(config.api.url, config.api.key);
+        SLSClient api = SLSBuilder.createClient(config.api.url, config.api.key);
         // Initialize the blueprint registry
-        blueprints = BlueprintRegistry.init();
+        BlueprintRegistry blueprintRegistry = new BlueprintRegistry(api);
+        SLS.blueprints = blueprintRegistry;
+        // Initialize the event stream
+        EventStream eventStream = new EventStream(api.getEventStream());
+        SLS.eventStream = eventStream;
+        // Start the event stream
+        eventStream.start();
+        // Initialize the event router
+        EventRouter eventRouter = new EventRouter(eventStream);
         // Initialize the server registry
-        servers = ServerManager.init(api);
+        ServerManager serverManager = new ServerManager(api, eventRouter);
+        SLS.servers = serverManager;
         // Initialize the packet listener
-        chatPackets = ChatPackets.init();
+        ChatPackets.init();
         // Register the sls command
         SLSCommand.register();
-        proxy.getEventManager().register(this, new AnimationController());
-        SLS.queue = new QueueManager();
+        // Initialize the queue manager
+        QueueManager queueManager = new QueueManager();
+
+        SLS.queue = queueManager;
+        SLS.api = api;
     }
 
     @Subscribe
     public void OnProxyShutdown(ProxyShutdownEvent event) {
         // Close the event stream
-        SLS.servers.events.stop();
+        SLS.eventStream.stop();
     }
 
 }

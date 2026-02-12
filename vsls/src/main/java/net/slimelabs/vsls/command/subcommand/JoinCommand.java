@@ -8,6 +8,7 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.routing.Connector;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
@@ -72,6 +73,10 @@ public class JoinCommand {
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
+                    if(!(source instanceof Player)) {
+                        Log.error("You must specify a player when running this command from console");
+                        return 0;
+                    }
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
                     Connector.join((Player) source, blueprint);

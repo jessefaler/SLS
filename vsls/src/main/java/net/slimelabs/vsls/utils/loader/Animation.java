@@ -1,26 +1,28 @@
-package net.slimelabs.vsls.routing;
+package net.slimelabs.vsls.utils.loader;
 
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
-import net.kyori.adventure.text.Component;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.packets.ChatPackets;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class AnimationController {
+public class Animation {
 
     private final LoadingIcon icon = new LoadingIcon();
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
+
+    public Animation() {
+        // Register the event listener
+        SLS.proxy.getEventManager().register(SLS.plugin, this);
+    }
 
     /** Start animating a loading bar for a player */
     public void start(Player player) {

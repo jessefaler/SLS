@@ -36,7 +36,7 @@ public class StatusCommand {
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
                             .add("Status: ", NamedTextColor.DARK_AQUA)
-                            .add(server.status.getStatus(), NamedTextColor.GRAY)
+                            .add(server.getStatus().getStatus(), NamedTextColor.GRAY)
                             .sendMessage(source);
                     return 0;
                 })
@@ -64,7 +64,7 @@ public class StatusCommand {
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
                             .add("Status: ", NamedTextColor.DARK_AQUA)
-                            .add(server.status.getStatus(), NamedTextColor.GRAY)
+                            .add(server.getStatus().getStatus(), NamedTextColor.GRAY)
                             .sendMessage(source);
                     return 0;
                 })

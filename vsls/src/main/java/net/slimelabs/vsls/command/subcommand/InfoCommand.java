@@ -72,13 +72,14 @@ public class InfoCommand {
             String type        = blueprint != null ? blueprint.getType() : "Unknown";
             String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
             String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
+            String image       = blueprint != null ? blueprint.getImage() : "Unknown";
             String name        = blueprint != null ? blueprint.getName() : server.getBlueprintId();
             String statusColor = "green";
-            if(server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
+            if(server.getStatus() == ServerStatus.STOPPING || server.getStatus() == ServerStatus.OFFLINE) {
                 statusColor = "red";
-            } else if(server.status == ServerStatus.STARTING) {
+            } else if(server.getStatus() == ServerStatus.STARTING) {
                 statusColor = "yellow";
-            } else if(server.status == ServerStatus.PAUSED) {
+            } else if(server.getStatus() == ServerStatus.PAUSED) {
                 statusColor = "aqua";
             }
             String allocation = (!server.getAllocation().getAlias().isEmpty()
@@ -88,10 +89,10 @@ public class InfoCommand {
             ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                     " <hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
-                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.status.getStatus() + "</" + statusColor + ">\n" +
+                    " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.getStatus().getStatus() + "</" + statusColor + ">\n" +
                     " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><hover:show_text:'<dark_purple>" + server.getBlueprintId() + "</dark_purple>'><blue> " + name + "</blue></hover>\n" +
                     " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +
-                    " <hover:show_text:'<dark_purple>Allocation: " + allocation + "</dark_purple>'><gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue></hover>\n" +
+                    " <hover:show_text:'<dark_purple>Allocation: " + allocation + "\nImage: " + image + "</dark_purple>'><gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue></hover>\n" +
                     " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
                     " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
                     "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +

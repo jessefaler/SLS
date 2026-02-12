@@ -19,6 +19,12 @@ public interface Blueprint {
     String getName();
 
     /**
+     * Gets the docker image
+     * @return Never-null String containing the server version
+     */
+    String getImage();
+
+    /**
      * Gets the servers version from the blueprint
      * @return Never-null String containing the server version
      */

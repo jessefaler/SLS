@@ -10,12 +10,14 @@ public class BlueprintImpl implements Blueprint {
 
     private final JSONObject json;
     private final JSONObject meta;
+    private final JSONObject server;
     private final SLSClientImpl impl;
 
     public BlueprintImpl(JSONObject json, SLSClientImpl impl) {
         this.json = json;
         this.meta = json.getJSONObject("metadata");
         this.impl = impl;
+        this.server = json.optJSONObject("server");
     }
 
     @Override
@@ -29,14 +31,17 @@ public class BlueprintImpl implements Blueprint {
     }
 
     @Override
+    public String getImage() {
+        return server != null ? server.optString("image", null) : null;
+    }
+
+    @Override
     public String getServerVersion() {
-        JSONObject server = json.optJSONObject("server");
         return server != null ? server.optString("version", null) : null;
     }
 
     @Override
     public String getServerSoftware() {
-        JSONObject server = json.optJSONObject("server");
         return server != null ? server.optString("software", null) : null;
     }
 

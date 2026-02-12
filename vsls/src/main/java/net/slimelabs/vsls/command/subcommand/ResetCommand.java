@@ -134,7 +134,7 @@ public class ResetCommand {
 
         server.reset().executeAsync(success -> {
             for(Player player : players) {
-                server.onStatusChange(((status, handle) -> {
+                server.getEvents().onStatusChange(((status, handle) -> {
                     // Wait for the server to change its state to starting
                     // before queueing the player
                     if(status == ServerStatus.STARTING) {
@@ -144,11 +144,11 @@ public class ResetCommand {
                     }
                 })).timeout(2, TimeUnit.MINUTES);
                 SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-                    showResetTitle(player, server.name);
+                    showResetTitle(player, server.getName());
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
                             .add("⚠ ", NamedTextColor.YELLOW)
-                            .add(server.name, NamedTextColor.GOLD)
+                            .add(server.getName(), NamedTextColor.GOLD)
                             .add( " is resetting. You will reconnect momentarily.", NamedTextColor.GRAY)
                             .sendMessage(player);
                 }).delay(2, TimeUnit.SECONDS).schedule();

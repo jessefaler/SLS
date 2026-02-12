@@ -3,11 +3,12 @@ package com.protoxon.S4J.client.entities;
 import com.protoxon.S4J.ServerStatus;
 import org.json.JSONObject;
 
-public class StatusUpdateEvent implements ServerEvent {
+public final class StatusUpdateEvent extends ServerEvent {
     private final String serverId;
     private final ServerStatus status;
 
     public StatusUpdateEvent(String serverId, JSONObject payload) {
+        super(serverId);
         this.serverId = serverId;
         this.status = ServerStatus.fromString(payload.optString("value"));
     }

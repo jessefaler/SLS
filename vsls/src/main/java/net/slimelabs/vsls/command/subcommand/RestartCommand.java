@@ -114,7 +114,7 @@ public class RestartCommand {
 
     public static void queuePlayers(Server server, List<Player> players) {
         for(Player player : players) {
-            server.onStatusChange(((status, handle) -> {
+            server.getEvents().onStatusChange(((status, handle) -> {
                 // Wait for the server to change its state to starting
                 // before queueing the player
                 if(status == ServerStatus.STARTING) {
@@ -124,11 +124,11 @@ public class RestartCommand {
                 }
             })).timeout(2, TimeUnit.MINUTES);
             SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
-                showRestartTitle(player, server.name);
+                showRestartTitle(player, server.getName());
                 ProtoMessage.chat()
                         .add(MessagePreset.SLS)
                         .add("⚠ ", NamedTextColor.YELLOW)
-                        .add(server.name, NamedTextColor.GOLD)
+                        .add(server.getName(), NamedTextColor.GOLD)
                         .add( " is restarting. You will reconnect momentarily.", NamedTextColor.GRAY)
                         .sendMessage(player);
             }).delay(2, TimeUnit.SECONDS).schedule();

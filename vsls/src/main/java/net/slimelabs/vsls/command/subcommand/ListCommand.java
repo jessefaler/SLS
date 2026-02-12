@@ -26,14 +26,14 @@ public class ListCommand {
                     for(Server server : SLS.servers.getAll()) {
                         message.add(" - ", NamedTextColor.GOLD);
                         String color = "yellow";
-                        if(server.status == ServerStatus.RUNNING) {
+                        if(server.getStatus() == ServerStatus.RUNNING) {
                             color = "green";
-                        } else if (server.status == ServerStatus.STOPPING || server.status == ServerStatus.OFFLINE) {
+                        } else if (server.getStatus() == ServerStatus.STOPPING || server.getStatus() == ServerStatus.OFFLINE) {
                             color = "red";
-                        } else if (server.status == ServerStatus.PAUSED) {
+                        } else if (server.getStatus() == ServerStatus.PAUSED) {
                             color = "aqua";
                         }
-                        message.addMiniMessage("<hover:show_text:'<" + color + ">" + server.getShortId() + "</" + color + ">'><" + color + ">" + server.name + "</" + color + "></hover>");
+                        message.addMiniMessage("<hover:show_text:'<" + color + ">" + server.getShortId() + "</" + color + ">'><" + color + ">" + server.getName() + "</" + color + "></hover>");
                         message.add(": ", NamedTextColor.WHITE);
                         int count = server.getPlayerCount();
                         message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'>" + count + "</hover></dark_aqua>");

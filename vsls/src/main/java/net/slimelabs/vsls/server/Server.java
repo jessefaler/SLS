@@ -5,42 +5,101 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
-import com.protoxon.S4J.client.entities.ServerCrashEvent;
-import com.protoxon.S4J.entities.Blueprint;
-import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.server.RegisteredServer;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.log.Log;
-import net.slimelabs.vsls.utils.message.ProtoMessage;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
-public class Server extends Listener {
+public class Server {
 
-    public String id;
-    public String name;
+    private final String id;
+    private final String shortId;
+    private final String name;
+
     // The servers api client
-    public ClientServer client;
-    // The id of the blueprint this server was created from
-    public String blueprintId;
+    private final ClientServer client;
     // Runnable that removes this server from the registry when executed
     private final Runnable unregister;
+    // The software version the server is using
+    private volatile String version;
     // Servers last updated status
-    public ServerStatus status = ServerStatus.UNKNOWN;
+    private volatile ServerStatus status = ServerStatus.UNKNOWN;
+    // Server events
+    private final ServerEvents events = new ServerEvents();
 
-    public Server(String name, ClientServer client, String blueprintId, Runnable unregister) {
+    public Server(String name, ClientServer client, Runnable unregister) {
         this.name = name;
         this.client = client;
-        this.blueprintId = blueprintId;
         this.id = client.getId();
+        this.shortId = id.length() >= 6 ? id.substring(0, 6) : id;
         this.unregister = unregister;
     }
 
+    /**
+     * Returns the servers current status
+     * one of (Offline, Starting, Running, Stopping)
+     * @return the status of the server
+     */
+    public ServerStatus getStatus() {
+        return status;
+    }
+
+    public ServerEvents getEvents() {
+        return events;
+    }
+
+    /**
+     * Sets the servers status
+     * @param status the status to set
+     */
+    protected void setStatus(ServerStatus status) {
+        this.status = status;
+    }
+
+    /**
+     * Returns the full length id of the server
+     * @return the servers id
+     */
     public String getId() {
         return id;
+    }
+
+    /**
+     * Returns a shortened version of the servers id
+     * @return the shortened id
+     */
+    public String getShortId() {
+        return shortId;
+    }
+
+    /**
+     * Returns the name of this server
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Returns the software version the server is using
+     * @return the software version
+     */
+    public String getVersion() {
+        return version;
+    }
+
+    /**
+     * Sets the servers software version
+     * @param version the version to set
+     */
+    protected void setVersion(String version) {
+        this.version = version;
+    }
+
+    /**
+     * Returns the blueprint id the server is from
+     * @return the blueprint id
+     */
+    public String getBlueprintId() {
+        return client.getBlueprintId();
     }
 
     public SLSAction<Void> stop() {
@@ -88,40 +147,76 @@ public class Server extends Listener {
         return client.delete(force);
     }
 
+    /**
+     * Returns the servers ip and port allocation
+     */
     public Allocation getAllocation() {
         return client.getAllocation();
     }
 
+    /**
+     * Fetches the servers current resource usage stats
+     */
     public SLSAction<ServerStats> getStats() {
         return client.getStats();
     }
 
+    /**
+     * Fetches the servers current resource usage stats
+     * @param update updates the cached disk usage
+     */
     public SLSAction<ServerStats> getStats(boolean update) {
         return client.getStats(update);
     }
 
+    /**
+     * Removes the server from the manager when executed
+     */
     public void unregister() {
         unregister.run();
     }
 
+    /**
+     * Executes a command on the server console.
+     * @param command the command to execute
+     */
     public SLSAction<Void> sendCommand(String command) {
         return client.sendCommand(command);
     }
 
+    /**
+     * Returns the number of players currently connected to this server
+     * as reported by the proxy.
+     */
     public int getPlayerCount() {
-        return SLS.proxy.getServer(id)
+        return SLS.proxy.getServer(getShortId())
                 .map(rs -> rs.getPlayersConnected().size())
                 .orElse(0);
     }
 
+    /**
+     * Returns the most recent 100 log lines from the server.
+     *
+     * @return an action that resolves to a list of log lines
+     */
     public SLSAction<List<String>> getLogs() {
         return client.getLogs();
     }
 
-    public SLSAction<List<String>> getLogs(int size) {
-        return client.getLogs(size);
+
+    /**
+     * Returns the specified number of most recent log lines from the server.
+     *
+     * @param lines the number of log lines to retrieve
+     * @return an action that resolves to a list of log lines
+     */
+    public SLSAction<List<String>> getLogs(int lines) {
+        return client.getLogs(lines);
     }
 
+    /**
+     * Fetches the servers status from the remote node
+     */
     public SLSAction<ServerStatus> getRemoteStatus() {
         return client.getStatus();
     }

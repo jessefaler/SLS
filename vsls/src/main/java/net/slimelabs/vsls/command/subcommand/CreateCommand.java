@@ -99,8 +99,7 @@ public class CreateCommand {
             Map.entry("--version=", "Sets the software to use when running this server"),
             Map.entry("--image=", "Sets the software to use when running this server"),
             Map.entry("--seed=", "Patches the server.properties config with a custom seed"),
-            Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance"),
-            Map.entry("--hardcore=", "Patches the server.properties config to set if hardcore should be enabled")
+            Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance")
     );
 
     private static RequiredArgumentBuilder<CommandSource, String> overrides() {
@@ -193,9 +192,6 @@ public class CreateCommand {
                                 break;
                             case "--view-distance=":
                                 serverPropertiesFind.put("view-distance", value);
-                                break;
-                            case "--hardcore=":
-                                serverPropertiesFind.put("hardcore", value);
                                 break;
                             case "--cpu=":
                                 try {

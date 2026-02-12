@@ -1,6 +1,7 @@
 package net.slimelabs.vsls.blueprints;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.entities.Blueprint;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -20,7 +21,13 @@ public class BlueprintRegistry {
 
     private ConcurrentHashMap<String, Blueprint> blueprints = new ConcurrentHashMap<>();
     private volatile boolean isLoaded = false;
+    private final SLSClient api;
     private final List<Consumer<BlueprintRegistry>> loadCallbacks = new CopyOnWriteArrayList<>();
+
+    public BlueprintRegistry(SLSClient api) {
+        this.api = api;
+        loadBlueprints(this);
+    }
 
     /**
      * Adds a blueprint to the registry
@@ -159,7 +166,7 @@ public class BlueprintRegistry {
         // Mark as not loaded during reload so callbacks can be registered again
         isLoaded = false;
         
-        return SLS.api.getBlueprints().limit(70)
+        return api.getBlueprints().limit(70)
                 .map(loadedBlueprints -> {
                     setBlueprints(loadedBlueprints);
                     Log.info("Reloaded blueprint registry. Loaded {} blueprints", loadedBlueprints.size());
@@ -183,21 +190,6 @@ public class BlueprintRegistry {
     }
 
     /**
-     * Initializes the blueprint registry.
-     * <p>
-     * Fetches all blueprints asynchronously from the API and populates the registry.
-     * If the fetch fails, it will retry every 30 seconds until successful.
-     * Any errors encountered during the fetch are logged.
-     *
-     * @return a new Registry instance with asynchronously loaded blueprints
-     */
-    public static BlueprintRegistry init() {
-        BlueprintRegistry registry = new BlueprintRegistry();
-        loadBlueprints(registry);
-        return registry;
-    }
-
-    /**
      * Attempts to load blueprints from the API. If it fails, schedules a retry after 30 seconds.
      * This will continue retrying until successful.
      *
@@ -205,7 +197,7 @@ public class BlueprintRegistry {
      */
     private static void loadBlueprints(BlueprintRegistry registry) {
         // Fetches 70 blueprints per page
-        SLS.api.getBlueprints().limit(70).executeAsync(blueprints -> {
+        registry.api.getBlueprints().limit(70).executeAsync(blueprints -> {
             registry.setBlueprints(blueprints);
             Log.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
         }, failure -> {

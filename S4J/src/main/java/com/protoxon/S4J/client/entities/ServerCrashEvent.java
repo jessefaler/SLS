@@ -4,13 +4,14 @@ import org.json.JSONObject;
 
 import java.time.Instant;
 
-public class ServerCrashEvent implements ServerEvent {
+public final class ServerCrashEvent extends ServerEvent {
     private final String serverId;
     private final String reason;
     private final int exitCode;
     private final Instant timestamp;
 
     public ServerCrashEvent(String serverId, JSONObject payload) {
+        super(serverId);
         this.serverId = serverId;
         this.reason = payload.optString("reason");
         this.exitCode = payload.optInt("exit_code");

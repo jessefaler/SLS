@@ -32,12 +32,11 @@ public class ViaVersion {
      */
     public static void register(Server server) {
         if(!isUsingViaVersion()) return; // ViaVersion is not in use on the proxy so return
-        String version = SLS.blueprints.getBlueprint(server.blueprintId).getServerVersion();
-        ProtocolVersion protocolId = ProtocolVersion.getClosest(version); // Get Mapping
+        ProtocolVersion protocolId = ProtocolVersion.getClosest(server.getVersion()); // Get Mapping
         if(protocolId == null) {
-            Log.error("failed to get protocol version for minecraft version {} while registering server {}", version, server.id);
+            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getShortId());
         } else {
-            getDetector().setProtocolVersion(server.id, protocolId.getVersion()); // Register with ViaVersion
+            getDetector().setProtocolVersion(server.getShortId(), protocolId.getVersion()); // Register with ViaVersion
         }
     }
 

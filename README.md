@@ -54,7 +54,7 @@ traits:
 server:
   software: "platform"
   version: "1.0.0"
-  image: "sls:java_21"
+  image: "ghcr.io/protoxon/images:java_21"
 
   # optional override
   # path: "custom/path"

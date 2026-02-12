@@ -2,47 +2,34 @@ package net.slimelabs.vsls.server;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
-import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class ServerManager implements ServerProvider {
 
     ConcurrentHashMap<String, Server> servers = new ConcurrentHashMap<>();
-    private SLSClient api;
-    public Events events;
+    private final ServerEventRouter router;
+    private final SLSClient api;
 
-    public ServerManager(SLSClient api) {
+    public ServerManager(SLSClient api, EventRouter router) {
         this.api = api;
-        // Initialize the event listener
-        events = Events.init(api, this);
-    }
-
-    /**
-     * Initializes the server registry.
-     * <p>
-     * Fetches all servers asynchronously from the API and populates the registry.
-     * If the fetch fails, it will retry every 30 seconds until successful.
-     * Any errors encountered during the fetch are logged.
-     *
-     * @param api the S4J api client
-     * @return the initialized registry
-     */
-    public static ServerManager init(SLSClient api) {
-        ServerManager registry = new ServerManager(api);
-        loadServers(registry, api);
-        return registry;
+        // Initialize the event router
+        this.router = new ServerEventRouter(router, this);
+        // Load servers from the api
+        loadServers(this, api);
     }
 
     /**
@@ -76,24 +63,54 @@ public class ServerManager implements ServerProvider {
             server = new Server(
                     blueprint.getName(),
                     clientServer,
-                    clientServer.getBlueprintId(),
                     () -> unRegister(clientServer.getId())
             );
         } else {
             // Blueprint not found, register it with the clientServers provided blueprint id
-            server = new Server(clientServer.getBlueprintId(), clientServer, clientServer.getBlueprintId(), () -> unRegister(clientServer.getId()));
-            Log.warn("Blueprint not found for server {} with blueprint ID: {}", clientServer.getId(), clientServer.getBlueprintId());
+            server = new Server(clientServer.getBlueprintId(), clientServer, () -> unRegister(clientServer.getId()));
+            Log.warn("Blueprint not found for server {} with blueprint id: {}", clientServer.getId(), clientServer.getBlueprintId());
         }
+        // Set the version from the creation action or from the blueprint if not set
+        var overrides = clientServer.getOverrides();
+        String versionOverride = overrides != null ? overrides.getVersion() : null;
+        server.setVersion(
+                versionOverride != null && !versionOverride.isEmpty()
+                        ? versionOverride
+                        : (blueprint != null ? blueprint.getServerVersion() : "null")
+        );
         register(server);
         // Fetch the servers status and update it locally
-        clientServer.getStatus().executeAsync(status -> {
-            server.status = status;
-        });
+        clientServer.getStatus().executeAsync(server::setStatus);
         return server;
     }
 
     public Server getServer(String id) {
         return servers.get(id);
+    }
+
+    /**
+     * Attempts to get the server from the manager or fetch from the API if not present.
+     * Returns an empty Optional if the server cannot be found.
+     */
+    public Optional<Server> getOrFetch(String id) {
+        Server server = getServer(id);
+        if (server != null) return Optional.of(server);
+        // The server is not in the manager try to fetch it
+        ClientServer clientServer = api.getServer(id).execute();
+        return Optional.ofNullable(SLS.servers.loadServer(clientServer));
+    }
+
+    /**
+     * Finds the first server whose ID starts with the provided prefix.
+     *
+     * @param id the ID prefix to search for
+     * @return the first matching Server, or null if no server matches the prefix
+     */
+    public Server resolve(String id) {
+        for (Server server : servers.values()) {
+            if (server.getId().startsWith(id)) return server;
+        }
+        return null;
     }
 
     /**
@@ -107,7 +124,11 @@ public class ServerManager implements ServerProvider {
         return action.map(clientServer -> {
             Blueprint blueprint = SLS.blueprints.getBlueprint(action.getBlueprintId());
             String name = Objects.requireNonNullElse(blueprint != null ? blueprint.getName() : null, action.getBlueprintId());
-            Server server = new Server(name, clientServer, action.getBlueprintId(), () -> unRegister(clientServer.getId()));
+            Server server = new Server(name, clientServer, () -> unRegister(clientServer.getId()));
+            // Set the version from the creation action or from the blueprint if not set
+            server.setVersion(!Objects.equals(action.getVersion(), "")
+                    ? action.getVersion()
+                    : (blueprint != null ? blueprint.getServerVersion() : "null"));
             register(server);
             return server;
         });
@@ -119,7 +140,7 @@ public class ServerManager implements ServerProvider {
      * @param server the server to register
      */
     public void register(Server server) {
-        servers.put(server.id, server);
+        servers.put(server.getId(), server);
         // Register the server with velocity
         // Create the socket address
         // Use the alias as the address if present
@@ -127,7 +148,7 @@ public class ServerManager implements ServerProvider {
                 server.getAllocation().getAlias().isEmpty() ? server.getAllocation().getIp() : server.getAllocation().getAlias(),
                 server.getAllocation().getPort()
         );
-        ServerInfo serverInfo = new ServerInfo(server.id, address);
+        ServerInfo serverInfo = new ServerInfo(server.getShortId(), address);
         SLS.proxy.registerServer(serverInfo);
         // Register the server with ViaVersion
         ViaVersion.register(server);
@@ -139,6 +160,16 @@ public class ServerManager implements ServerProvider {
      */
     public Collection<String> getIds() {
         return servers.keySet();
+    }
+
+    /**
+     * Gets the short id's of all servers in the registry.
+     * @return a collection of all server short id's
+     */
+    public Collection<String> getShortIds() {
+        return servers.values().stream()
+                .map(Server::getShortId)
+                .toList();
     }
 
     /**
@@ -157,21 +188,12 @@ public class ServerManager implements ServerProvider {
         Server server = servers.get(id);
         servers.remove(id);
         if(server != null) {
-            server.clearListeners();
+            server.getEvents().clearAllListeners();
+            // Unregister the server in velocity
+            SLS.proxy.getServer(server.getShortId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
+            ViaVersion.unregister(id);
         }
-        // Unregister the server in velocity
-        SLS.proxy.getServer(id).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
-        ViaVersion.unregister(id);
     }
-
-    /**
-     * Returns the event listener
-     * @return The event listener
-     */
-    public Events getEvents() {
-        return events;
-    }
-
 
 }
 
