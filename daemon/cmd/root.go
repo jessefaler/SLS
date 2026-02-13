@@ -14,6 +14,7 @@ import (
 	"protoxon.com/sls/daemon/api/auth"
 	"protoxon.com/sls/daemon/api/router"
 	"protoxon.com/sls/daemon/config"
+	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/internal/database"
 	"protoxon.com/sls/daemon/internal/message"
 	"protoxon.com/sls/daemon/remote"
@@ -71,6 +72,11 @@ func run(cmd *cobra.Command, _ []string) {
 	err = database.Initialize()
 	if err != nil {
 		log.WithError(err).Fatal("failed to initialize database")
+	}
+
+	// Ensure the Docker network (e.g. sls_nw) exists before starting containers.
+	if err := environment.ConfigureDocker(cmd.Context()); err != nil {
+		log.WithError(err).Fatal("failed to configure docker environment")
 	}
 
 	// =========================================================

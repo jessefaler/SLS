@@ -4,22 +4,18 @@ app_name: "SLS"
 
 debug: false
 
+system:
+  root_directory: "/var/lib/sls"
+  log_directory: "/var/log/sls/protocube"
+  volumes: "/var/lib/sls/volumes"
+  blueprints: "/var/lib/sls/blueprints"
+  software: "/var/lib/sls/software"
+  plugins: "/var/lib/sls/plugins"
+
 api:
   host: "0.0.0.0"
   port: 5620
   tls:
     enabled: true
-    cert: "/etc/protocube/cert.pem"
-    key: "/etc/protocube/key.pem"
-
-plugins-folder: "/var/lib/protocube/plugins"
-
-system:
-  root_directory: "/var/lib/protocube"
-  log_directory: "/var/log/protocube"
-
-blueprints:
-  root: "/var/lib/protocube/blueprints"
-
-software:
-  root: "/var/lib/protocube/software"
+    cert: "/etc/ssl/certs/cert.pem"
+    key: "/etc/ssl/certs/key.pem"

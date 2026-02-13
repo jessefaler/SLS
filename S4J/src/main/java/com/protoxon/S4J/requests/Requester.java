@@ -122,7 +122,9 @@ public class Requester {
 				lastResponse = call.execute();
 				responses[attempt] = lastResponse;
 
-				if (lastResponse.code() < 500) break;
+				// Don't retry on non-5XX responses or 502 Bad Gateway and 503 Service Unavailable
+				// 502 means the downstream node could not be reached and 503 means the node is unavailable
+				if (lastResponse.code() < 500 || lastResponse.code() == 502) break;
 
 				attempt++;
 				REQUESTER_LOG.debug(

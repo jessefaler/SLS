@@ -12,5 +12,3 @@ public sealed abstract class ServerEvent permits StatusUpdateEvent, ServerCrashE
         return serverId;
     }
 }
-
-

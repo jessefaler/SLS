@@ -30,7 +30,7 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	}
 
 	// If only meta requested, paginate meta list
-	var items []*blueprint.Blueprint
+	items := make([]*blueprint.Blueprint, 0)
 	if c.Query("meta") == "true" {
 		//items = r.BlueprintRegistry.AllMeta()
 	} else {
@@ -86,7 +86,7 @@ func (r *Router) getAllServers(c *gin.Context) {
 		return
 	}
 
-	out := make([]models.ServerData, len(servers), len(servers))
+	out := make([]models.ServerData, len(servers))
 	for i, v := range servers {
 		out[i] = v.ServerData()
 	}
@@ -185,22 +185,22 @@ func (r *Router) postCreateServer(c *gin.Context) {
 }
 
 func (r *Router) postReloadSoftware(c *gin.Context) {
-	sw, err := software.LoadAllSoftware(config.Get().Software.Root)
+	sw, err := software.LoadAllSoftware(config.Get().System.Software)
 	if err != nil {
 		log.WithError(err).Fatal("failed to load software configurations")
 	}
 	r.SoftwareRegistry.ReplaceAll(sw)
-	log.WithField("root", config.Get().Software.Root).Infof("Loaded %d software configurations.", len(sw))
+	log.WithField("root", config.Get().System.Software).Infof("Loaded %d software configurations.", len(sw))
 	c.Status(http.StatusOK)
 }
 
 func (r *Router) postReloadBlueprints(c *gin.Context) {
-	blueprints, err := blueprint.LoadAllBlueprints(config.Get().Blueprints.Root, r.SoftwareRegistry)
+	blueprints, err := blueprint.LoadAllBlueprints(config.Get().System.Blueprints, r.SoftwareRegistry)
 	if err != nil {
 		log.WithError(err).Fatal("failed to load blueprints")
 	}
 	r.BlueprintRegistry.ReplaceAll(blueprints)
-	log.WithField("root", config.Get().Blueprints.Root).Infof("Reloaded blueprint registry. Loaded %d blueprints", len(blueprints))
+	log.WithField("root", config.Get().System.Blueprints).Infof("Reloaded blueprint registry. Loaded %d blueprints", len(blueprints))
 	c.Status(http.StatusOK)
 }
 

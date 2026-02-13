@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/tls"
+	_ "embed"
 	"fmt"
 	log2 "log"
 	"os"
@@ -12,12 +13,16 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
+	"github.com/google/uuid"
 	"github.com/mitchellh/colorstring"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 )
 
-var Path = "/etc/sls/config.yml"
+//go:embed config.yml
+var defaultConfig []byte
+
+var Path = "/etc/sls/daemon/config.yml"
 
 var (
 	mutex  sync.RWMutex   // protects concurrent access to the config
@@ -42,10 +47,6 @@ type Configuration struct {
 	Docker DockerConfiguration `json:"docker" yaml:"docker"`
 
 	Api ApiConfiguration `json:"api" yaml:"api"`
-
-	Content ResourceConfig `json:"context" yaml:"context"`
-	Servers ResourceConfig `json:"servers" yaml:"servers"`
-	Worlds  ResourceConfig `json:"worlds" yaml:"worlds"`
 
 	Allocations []Allocation `json:"allocations" yaml:"allocations"`
 
@@ -116,17 +117,6 @@ type Allocation struct {
 	Ports           string `yaml:"ports"`
 }
 
-// ResourceConfig represents a generic resource directory
-// that SLS manages (blueprint, worlds, servers, plugins).
-type ResourceConfig struct {
-	// Root is the mounts path where the resources are stored.
-	Root string `yaml:"root"`
-
-	// Sync determines whether the resources in this directory
-	// should be kept in sync
-	Sync bool `yaml:"sync"`
-}
-
 // ApiConfiguration defines the configuration for the API server
 type ApiConfiguration struct {
 	Url string `json:"-" yaml:"url"`
@@ -192,16 +182,14 @@ type SystemConfiguration struct {
 		Gid int `default:"988" yaml:"gid"`
 	} `yaml:"user"`
 
-	Backups Backups `yaml:"backups"`
-
 	OpenatMode string `default:"auto" yaml:"openat_mode"`
 
 	// Directory where the server data is stored at.
 	Data string `default:"/var/lib/sls/data" json:"-" yaml:"data"`
-	// Directory where server volumes are stored
-	VolumesDirectory string `default:"/var/lib/sls/data/volumes" json:"-" yaml:"volumes"`
-	// Directory where state data is stored
-	StateDirectory string `default:"/var/lib/sls/data/state" json:"-" yaml:"state"`
+	// Directory where state volumes are stored
+	Volumes string `default:"/var/lib/sls/volumes" json:"-" yaml:"volumes"`
+	// Directory where installed servers are stored
+	Servers string `default:"/var/lib/sls/servers" json:"-" yaml:"servers"`
 }
 
 // ConfigureDirectories ensures that all the system directories exist on the
@@ -232,18 +220,18 @@ func ConfigureDirectories() error {
 		config.System.Data = d
 	}
 
-	log.WithField("path", config.System.Data).Debug("ensuring server data directory exists")
+	log.WithField("path", config.System.Data).Debug("ensuring data directory exists")
 	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
 		return err
 	}
 
-	log.WithField("path", config.System.VolumesDirectory).Debug("ensuring server volumes directory exists")
-	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
+	log.WithField("path", config.System.Servers).Debug("ensuring servers directory exists")
+	if err := os.MkdirAll(config.System.Servers, 0o700); err != nil {
 		return err
 	}
 
-	log.WithField("path", config.System.StateDirectory).Debug("ensuring state directory exists")
-	if err := os.MkdirAll(config.System.Data, 0o700); err != nil {
+	log.WithField("path", config.System.Volumes).Debug("ensuring volumes directory exists")
+	if err := os.MkdirAll(config.System.Volumes, 0o700); err != nil {
 		return err
 	}
 
@@ -293,6 +281,15 @@ func InitConfig() error {
 			log2.Fatalf("config/config: failed to get path to config file: %s", err)
 		}
 		configPath = absolutePath
+	}
+
+	// If config file doesn't exist, create it from embedded default
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		err := writeDefaultConfig(configPath)
+		if err != nil {
+			exitWithConfigurationNotice()
+		}
+		fmt.Printf(colorstring.Color(" [blue][bold]Created default config at: [reset]%s[reset]\n\n"), configPath)
 	}
 
 	err := loadConfigFromFile(configPath)
@@ -347,7 +344,7 @@ func loadConfigFromFile(path string) error {
 
 	// Override token values with environment variables if present
 	if envToken := os.Getenv("SLS_TOKEN"); envToken != "" {
-		//config.Api.Token = envToken
+		config.RemoteApi.Token = envToken
 	}
 
 	// Store this configuration in the global state.
@@ -367,6 +364,25 @@ func Set(c *Configuration) {
 // Get returns the global configuration instance.
 func Get() *Configuration {
 	return config
+}
+
+func writeDefaultConfig(path string) error {
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	var c Configuration
+	if err := yaml.Unmarshal(defaultConfig, &c); err != nil {
+		return err
+	}
+	c.Uuid = uuid.New().String()
+
+	out, err := yaml.Marshal(&c)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0o644)
 }
 
 func exitWithConfigurationNotice() {

@@ -43,6 +43,12 @@ public class Server {
         return status;
     }
 
+    /**
+     * Returns the server's event manager, which allows subscribing
+     * to server-related events such as status changes, crashes, and deletions.
+     *
+     * @return the {@link ServerEvents} instance for this server
+     */
     public ServerEvents getEvents() {
         return events;
     }

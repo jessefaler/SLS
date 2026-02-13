@@ -70,11 +70,11 @@ func ScanReader(r io.Reader, callback func(line []byte)) error {
 			// Read the line and write it to the buffer.
 			line, isPrefix, err = br.ReadLine()
 
-			// Certain games like Minecraft output absolutely random carriage returns in the output seemingly
-			// in line with that it thinks is the terminal size. Those returns break a lot of output handling,
-			// so we'll just replace them with proper new-lines and then split it later and send each line as
-			// its own event in the response.
-			line = bytes.Replace(line, cr, crr, -1)
+		// Certain games like Minecraft output absolutely random carriage returns in the output seemingly
+		// in line with that it thinks is the terminal size. Those returns break a lot of output handling,
+		// so we'll just replace them with proper new-lines and then split it later and send each line as
+		// its own event in the response.
+		line = bytes.ReplaceAll(line, cr, crr)
 			ns := buf.Len() + len(line)
 
 			// If the length of the line value and the current value in the buffer will

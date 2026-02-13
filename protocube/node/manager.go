@@ -135,9 +135,11 @@ func (m *Manager) Find(filter func(match *Node) bool) *Node {
 func (m *Manager) GetNodes() []*Node {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	nodes := make([]*Node, 0, len(m.nodes))
+	nodes := make([]*Node, len(m.nodes))
+	i := 0
 	for _, n := range m.nodes {
-		nodes = append(nodes, n)
+		nodes[i] = n
+		i++
 	}
 	return nodes
 }

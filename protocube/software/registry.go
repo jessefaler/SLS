@@ -65,7 +65,7 @@ func (registry *Registry) Get(id string) *Software {
 func (registry *Registry) Find(filter func(match *Software) bool) *[]Software {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
-	var result []Software
+	result := make([]Software, 0)
 	for _, software := range registry.software {
 		if filter(software) {
 			result = append(result, *software)
@@ -78,9 +78,11 @@ func (registry *Registry) Find(filter func(match *Software) bool) *[]Software {
 func (registry *Registry) All() []*Software {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
-	var result []*Software
-	for _, blueprint := range registry.software {
-		result = append(result, blueprint)
+	result := make([]*Software, len(registry.software))
+	i := 0
+	for _, software := range registry.software {
+		result[i] = software
+		i++
 	}
 	return result
 }

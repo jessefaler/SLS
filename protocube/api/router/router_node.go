@@ -63,7 +63,7 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 	}
 
 	// Connect the node in the node manager
-	node = r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String(), alloc)
+	r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String(), alloc)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token.String(),

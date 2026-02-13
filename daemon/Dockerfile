@@ -8,11 +8,11 @@ COPY go.mod go.sum /app/
 RUN go mod download
 COPY . /app/
 RUN CGO_ENABLED=0 go build \
-    -ldflags="-s -w -X github.com/jessefaler/SLS/tree/main/protocube/system.Version=$VERSION" \
+    -ldflags="-s -w -X github.com/jessefaler/SLS/tree/main/daemon/system.Version=$VERSION" \
     -v \
     -trimpath \
-    -o protocube \
-    protocube.go
+    -o daemon \
+    sls.go
 RUN echo "ID=\"distroless\"" > /etc/os-release
 
 # Stage 2 (Final)
@@ -20,7 +20,7 @@ FROM gcr.io/distroless/static:latest
 COPY --from=builder /etc/os-release /etc/os-release
 COPY --from=builder /etc/mime.types /etc/mime.types
 
-COPY --from=builder /app/protocube /usr/bin/
+COPY --from=builder /app/daemon /usr/bin/
 
-ENTRYPOINT ["/usr/bin/protocube"]
-CMD ["--config", "/etc/sls/protocube/config.yml"]
+ENTRYPOINT ["/usr/bin/daemon"]
+CMD ["--config", "/etc/sls/daemon/config.yml"]

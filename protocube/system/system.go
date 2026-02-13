@@ -42,7 +42,9 @@ func GetTotalMemoryBytes() int64 {
 	if err != nil {
 		return -1
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

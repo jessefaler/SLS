@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -56,9 +55,11 @@ func (m *Manager) Add(server *Server) {
 func (m *Manager) All() []*Server {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	servers := make([]*Server, 0, len(m.servers))
+	servers := make([]*Server, len(m.servers))
+	i := 0
 	for _, s := range m.servers {
-		servers = append(servers, s)
+		servers[i] = s
+		i++
 	}
 	return servers
 }
@@ -95,7 +96,7 @@ func (m *Manager) ServersByNode(nodeId string) []*Server {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	var result []*Server
+	result := make([]*Server, 0)
 	for _, server := range m.servers {
 		if server.nodeId == nodeId {
 			result = append(result, server)
@@ -157,8 +158,9 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 			s.Remove()
 			s.Events().Destroy()
 			s.DestroyAllSinks()
-			err := repository.RemoveServer(s.Id())
-			log.WithError(err).Errorf("failed to remove server %s from database.", serverId)
+			if err := repository.RemoveServer(s.Id()); err != nil {
+				log.WithError(err).Errorf("failed to remove server %s from database.", serverId)
+			}
 		}
 	}()
 
@@ -319,8 +321,8 @@ func (m *Manager) init(ctx context.Context, nm *node.Manager) error {
 	// before continuing.
 	pool.StopWait()
 
-	diff := time.Now().Sub(start)
-	log.WithField("duration", fmt.Sprintf("%s", diff)).Info("finished processing server configurations")
+	diff := time.Since(start)
+	log.WithField("duration", diff.String()).Info("finished processing server configurations")
 
 	return nil
 }

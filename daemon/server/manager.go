@@ -130,7 +130,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.Config().Container.Image = req.Image
 
 	// Get the path of the base server folder
-	serverFolder := filepath.Join(config.Get().Servers.Root, req.ServerFolder)
+	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
 
 	// create the overlay volume
 	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay2", s.id), serverFolder)
@@ -155,10 +155,10 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	}
 
 	// Create the path to the servers volume
-	volume := filepath.Join(config.Get().System.VolumesDirectory, s.id)
+	volume := filepath.Join(config.Get().System.Data, s.id)
 
 	// Set volume mounts from the state configuration
-	volumesRoot := filepath.Join(config.Get().System.StateDirectory, "volumes")
+	volumesRoot := filepath.Join(config.Get().System.Volumes)
 	volumeMounts := make([]Mount, 0, len(req.State.Volumes))
 	for _, v := range req.State.Volumes {
 		switch v.Mode {

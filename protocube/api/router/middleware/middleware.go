@@ -41,7 +41,9 @@ func AttachRequestID() gin.HandlerFunc {
 // at the time it is called the stack will be attached.
 func CaptureAndAbort(c *gin.Context, err error) {
 	c.Abort()
-	c.Error(errors.WithStackDepthIf(err, 1))
+	if err := c.Error(errors.WithStackDepthIf(err, 1)); err != nil {
+		log.Warnf("middleware error: %v", err)
+	}
 }
 
 // CaptureErrors is custom handler function allowing for errors bubbled up by

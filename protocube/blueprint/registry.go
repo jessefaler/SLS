@@ -64,7 +64,7 @@ func (registry *Registry) Get(id string) *Blueprint {
 func (registry *Registry) Find(filter func(match *Blueprint) bool) *[]Blueprint {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
-	var blueprints []Blueprint
+	blueprints := make([]Blueprint, 0)
 	for _, blueprint := range registry.blueprints {
 		if filter(blueprint) {
 			blueprints = append(blueprints, *blueprint)
@@ -84,9 +84,11 @@ func (registry *Registry) FindType(blueprintType string) *[]Blueprint {
 func (registry *Registry) All() []*Blueprint {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
-	var blueprints []*Blueprint
+	blueprints := make([]*Blueprint, len(registry.blueprints))
+	i := 0
 	for _, blueprint := range registry.blueprints {
-		blueprints = append(blueprints, blueprint)
+		blueprints[i] = blueprint
+		i++
 	}
 	return blueprints
 }
@@ -96,9 +98,11 @@ func (registry *Registry) AllMeta() []Meta {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 
-	metas := make([]Meta, 0, len(registry.blueprints))
+	metas := make([]Meta, len(registry.blueprints))
+	i := 0
 	for _, blueprint := range registry.blueprints {
-		metas = append(metas, blueprint.Meta)
+		metas[i] = blueprint.Meta
+		i++
 	}
 	return metas
 }

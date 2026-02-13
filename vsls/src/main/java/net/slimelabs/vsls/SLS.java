@@ -43,7 +43,6 @@ public class SLS {
     public static ServerManager     servers;
     public static BlueprintRegistry blueprints;
     public static SLSClient         api;
-    public static ChatPackets       chatPackets;
     public static QueueManager      queue;
 
     private static EventStream eventStream;

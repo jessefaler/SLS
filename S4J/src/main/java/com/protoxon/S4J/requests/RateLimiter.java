@@ -150,15 +150,16 @@ public class RateLimiter implements Runnable {
 
 			if (isSkipped(iterator, request)) continue;
 
-			try {
-				rateLimit = requester.execute(request);
-				if (rateLimit != null) break;
-				iterator.remove();
-			} catch (Exception ex) {
-				RATELIMIT_LOG.error("Encountered exception trying to execute request");
-				ex.printStackTrace();
-				break;
-			}
+		try {
+			rateLimit = requester.execute(request);
+			if (rateLimit != null) break;
+			iterator.remove();
+		} catch (Exception ex) {
+			RATELIMIT_LOG.error("Encountered exception trying to execute request");
+			ex.printStackTrace();
+			request.onFailure(ex);
+			iterator.remove();
+		}
 		}
 		backoff();
 	}

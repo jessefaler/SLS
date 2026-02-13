@@ -5,6 +5,7 @@ import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.exceptions.NotFoundException;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.events.EventRouter;
@@ -90,14 +91,18 @@ public class ServerManager implements ServerProvider {
 
     /**
      * Attempts to get the server from the manager or fetch from the API if not present.
-     * Returns an empty Optional if the server cannot be found.
+     * Returns an empty Optional if the server cannot be found (e.g. 404 when the server
+     * was already removed, such as after a failed start that triggered deletion).
      */
     public Optional<Server> getOrFetch(String id) {
         Server server = getServer(id);
         if (server != null) return Optional.of(server);
-        // The server is not in the manager try to fetch it
-        ClientServer clientServer = api.getServer(id).execute();
-        return Optional.ofNullable(SLS.servers.loadServer(clientServer));
+        try {
+            ClientServer clientServer = api.getServer(id).execute();
+            return Optional.ofNullable(SLS.servers.loadServer(clientServer));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     /**

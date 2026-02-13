@@ -30,9 +30,9 @@ func GetHandler(w http.ResponseWriter, r *http.Request, c *gin.Context) (*Handle
 		return nil, err
 	}
 
-	conn.SetReadDeadline(time.Time{})
+	_ = conn.SetReadDeadline(time.Time{})
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(90 * time.Second))
+		_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
 		return nil
 	})
 

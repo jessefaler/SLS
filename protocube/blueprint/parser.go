@@ -216,19 +216,15 @@ func (s *Server) Validate() error {
 		return fmt.Errorf(
 			"unknown software %q: you must define configuration for this software in %s",
 			s.Software,
-			config.Get().Software.Root,
+			config.Get().System.Software,
 		)
 	}
 
 	// Ensure the image this blueprint uses is defined in the software's docker images
-	found := false
-	for _, image := range sw.DockerImages {
-		if image == s.Image {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if url, ok := sw.DockerImages[s.Image]; ok {
+		// Replace s.Image with the actual Docker image URL
+		s.Image = url
+	} else {
 		return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
 	}
 

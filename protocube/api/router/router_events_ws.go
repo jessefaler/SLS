@@ -30,15 +30,17 @@ func (r *Router) getServerWebsocket(c *gin.Context) {
 		middleware.CaptureAndAbort(c, err)
 		return
 	}
-	defer handler.Connection.Close()
+	defer func() {
+		_ = handler.Connection.Close()
+	}()
 
 	// Dedicated context so HTTP server timeouts don't kill the WebSocket
 	wsCtx, wsCancel := context.WithCancel(context.Background())
 	defer wsCancel()
 
 	// Remove deadlines so the connection can stay open indefinitely
-	handler.Connection.SetReadDeadline(time.Time{})
-	handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
+	_ = handler.Connection.SetReadDeadline(time.Time{})
+	_ = handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
 	if conn := handler.Connection.UnderlyingConn(); conn != nil {
 		_ = conn.SetReadDeadline(time.Time{})
 		_ = conn.SetWriteDeadline(time.Time{})
@@ -87,7 +89,7 @@ func (r *Router) getServerWebsocket(c *gin.Context) {
 			return
 
 		case <-ticker.C:
-			handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
+			_ = handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
 			if err := handler.Connection.WriteMessage(ws.PingMessage, nil); err != nil {
 				log.WithError(err).Debug("websocket ping failed")
 				return
@@ -96,7 +98,7 @@ func (r *Router) getServerWebsocket(c *gin.Context) {
 		case data := <-ch:
 			ev := events.MustDecode(data)
 
-			handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
+			_ = handler.Connection.SetWriteDeadline(time.Now().Add(60 * time.Second))
 
 			if err := handler.Connection.WriteJSON(ev); err != nil {
 				if ws.IsUnexpectedCloseError(err, expectedCloseCodes...) {

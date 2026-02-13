@@ -178,7 +178,9 @@ func (nc *nodeClient) request(ctx context.Context, method, path string, body *by
 		res = r
 		if r.HasError() {
 			// Close the request body after returning the error to free up resources.
-			defer r.Body.Close()
+			defer func() {
+				_ = r.Body.Close()
+			}()
 			// Don't keep attempting to access this endpoint if the response is a 4XX
 			// level error which indicates a client mistake. Only retry when the error
 			// is due to a server issue (5XX error).
@@ -257,10 +259,10 @@ func (r *Response) Read() ([]byte, error) {
 	if r.Response == nil {
 		return nil, errors.New("attempting to read missing response")
 	}
-	if r.Response.Body != nil {
-		b, _ = io.ReadAll(r.Response.Body)
+	if r.Body != nil {
+		b, _ = io.ReadAll(r.Body)
 	}
-	r.Response.Body = io.NopCloser(bytes.NewBuffer(b))
+	r.Body = io.NopCloser(bytes.NewBuffer(b))
 	return b, nil
 }
 

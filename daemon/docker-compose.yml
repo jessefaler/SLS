@@ -1,0 +1,53 @@
+services:
+  daemon:
+    image: ghcr.io/jessefaler/sls/daemon:latest
+    # Overlay mounts (used for server filesystems) need one of:
+    # - userns_mode: host (when Docker uses userns-remap, container root cannot mount)
+    # - apparmor=unconfined (Docker's default AppArmor profile can deny mount)
+    userns_mode: "host"
+    security_opt:
+      - apparmor=unconfined
+    cap_add:
+      - SYS_ADMIN
+    restart: always
+    networks:
+      - sls0
+    ports:
+      - "5585:5585"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "protocube.sls.net:host-gateway"
+      - "daemon.sls.net:host-gateway"
+    tty: true
+    environment:
+      TZ: "UTC"
+      SLS_UID: 988
+      SLS_GID: 988
+      SLS_USERNAME: sls
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/lib/docker/containers/:/var/lib/docker/containers/"
+      - "/etc/sls/daemon/:/etc/sls/daemon/"
+      - "/var/log/sls/daemon/:/var/log/sls/daemon"
+      - "/tmp/sls/daemon/:/tmp/sls/daemon"
+      - "/etc/ssl/certs:/etc/ssl/certs:ro"
+
+      # rshared propagation is required so overlay mounts created by the daemon at
+      # /var/lib/sls/data/<server-id> propagate to the host. Server containers are
+      # given a bind mount of that path by the host Docker daemon; without propagation
+      # the host never sees the overlay and server containers get an empty directory
+      - type: bind
+        source: /var/lib/sls
+        target: /var/lib/sls
+        bind:
+          propagation: rshared
+
+networks:
+  sls0:
+    name: sls0
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.21.0.0/16"
+    driver_opts:
+      com.docker.network.bridge.name: sls0

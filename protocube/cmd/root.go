@@ -65,23 +65,23 @@ func run(cmd *cobra.Command, _ []string) {
 	// Initialize the software configurations
 	// =========================================================
 	softwareRegistry := software.NewRegistry()
-	sw, err := software.LoadAllSoftware(config.Get().Software.Root)
+	sw, err := software.LoadAllSoftware(config.Get().System.Software)
 	if err != nil {
 		log.WithError(err).Fatal("failed to load software configurations")
 	}
 	softwareRegistry.RegisterAll(sw)
-	log.WithField("root", config.Get().Software.Root).Infof("Loaded %d software configurations.", len(sw))
+	log.WithField("root", config.Get().System.Software).Infof("Loaded %d software configurations.", len(sw))
 
 	// =========================================================
 	// Initialize the blueprint registry
 	// =========================================================
 	blueprintRegistry := blueprint.NewRegistry()
-	blueprints, err := blueprint.LoadAllBlueprints(config.Get().Blueprints.Root, softwareRegistry)
+	blueprints, err := blueprint.LoadAllBlueprints(config.Get().System.Blueprints, softwareRegistry)
 	if err != nil {
 		log.WithError(err).Fatal("failed to load blueprints")
 	}
 	blueprintRegistry.RegisterAll(blueprints)
-	log.WithField("root", config.Get().Blueprints.Root).Infof("Initialized blueprint registry. Loaded %d blueprints", len(blueprints))
+	log.WithField("root", config.Get().System.Blueprints).Infof("Initialized blueprint registry. Loaded %d blueprints", len(blueprints))
 
 	// =========================================================
 	// Configure the api
@@ -102,7 +102,7 @@ func run(cmd *cobra.Command, _ []string) {
 	err = plugins.LoadPlugins(&plugins.SLS{
 		BlueprintRegistry: blueprintRegistry,
 		Router:            apiInstance.Router.Handler,
-		PluginsDir:        config.Get().PluginsDir,
+		PluginsDir:        config.Get().System.Plugins,
 	})
 	if err != nil {
 		log.Error("Failed to load plugins")

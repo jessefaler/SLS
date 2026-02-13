@@ -36,7 +36,7 @@ func init() {
 	generateKeyCommand.Flags().StringVarP(&keyType, "type", "t", "", "Type of key to generate: 'node' or 'application' (required)")
 	generateKeyCommand.Flags().StringVarP(&outputFile, "output", "o", "", "File path to write the key to (default: saves to system directory)")
 	generateKeyCommand.Flags().BoolVar(&printToConsole, "print", false, "Print key to console (not recommended for security)")
-	generateKeyCommand.MarkFlagRequired("type")
+	_ = generateKeyCommand.MarkFlagRequired("type")
 }
 
 // initEnvironment sets up the config and logging
@@ -80,11 +80,12 @@ var generateKeyCommand = &cobra.Command{
 		// Validate key type
 		keyTypeLower := strings.ToLower(keyType)
 		var tokenType auth.KeyType
-		if keyTypeLower == "node" {
+		switch keyTypeLower {
+		case "node":
 			tokenType = auth.Node
-		} else if keyTypeLower == "application" {
+		case "application":
 			tokenType = auth.Application
-		} else {
+		default:
 			log2.Fatalf("Key type must be either 'node' or 'application', got: %s", keyType)
 		}
 

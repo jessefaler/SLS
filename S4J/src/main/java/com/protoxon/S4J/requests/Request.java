@@ -71,6 +71,18 @@ public class Request<T> {
 			onFailure(new RateLimitedException(route, response.getRetryAfter()));
 		} else
 			switch (response.getCode()) {
+				case -1:
+					// Connection/exception error
+					if (response.getException() != null) {
+						String exceptionMessage = response.getException().getMessage();
+						String errorMessage = exceptionMessage != null
+								? "Unable to reach the api server: " + exceptionMessage
+								: "Unable to reach the api server: " + response.getException().getClass().getSimpleName();
+						onFailure(new HttpException(errorMessage));
+					} else {
+						onFailure(new HttpException("Unable to reach the API server (unknown error)"));
+					}
+					break;
 				case 403:
 					onFailure(new LoginException(
 							"The provided token is either incorrect or does not have access to process this request."));

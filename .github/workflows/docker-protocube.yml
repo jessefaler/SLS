@@ -1,5 +1,4 @@
-name: Build SLS Docker Image
-
+name: Protocube Docker Image
 on:
   push:
     branches:
@@ -32,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/protocube
+          images: ghcr.io/${{ github.repository_owner }}/sls/protocube
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -47,5 +46,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

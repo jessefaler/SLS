@@ -1,7 +1,10 @@
 package filesystem
 
 import (
+	stderrors "errors"
+	"io/fs"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -203,16 +206,63 @@ func (fs *Filesystem) DirectorySize(root string) (int64, error) {
 	return size.Load(), errors.WrapIf(err, "server/filesystem: directorysize: failed to walk directory")
 }
 
-// DirectorySizePhysical reports the physical size of a directory on disk
+// DirectorySizePhysical reports the physical size of a directory on disk.
+// Uses du when available; falls back to walking the directory and stat when du is not in PATH (e.g. distroless).
 func DirectorySizePhysical(root string) (int64, error) {
+	size, err := directorySizePhysicalDu(root)
+	if err == nil {
+		return size, nil
+	}
+	if stderrors.Is(err, exec.ErrNotFound) {
+		return directorySizePhysicalFallback(root)
+	}
+	return 0, err
+}
+
+func directorySizePhysicalDu(root string) (int64, error) {
 	cmd := exec.Command("du", "-sb", root)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return 0, errors.WrapWithDetails(err, "du failed", "output", out)
+		return 0, stderrors.Join(err, stderrors.New("du failed"))
 	}
-
 	fields := strings.Fields(string(out))
+	if len(fields) == 0 {
+		return 0, stderrors.New("du produced no output")
+	}
 	return strconv.ParseInt(fields[0], 10, 64)
+}
+
+// directorySizePhysicalFallback walks the directory and sums file sizes when du is not available.
+func directorySizePhysicalFallback(root string) (int64, error) {
+	hardLinks := make(map[uint64]struct{})
+	var total atomic.Int64
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return errors.Wrap(err, "stat file")
+		}
+		sys := info.Sys()
+		if sys != nil {
+			if st, ok := sys.(*unix.Stat_t); ok && st.Nlink > 1 {
+				if _, exists := hardLinks[st.Ino]; exists {
+					return nil
+				}
+				hardLinks[st.Ino] = struct{}{}
+			}
+		}
+		total.Add(info.Size())
+		return nil
+	})
+	if err != nil {
+		return 0, errors.WrapWithDetails(err, "directory size")
+	}
+	return total.Load(), nil
 }
 
 func (fs *Filesystem) HasSpaceFor(size int64) error {

@@ -22,7 +22,7 @@ func RemoveServer(id string) error {
 
 // GetAllServers returns all servers stored in the database
 func GetAllServers() ([]*models.ServerStore, error) {
-	var servers []*models.ServerStore
+	servers := make([]*models.ServerStore, 0)
 	if err := database.Instance().Find(&servers).Error; err != nil {
 		return nil, errors.Wrap(err, "failed to fetch servers from database")
 	}

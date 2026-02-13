@@ -12,11 +12,9 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
-	"github.com/juju/ratelimit"
 	"github.com/klauspost/pgzip"
 	ignore "github.com/sabhiram/go-gitignore"
 
-	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/internal/progress"
 	"protoxon.com/sls/daemon/internal/ufs"
 )
@@ -94,6 +92,10 @@ func (a *Archive) Create(ctx context.Context, dst string) error {
 	// Select a writer based off of the WriteLimit configuration option. If there is no
 	// write limit, use the file as the writer.
 	var writer io.Writer
+
+	panic("archive not supported at this time")
+	// Backups are not implemented at this time
+	/**
 	if writeLimit := int64(config.Get().System.Backups.WriteLimit * 1024 * 1024); writeLimit > 0 {
 		// Token bucket with a capacity of "writeLimit" MiB, adding "writeLimit" MiB/s
 		// and then wrap the file writer with the token bucket limiter.
@@ -101,6 +103,7 @@ func (a *Archive) Create(ctx context.Context, dst string) error {
 	} else {
 		writer = f
 	}
+	*/
 
 	return a.Stream(ctx, writer)
 }
@@ -131,6 +134,10 @@ func (a *Archive) Stream(ctx context.Context, w io.Writer) error {
 
 	// Choose which compression level to use based on the compression_level configuration option
 	var compressionLevel int
+
+	panic("archive not supported at this time")
+	// Backups are not implemented at this time
+	/**
 	switch config.Get().System.Backups.CompressionLevel {
 	case "none":
 		compressionLevel = pgzip.NoCompression
@@ -139,6 +146,7 @@ func (a *Archive) Stream(ctx context.Context, w io.Writer) error {
 	default:
 		compressionLevel = pgzip.BestSpeed
 	}
+	*/
 
 	// Create a new gzip writer around the file.
 	gw, _ := pgzip.NewWriterLevel(w, compressionLevel)

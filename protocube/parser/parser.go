@@ -127,10 +127,6 @@ type ConfigurationFile struct {
 	FileName string                         `json:"file"`
 	Parser   ConfigurationParser            `json:"parser"`
 	Replace  []ConfigurationFileReplacement `json:"replace"`
-
-	// Tracks Wings' configuration so that we can quickly get values
-	// out of it when variables request it.
-	configuration []byte
 }
 
 // UnmarshalJSON is a custom unmarshaler for configuration files. If there is an

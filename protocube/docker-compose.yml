@@ -1,18 +1,22 @@
 services:
   protocube:
-    image: ghcr.io/jessefaler/protocube:latest
+    image: ghcr.io/jessefaler/sls/protocube:latest
     container_name: SLS
     restart: always
     ports:
       - "5620:5620"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "protocube.sls.net:host-gateway"
+      - "daemon.sls.net:host-gateway"
     tty: true
     environment:
       TZ: "UTC"
     volumes:
-      - "/etc/protocube/:/etc/protocube/"
-      - "/var/lib/protocube/:/var/lib/protocube/"
-      - "/var/log/protocube/:/var/log/protocube/"
-      - "/tmp/protocube/:/tmp/protocube/"
+      - "/etc/sls/protocube/:/etc/sls/protocube/"
+      - "/var/lib/sls/:/var/lib/sls/"
+      - "/var/log/sls/protocube/:/var/log/sls/protocube/"
+      - "/tmp/sls/protocube/:/tmp/sls/protocube/"
       - "/etc/ssl/certs:/etc/ssl/certs:ro"
 
 networks:

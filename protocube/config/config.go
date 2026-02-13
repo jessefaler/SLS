@@ -2,18 +2,21 @@ package config
 
 import (
 	"crypto/tls"
+	_ "embed"
 	"fmt"
-	log2 "log"
 	"os"
 	"path/filepath"
 	"sync"
 
-	"emperror.dev/errors"
+	"github.com/apex/log"
 	"github.com/mitchellh/colorstring"
 	"gopkg.in/yaml.v3"
 )
 
-var Path = "/sls/protocube/config.yml"
+var Path = "/etc/sls/protocube/config.yml"
+
+//go:embed config.yml
+var defaultConfig []byte
 
 var (
 	mutex  sync.RWMutex   // protects concurrent access to the config
@@ -30,13 +33,7 @@ type Configuration struct {
 
 	AppName string `default:"SLS" yaml:"app_name"`
 
-	PluginsDir string `yaml:"plugins-folder"`
-
 	System SystemConfiguration `yaml:"system"`
-
-	Blueprints ResourceConfig `yaml:"blueprints"`
-
-	Software ResourceConfig `yaml:"software"`
 
 	// AllowedOrigins is a list of allowed request origins.
 	AllowedOrigins []string `json:"allowed_origins" yaml:"allowed_origins"`
@@ -63,16 +60,18 @@ type ApiConfiguration struct {
 	}
 }
 
-// ResourceConfig represents a generic resource directory
-// that SLS manages (blueprint, worlds, servers, plugins).
-type ResourceConfig struct {
-	// Root is the mounts path where the resources are stored.
-	Root string `yaml:"root"`
-}
-
 type SystemConfiguration struct {
 	RootDirectory string `default:"/var/lib/protocube" yaml:"root_directory"`
 	LogDirectory  string `default:"/var/log/protocube" yaml:"log_directory"`
+
+	// Directory where state volumes are stored
+	Volumes string `default:"/var/lib/sls/volumes" json:"-" yaml:"volumes"`
+	// Directory where software config files are stored
+	Software string `default:"/var/lib/sls/software" json:"-" yaml:"software"`
+	// Directory where blueprints are stored
+	Blueprints string `default:"/var/lib/sls/blueprints" json:"-" yaml:"blueprints"`
+	// Directory where Protocube plugins are stored
+	Plugins string `default:"/var/lib/sls/plugins" json:"-" yaml:"plugins"`
 }
 
 // InitConfig Reads the configuration from the disk and then sets up the global singleton
@@ -82,18 +81,64 @@ func InitConfig() {
 	if !filepath.IsAbs(configPath) {
 		absolutePath, err := filepath.Abs(configPath)
 		if err != nil {
-			log2.Fatalf("config/config: failed to get path to config file: %s", err)
+			log.Fatalf("config/config: failed to get path to config file: %s", err)
 		}
 		configPath = absolutePath
 	}
 
-	err := loadConfigFromFile(configPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+	// If config file doesn't exist, create it from embedded default
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		err := writeDefaultConfig(configPath)
+		if err != nil {
 			exitWithConfigurationNotice()
 		}
-		log2.Fatalf("config/config: error while reading configuration file: %s", err)
+		fmt.Printf(colorstring.Color(" [blue][bold]Created default config at: [reset]%s[reset]\n\n"), configPath)
 	}
+
+	// Load the config from disk
+	err := loadConfigFromFile(configPath)
+	if err != nil {
+		log.Fatalf("config/config: error while reading configuration file: %s", err)
+	}
+
+	if err = ConfigureDirectories(); err != nil {
+		log.Errorf("config/config: failed to configure directories: %s", err)
+	}
+}
+
+// ConfigureDirectories ensures that all the system directories exist on the
+// system. These directories are created so that only the owner can read the data,
+// and no other users.
+//
+// This function IS NOT thread-safe.
+func ConfigureDirectories() error {
+	root := config.System.RootDirectory
+	log.WithField("path", root).Debug("ensuring root data directory exists")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.Plugins).Debug("ensuring plugins directory exists")
+	if err := os.MkdirAll(config.System.Plugins, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.Blueprints).Debug("ensuring blueprints directory exists")
+	if err := os.MkdirAll(config.System.Blueprints, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.Software).Debug("ensuring software directory exists")
+	if err := os.MkdirAll(config.System.Software, 0o700); err != nil {
+		return err
+	}
+
+	log.WithField("path", config.System.Volumes).Debug("ensuring volumes directory exists")
+	if err := os.MkdirAll(config.System.Volumes, 0o700); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // LoadConfigFromFile reads the configuration from the provided file and stores it in the
@@ -122,6 +167,16 @@ func set(configuration *Configuration) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	config = configuration
+}
+
+func writeDefaultConfig(path string) error {
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+
+	// Write embedded default config
+	return os.WriteFile(path, defaultConfig, 0o644)
 }
 
 // Get returns the global configuration instance.

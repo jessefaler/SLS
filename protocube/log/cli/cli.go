@@ -66,13 +66,13 @@ func (h *Handler) HandleLog(e *log.Entry) error {
 
 	// Print level, timestamp, and optionally plugin name
 	if pluginName != "" {
-		color.Fprintf(h.Writer, "%s: [%s] [%s] %-25s",
+		_, _ = color.Fprintf(h.Writer, "%s: [%s] [%s] %-25s",
 			bold.Sprintf("%*s", h.Padding+1, level),
 			time.Now().Format(time.StampMilli),
 			pluginName,
 			e.Message)
 	} else {
-		color.Fprintf(h.Writer, "%s: [%s] %-25s",
+		_, _ = color.Fprintf(h.Writer, "%s: [%s] %-25s",
 			bold.Sprintf("%*s", h.Padding+1, level),
 			time.Now().Format(time.StampMilli),
 			e.Message)
@@ -83,10 +83,10 @@ func (h *Handler) HandleLog(e *log.Entry) error {
 		if name == "source" || name == "plugin" {
 			continue
 		}
-		fmt.Fprintf(h.Writer, " %s=%v", color.Sprint(name), e.Fields.Get(name))
+		_, _ = fmt.Fprintf(h.Writer, " %s=%v", color.Sprint(name), e.Fields.Get(name))
 	}
 
-	fmt.Fprintln(h.Writer)
+	_, _ = fmt.Fprintln(h.Writer)
 
 	// Handle error stacktrace exactly as in original
 	for _, name := range names {

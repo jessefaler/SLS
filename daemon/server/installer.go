@@ -36,7 +36,7 @@ func (i *Installer) IsInstalled(serverPath string) bool {
 	if i.IsInstalling(serverPath) {
 		return false
 	}
-	root := config.Get().Servers.Root
+	root := config.Get().System.Servers
 	fullPath := filepath.Join(root, serverPath)
 
 	// Check if the path exists

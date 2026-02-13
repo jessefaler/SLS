@@ -14,7 +14,7 @@ import (
 // finds all .yaml/.yml files, and loads them into Software structs.
 // It validates that no two software share the same ID.
 func LoadAllSoftware(softwareRoot string) ([]*Software, error) {
-	var software []*Software
+	software := make([]*Software, 0)
 	seenIDs := make(map[string]struct{}) // tracks loaded software IDs
 
 	err := filepath.Walk(softwareRoot, func(path string, info os.FileInfo, err error) error {
@@ -129,7 +129,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if tmp.Name == "" {
 		return errors.New("missing required field: software.name")
 	}
-	if tmp.DockerImages == nil || len(tmp.DockerImages) == 0 {
+	if len(tmp.DockerImages) == 0 {
 		return errors.New("missing required field: software.images")
 	}
 	if tmp.StopCommand == "" {

@@ -11,7 +11,7 @@ import (
 // blueprint, then optional request overrides. Later entries for the same file
 // override earlier ones when applying.
 func GetConfigFiles(sw *software.Software, blueprint *blueprint.Blueprint, overrideConfigs map[string]blueprint.ConfigFile) ([]parser.ConfigurationFile, error) {
-	var configFiles []parser.ConfigurationFile
+	configFiles := make([]parser.ConfigurationFile, 0)
 
 	// Add software configs first
 	if sw.Configs != nil {
@@ -36,14 +36,12 @@ func GetConfigFiles(sw *software.Software, blueprint *blueprint.Blueprint, overr
 	}
 
 	// Add request overrides last so they merge/override software and blueprint
-	if overrideConfigs != nil {
-		for fileName, configFile := range overrideConfigs {
-			cf, err := convertConfigFile(fileName, configFile.Parser, configFile.Find, nil)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to convert override config file %s", fileName)
-			}
-			configFiles = append(configFiles, *cf)
+	for fileName, configFile := range overrideConfigs {
+		cf, err := convertConfigFile(fileName, configFile.Parser, configFile.Find, nil)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to convert override config file %s", fileName)
 		}
+		configFiles = append(configFiles, *cf)
 	}
 
 	return configFiles, nil

@@ -36,7 +36,7 @@ type Plugin interface {
 
 func LoadPlugins(sls *SLS) error {
 	pluginDir := sls.PluginsDir
-	err := filepath.Walk(pluginDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(pluginDir, func(path string, info os.FileInfo, walkErr error) error {
 		if filepath.Ext(path) != ".so" {
 			return nil
 		}

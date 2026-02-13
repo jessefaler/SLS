@@ -25,7 +25,7 @@ public class EventStream {
 
     public void start() {
         stream.start();
-        Log.info("Initialized Event Stream");
+        Log.info("Initializing event stream");
     }
 
     public void stop() {

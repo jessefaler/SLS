@@ -44,7 +44,7 @@ public class ServerEventRouter {
         provider.getOrFetch(event.getServerId())
                 .ifPresentOrElse(server -> dispatchEvent(server, event),
                         () -> Log.warn("Events: unknown server with id {} emitted a {}",
-                                event.getServerId(), event.getClass()));
+                                event.getServerId(), event.getClass().getSimpleName()));
     }
 
     private void handleStatusUpdate(Server server, StatusUpdateEvent event) {
