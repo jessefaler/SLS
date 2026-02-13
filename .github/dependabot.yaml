@@ -19,7 +19,7 @@ updates:
       include: "scope"
   
   - package-ecosystem: gomod
-    directory: /SlimePacks
+    directory: /slimepacks
     schedule:
       interval: weekly
     commit-message:
