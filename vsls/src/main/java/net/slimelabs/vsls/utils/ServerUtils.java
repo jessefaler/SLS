@@ -11,6 +11,7 @@ import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -33,7 +34,6 @@ public class ServerUtils {
         return sc.map(ServerConnection::getServer).orElse(null);
     }
 
-
     public static String getServerName(Player player) {
         Optional<ServerConnection> sc;
         sc = player.getCurrentServer();
@@ -44,12 +44,16 @@ public class ServerUtils {
         return sc.get().getServerInfo().getName();
     }
 
-    public static String getPlayers(Server server) {
-        return SLS.proxy.getServer(server.getShortId())
-                .map(rs -> rs.getPlayersConnected().stream()
-                        .map(Player::getUsername)
-                        .collect(Collectors.joining(", ")))
-                .orElse("");
+    /**
+     * Returns a list of Player objects currently connected to the specified server.
+     * If the server is not found or no players are connected, returns an empty list.
+     *
+     * @return a list of players
+     */
+    public static ArrayList<Player> getPlayers(String name) {
+        return SLS.proxy.getServer(name)
+                .map(rs -> new ArrayList<>(rs.getPlayersConnected()))
+                .orElseGet(ArrayList::new);
     }
 
 }

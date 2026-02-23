@@ -30,6 +30,16 @@ public class Config {
         public int timeout = 120;
     }
 
+    // ==================================
+    // Server Lifecycle Configuration
+    // ==================================
+    public LifeCycleConfig lifecycle = new LifeCycleConfig();
+    public static class LifeCycleConfig {
+        public boolean enabled = true;
+        public int check_interval = 5; // Minutes
+        public int stop_delay = 20; // Seconds
+    }
+
     /**
      * Reads the configuration from disk and returns a Config object.
      * If the config doesn't exist it will create a default config

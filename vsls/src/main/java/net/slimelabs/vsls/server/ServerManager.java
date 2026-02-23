@@ -5,11 +5,12 @@ import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.entities.Blueprint;
-import com.protoxon.S4J.exceptions.NotFoundException;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.server.events.ServerEventRouter;
+import net.slimelabs.vsls.server.lifecycle.LifecycleManager;
 import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
@@ -31,6 +32,11 @@ public class ServerManager implements ServerProvider {
         this.router = new ServerEventRouter(router, this);
         // Load servers from the api
         loadServers(this, api);
+        // Start the lifecycle manager, if enabled
+        if(SLS.config.lifecycle.enabled) {
+            LifecycleManager lifecycleManager = new LifecycleManager(this);
+            lifecycleManager.start();
+        }
     }
 
     /**
