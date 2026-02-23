@@ -75,6 +75,7 @@ public class ReloadCommand {
         SLS.api.reloadBlueprints()
                 .flatMap(v -> SLS.blueprints.reload())
                 .executeAsync(v -> {
+                    SLS.gameTypes.load(SLS.blueprints.getAll());
                     int num = SLS.blueprints.getAll().size();
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)

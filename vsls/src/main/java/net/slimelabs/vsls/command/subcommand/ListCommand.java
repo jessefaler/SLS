@@ -36,11 +36,11 @@ public class ListCommand {
                         message.addMiniMessage("<hover:show_text:'<" + color + ">" + server.getShortId() + "</" + color + ">'><" + color + ">" + server.getName() + "</" + color + "></hover>");
                         message.add(": ", NamedTextColor.WHITE);
                         int count = server.getPlayerCount();
-                        message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'>" + count + "</hover></dark_aqua>");
+                        message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'>" + count + "</hover></dark_aqua>");
                         if(count == 1) {
-                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'> player</hover></dark_aqua>");
+                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'> player</hover></dark_aqua>");
                         } else {
-                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'> players</hover></dark_aqua>");
+                            message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'> players</hover></dark_aqua>");
                         }
                         message.add("\n");
                     }

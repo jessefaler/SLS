@@ -2,5 +2,12 @@
 api:
   url: "" # url to sls protocube
   key: "" # protocube api key
+
 queue:
-  timeout: 120 # The amount of time in seconds before forcefully closing a server queue
+  timeout: 120 # The amount of time in seconds before forcefully closing a queue
+
+# Handles automatically stopping empty servers
+lifecycle:
+  enabled: true       # Whether to enable server lifecycle management
+  check_interval: 5   # The amount of time in minutes to run a check on all servers
+  stop_delay: 20      # The amount of time in seconds to wait before stopping an empty server

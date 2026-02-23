@@ -70,17 +70,30 @@ public final class Event<T> {
         /**
          * Automatically remove this listener after a duration.
          */
-        public synchronized Handle timeout(long duration, TimeUnit unit) {
+        public synchronized Handle timeout(long duration, TimeUnit unit, Runnable onTimeout) {
             if (timeoutTask != null) {
                 timeoutTask.cancel();
             }
 
             timeoutTask = SLS.proxy.getScheduler()
-                    .buildTask(SLS.plugin, this::remove)
+                    .buildTask(SLS.plugin, () -> {
+                        try {
+                            if (onTimeout != null) {
+                                onTimeout.run();
+                            }
+                        } finally {
+                            remove();
+                        }
+                    })
                     .delay(duration, unit)
                     .schedule();
 
             return this;
+        }
+
+        // Overload for convenience if no callback is needed
+        public synchronized Handle timeout(long duration, TimeUnit unit) {
+            return timeout(duration, unit, null);
         }
 
         /**

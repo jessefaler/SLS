@@ -1,9 +1,11 @@
-package net.slimelabs.vsls.server;
+package net.slimelabs.vsls.server.events;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.*;
 import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.server.ServerProvider;
 import net.slimelabs.vsls.utils.TimeUtils;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;

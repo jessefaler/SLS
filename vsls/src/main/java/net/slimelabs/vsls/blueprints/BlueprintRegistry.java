@@ -108,7 +108,7 @@ public class BlueprintRegistry {
 
     /**
      * Find returns a single element from the collection matching the filter. If
-     * nothing is found, a nil result is returned.
+     * nothing is found, a null result is returned.
      * @param filter the filter to use in the search
      * @return the blueprint that matched the filter or null if none were found
      */
@@ -145,7 +145,7 @@ public class BlueprintRegistry {
         } else {
             // Not loaded yet, add to callback list
             loadCallbacks.add(callback);
-            // Double-check: if loaded while we were adding, execute immediately
+            // Double check if loaded while we were adding, execute immediately
             if (isLoaded) {
                 loadCallbacks.remove(callback);
                 try {

@@ -5,9 +5,17 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.velocitypowered.api.proxy.Player;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.server.events.ServerEvents;
+import net.slimelabs.vsls.utils.message.MessagePreset;
+import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Server {
 
@@ -57,7 +65,7 @@ public class Server {
      * Sets the servers status
      * @param status the status to set
      */
-    protected void setStatus(ServerStatus status) {
+    public void setStatus(ServerStatus status) {
         this.status = status;
     }
 
@@ -209,7 +217,6 @@ public class Server {
         return client.getLogs();
     }
 
-
     /**
      * Returns the specified number of most recent log lines from the server.
      *
@@ -235,6 +242,55 @@ public class Server {
     // Returns the id of the node this server resides on
     public String getNodeId() {
         return client.getNodeId();
+    }
+
+    /**
+     * Connects a player to this server
+     * @param player the player to connect
+     */
+    public void connect(Player player) {
+        SLS.proxy.getServer(getShortId()).ifPresentOrElse(
+                targetServer -> player.createConnectionRequest(targetServer).connectWithIndication().thenAccept(connection -> {
+                }).exceptionally(throwable -> {
+                    // Handle connection failure
+                    ProtoMessage.chat()
+                            .add(MessagePreset.SLS)
+                            .add("Error: Could not connect to " + getShortId(), NamedTextColor.RED)
+                            .sendMessage(player);
+                    Log.withField("reason", throwable.getMessage()).error("Failed to connect {} to {}", player.getUsername(), getShortId());
+                    return null;
+                }),
+                () -> ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .add("Error: Server not registered with velocity", NamedTextColor.RED)
+                        .sendMessage(player)
+        );
+    }
+
+    /**
+     * Returns a comma-separated string of the usernames of players currently connected to this server.
+     * This will never return null; if no players are connected, it returns an empty string.
+     *
+     * @return a comma-separated list of player usernames
+     */
+    public String getPlayerNames() {
+        return SLS.proxy.getServer(getShortId())
+                .map(rs -> rs.getPlayersConnected().stream()
+                        .map(Player::getUsername)
+                        .collect(Collectors.joining(", ")))
+                .orElse("");
+    }
+
+    /**
+     * Returns a list of Player objects currently connected to the specified server.
+     * If the server is not found or no players are connected, returns an empty list.
+     *
+     * @return a list of players
+     */
+    public ArrayList<Player> getPlayers() {
+        return SLS.proxy.getServer(getShortId())
+                .map(rs -> new ArrayList<>(rs.getPlayersConnected()))
+                .orElseGet(ArrayList::new);
     }
 
 }

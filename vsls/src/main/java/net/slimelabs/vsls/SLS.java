@@ -12,11 +12,15 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import net.slimelabs.vsls.blueprints.BlueprintRegistry;
 import net.slimelabs.vsls.command.SLSCommand;
 import net.slimelabs.vsls.config.Config;
+import net.slimelabs.vsls.matchmaking.join.DirectServerJoiner;
 import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.events.EventStream;
 import net.slimelabs.vsls.internal.Message;
+import net.slimelabs.vsls.matchmaking.MatchmakingManager;
+import net.slimelabs.vsls.matchmaking.join.JoinService;
+import net.slimelabs.vsls.matchmaking.registry.GameTypeRegistry;
+import net.slimelabs.vsls.matchmaking.strategies.RandomBlueprintStrategy;
 import net.slimelabs.vsls.packets.ChatPackets;
-import net.slimelabs.vsls.routing.QueueManager;
 import net.slimelabs.vsls.server.ServerManager;
 
 @Plugin(
@@ -43,7 +47,10 @@ public class SLS {
     public static ServerManager     servers;
     public static BlueprintRegistry blueprints;
     public static SLSClient         api;
-    public static QueueManager      queue;
+
+    public static GameTypeRegistry   gameTypes;
+    public static MatchmakingManager matchmaking;
+    public static JoinService        joinService;
 
     private static EventStream eventStream;
 
@@ -82,10 +89,19 @@ public class SLS {
         ChatPackets.init();
         // Register the sls command
         SLSCommand.register();
-        // Initialize the queue manager
-        QueueManager queueManager = new QueueManager();
-
-        SLS.queue = queueManager;
+        // Game types from blueprint matchmaking metadata
+        GameTypeRegistry gameTypeRegistry = new GameTypeRegistry();
+        SLS.gameTypes = gameTypeRegistry;
+        blueprintRegistry.whenLoaded(reg -> gameTypeRegistry.load(reg.getAll()));
+        // Matchmaking and join entry point
+        MatchmakingManager matchmakingManager = new MatchmakingManager(
+                gameTypeRegistry,
+                blueprintRegistry,
+                new RandomBlueprintStrategy()
+        );
+        SLS.matchmaking = matchmakingManager;
+        DirectServerJoiner directJoiner = new DirectServerJoiner();
+        SLS.joinService = new JoinService(matchmakingManager, directJoiner);
         SLS.api = api;
     }
 

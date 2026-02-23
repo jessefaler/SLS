@@ -3,13 +3,11 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
-import net.slimelabs.vsls.routing.Connector;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -79,8 +77,12 @@ public class JoinCommand {
                     }
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
-                    Connector.join((Player) source, blueprint);
-
+                    Player player = (Player) source;
+                    if (blueprint.contains(".")) {
+                        SLS.joinService.joinServer(player, blueprint.split("\\.", 2)[1]);
+                    } else {
+                        SLS.joinService.joinBlueprint(player, blueprint);
+                    }
                     return 0;
                 }).then(player());
     }
@@ -102,27 +104,49 @@ public class JoinCommand {
                     String blueprint = StringArgumentType.getString(context, "blueprint");
                     String playerName = StringArgumentType.getString(context, "player");
 
-                    if(playerName.equals("all")) {
-                        for (Player player : SLS.proxy.getAllPlayers()) {
-                            Connector.join(player, blueprint);
+                    if (blueprint.contains(".")) {
+                        String serverId = blueprint.split("\\.", 2)[1];
+                        if (playerName.equals("all")) {
+                            for (Player player : SLS.proxy.getAllPlayers()) {
+                                SLS.joinService.joinServer(player, serverId);
+                            }
+                            return 1;
                         }
-                        return 1;
-                    }
-
-                    if(playerName.equals("local")) {
-                        Player player = (Player) source;
-                        String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
-                        for (Player targetPlayer : Objects.requireNonNull(SLS.proxy.getServer(serverName).orElse(null)).getPlayersConnected()) {
-                            Connector.join(targetPlayer, blueprint);
+                        if (playerName.equals("local")) {
+                            Player player = (Player) source;
+                            String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
+                            for (Player targetPlayer : Objects.requireNonNull(SLS.proxy.getServer(serverName).orElse(null)).getPlayersConnected()) {
+                                SLS.joinService.joinServer(targetPlayer, serverId);
+                            }
+                            return 1;
                         }
-                        return 1;
-                    }
-
-                    Optional<Player> player = SLS.proxy.getPlayer(playerName);
-                    if(player.isPresent()) {
-                        ProtoMessage.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + blueprint, NamedTextColor.DARK_AQUA).sendMessage(source);
-                        Connector.join(player.get(), blueprint);
-                        return 1;
+                        Optional<Player> player = SLS.proxy.getPlayer(playerName);
+                        if (player.isPresent()) {
+                            ProtoMessage.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + blueprint, NamedTextColor.DARK_AQUA).sendMessage(source);
+                            SLS.joinService.joinServer(player.get(), serverId);
+                            return 1;
+                        }
+                    } else {
+                        if (playerName.equals("all")) {
+                            for (Player player : SLS.proxy.getAllPlayers()) {
+                                SLS.joinService.joinBlueprint(player, blueprint);
+                            }
+                            return 1;
+                        }
+                        if (playerName.equals("local")) {
+                            Player player = (Player) source;
+                            String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
+                            for (Player targetPlayer : Objects.requireNonNull(SLS.proxy.getServer(serverName).orElse(null)).getPlayersConnected()) {
+                                SLS.joinService.joinBlueprint(targetPlayer, blueprint);
+                            }
+                            return 1;
+                        }
+                        Optional<Player> player = SLS.proxy.getPlayer(playerName);
+                        if (player.isPresent()) {
+                            ProtoMessage.chat().add(MessagePreset.SLS).add("Joining " + playerName + " to " + blueprint, NamedTextColor.DARK_AQUA).sendMessage(source);
+                            SLS.joinService.joinBlueprint(player.get(), blueprint);
+                            return 1;
+                        }
                     }
                     ProtoMessage.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
                     return 0;

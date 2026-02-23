@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentBuilder;
 import net.kyori.adventure.text.TextComponent;
@@ -11,6 +12,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -34,17 +36,34 @@ public class LogsCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
+                    builder.suggest("this");
                     SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String id = StringArgumentType.getString(context, "server");
-                    Server server = SLS.servers.resolve(id);
+                    Server server;
+                    if(id.equals("this")) {
+                        if(!(source instanceof Player)) {
+                            Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                            return 0;
+                        }
+                        server = ServerUtils.getServer((Player) source);
+                        if(server == null) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 0;
+                        }
+                    } else {
+                        server = SLS.servers.resolve(id);
+                    }
                     if (server != null) {
                         server.getLogs().executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();
-                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + id + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
+                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getShortId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
                             for (String log : logs) {
                                 builder.append(
                                         Component.text(log + "\n", NamedTextColor.GRAY)
@@ -82,11 +101,27 @@ public class LogsCommand {
                         ProtoMessage.chat().add(MessagePreset.SLS).add("Invalid number " + linesString, NamedTextColor.RED).sendMessage(source);
                         return 0;
                     }
-                    Server server = SLS.servers.resolve(id);
+                    Server server;
+                    if(id.equals("this")) {
+                        if(!(source instanceof Player)) {
+                            Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                            return 0;
+                        }
+                        server = ServerUtils.getServer((Player) source);
+                        if(server == null) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 0;
+                        }
+                    } else {
+                        server = SLS.servers.resolve(id);
+                    }
                     if (server != null) {
                         server.getLogs(lines).executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();
-                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + id + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
+                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getShortId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
                             for (String log : logs) {
                                 builder.append(
                                         Component.text(log + "\n", NamedTextColor.GRAY)

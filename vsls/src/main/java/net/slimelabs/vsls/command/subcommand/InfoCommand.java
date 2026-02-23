@@ -88,7 +88,7 @@ public class InfoCommand {
                     + ":" + server.getAllocation().getPort();
             ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
-                    " <hover:show_text:'<dark_purple>" + ServerUtils.getPlayers(server) + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
+                    " <hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
                     " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.getStatus().getStatus() + "</" + statusColor + ">\n" +
                     " <gold>-</gold> <dark_gray>Blueprint:</dark_gray><hover:show_text:'<dark_purple>" + server.getBlueprintId() + "</dark_purple>'><blue> " + name + "</blue></hover>\n" +
                     " <gold>-</gold> <dark_gray>Type:</dark_gray><blue> " + type + "</blue>\n" +

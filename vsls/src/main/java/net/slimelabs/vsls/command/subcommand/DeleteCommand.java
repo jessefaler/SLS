@@ -139,15 +139,15 @@ public class DeleteCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Starting " + id, NamedTextColor.GRAY)
+                                            .add("Deleting " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
                                 failure -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Failed to start server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
+                                            .add("Failed to delete server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
                                             .sendMessage(source);
-                                    Log.warn("Failed to start server " + server.getId() + " reason: " + failure.getMessage());
+                                    Log.warn("Failed to delete server " + server.getId() + " reason: " + failure.getMessage());
                                 }
                         );
                     } else {

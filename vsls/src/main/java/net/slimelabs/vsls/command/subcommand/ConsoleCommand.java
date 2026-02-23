@@ -5,9 +5,12 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.SLSAction;
 import com.velocitypowered.api.command.CommandSource;
+import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -33,6 +36,7 @@ public class ConsoleCommand {
     private static RequiredArgumentBuilder<CommandSource, String> server() {
         return RequiredArgumentBuilder.<CommandSource, String>argument("server", StringArgumentType.string())
                 .suggests((context, builder) -> {
+                    builder.suggest("this");
                     SLS.servers.getShortIds().forEach(builder::suggest);
                     return builder.buildFuture();
                 })
@@ -55,7 +59,23 @@ public class ConsoleCommand {
                     String command = StringArgumentType.getString(context, "command");
                     command = command.startsWith("/") ? command.substring(1) : command;
                     command = command.strip();
-                    Server server = SLS.servers.resolve(id);
+                    Server server;
+                    if(id.equals("this")) {
+                        if(!(source instanceof Player)) {
+                            Log.warn("Invalid command usage! You must specify a server id when running this command from console.");
+                            return 0;
+                        }
+                        server = ServerUtils.getServer((Player) source);
+                        if(server == null) {
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Server " + ServerUtils.getServerName((Player) source) + " is not an SLS server", NamedTextColor.RED)
+                                    .sendMessage(source);
+                            return 0;
+                        }
+                    } else {
+                        server = SLS.servers.resolve(id);
+                    }
                     if (server != null) {
                         String finalCommand = command;
                         server.sendCommand(command).executeAsync(success -> {

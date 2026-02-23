@@ -7,7 +7,6 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.routing.Queue;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
@@ -21,10 +20,9 @@ public class DequeueCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     Player player = (Player) source;
-                    Queue queue = SLS.queue.getQueue(player);
-                    if (queue != null && queue.dequeue(player)) {
+                    if (SLS.joinService.dequeue(player)) {
                         ProtoMessage.chat().add(MessagePreset.SLS)
-                                .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
+                                .add("You have been dequeued.", NamedTextColor.RED)
                                 .sendMessage(player);
                     } else {
                         ProtoMessage.chat().add(MessagePreset.SLS).add("You are not in queue.", NamedTextColor.GRAY).sendMessage(source);
@@ -40,7 +38,7 @@ public class DequeueCommand {
                 .suggests((context, builder) -> {
                     builder.suggest("all");
                     builder.suggest("local");
-                    for(Player player : SLS.proxy.getAllPlayers()) {
+                    for (Player player : SLS.proxy.getAllPlayers()) {
                         builder.suggest(player.getUsername());
                     }
                     return builder.buildFuture();
@@ -48,38 +46,35 @@ public class DequeueCommand {
                 .executes(context -> {
                     CommandSource source = context.getSource();
                     String playerName = StringArgumentType.getString(context, "player");
-                    if(playerName.equals("all")) { // Connect all players
+                    if (playerName.equals("all")) {
                         for (Player player : SLS.proxy.getAllPlayers()) {
-                            Queue queue = SLS.queue.getQueue(player);
-                            if(queue != null && queue.dequeue(player)) {
+                            if (SLS.joinService.dequeue(player)) {
                                 ProtoMessage.chat().add(MessagePreset.SLS)
-                                        .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
+                                        .add("You have been dequeued.", NamedTextColor.RED)
                                         .sendMessage(player);
                             }
                         }
                         ProtoMessage.chat().add(MessagePreset.SLS).add("Dequeued all players", NamedTextColor.DARK_AQUA).sendMessage(source);
-                    } else if (playerName.equals("local")) { // Connect all players that are on the same server as the executor
+                    } else if (playerName.equals("local")) {
                         Player player = (Player) source;
                         String serverName = player.getCurrentServer().map(serverConnection -> serverConnection.getServerInfo().getName()).orElse(null);
                         for (Player targetPlayer : Objects.requireNonNull(SLS.proxy.getServer(serverName).orElse(null)).getPlayersConnected()) {
-                            Queue queue = SLS.queue.getQueue(targetPlayer);
-                            if(queue != null && queue.dequeue(targetPlayer)) {
+                            if (SLS.joinService.dequeue(targetPlayer)) {
                                 ProtoMessage.chat().add(MessagePreset.SLS)
-                                        .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
-                                        .sendMessage(player);
+                                        .add("You have been dequeued.", NamedTextColor.RED)
+                                        .sendMessage(targetPlayer);
                             }
                         }
                         ProtoMessage.chat().add(MessagePreset.SLS).add("Dequeued local players", NamedTextColor.DARK_AQUA).sendMessage(source);
                     } else {
                         Optional<Player> player = SLS.proxy.getPlayer(playerName);
-                        if(player.isEmpty()) {
+                        if (player.isEmpty()) {
                             ProtoMessage.chat().add(MessagePreset.SLS).add("Player " + playerName + " was not found.", NamedTextColor.RED).sendMessage(source);
                             return 0;
                         }
-                        Queue queue = SLS.queue.getQueue(player.get());
-                        if (queue != null && queue.dequeue(player.get())) {
+                        if (SLS.joinService.dequeue(player.get())) {
                             ProtoMessage.chat().add(MessagePreset.SLS)
-                                    .add("You have been dequeued from " + queue.server.getName(), NamedTextColor.RED)
+                                    .add("You have been dequeued.", NamedTextColor.RED)
                                     .sendMessage(player.get());
                             ProtoMessage.chat().add(MessagePreset.SLS).add("Dequeued " + playerName, NamedTextColor.DARK_AQUA).sendMessage(source);
                         } else {

@@ -138,8 +138,7 @@ public class ResetCommand {
                     // Wait for the server to change its state to starting
                     // before queueing the player
                     if(status == ServerStatus.STARTING) {
-                        // Queue the player to reconnect to the server
-                        SLS.queue.enqueue(player, server);
+                        SLS.joinService.joinWhenReady(player, server);
                         handle.remove();
                     }
                 })).timeout(2, TimeUnit.MINUTES);

@@ -1,4 +1,4 @@
-package net.slimelabs.vsls.server;
+package net.slimelabs.vsls.server.events;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.ServerCrashEvent;

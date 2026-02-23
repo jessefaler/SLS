@@ -52,6 +52,7 @@ public class Animation {
     }
 
     public void stop(UUID playerId) {
+        ChatPackets.enableActionBarPackets(playerId);
         ScheduledTask task = tasks.remove(playerId);
         if (task != null) {
             task.cancel();
