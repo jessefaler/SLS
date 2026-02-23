@@ -30,6 +30,7 @@ func LoadAllBlueprints(blueprintsRoot string, sw *software.Registry) ([]*Bluepri
 
 	err := filepath.Walk(blueprintsRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			log.WithField("path", path).Warnf("blueprint loader: Failed to access file: %v", err)
 			return nil
 		}
 
@@ -228,11 +229,12 @@ func (s *Server) Validate() error {
 		return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
 	}
 
-	// Verify Limits (apply defaults if present)
-	if s.Limits != nil {
-		if err := ValidateLimits(s.Limits); err != nil {
-			return errors.Wrap(err, "server.limits")
-		}
+	// Apply default limits when blueprint omits limits, or fill defaults for partial limits
+	if s.Limits == nil {
+		s.Limits = &environment.Limits{}
+	}
+	if err := ValidateLimits(s.Limits); err != nil {
+		return errors.Wrap(err, "server.limits")
 	}
 
 	// Sets Path to "<Software>/<Version>" if it is not specified
