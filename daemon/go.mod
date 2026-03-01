@@ -30,7 +30,7 @@ require (
 	github.com/mholt/archives v0.1.5
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.2
 	golang.org/x/sync v0.17.0
 	golang.org/x/sys v0.41.0
 	gopkg.in/ini.v1 v1.67.0
