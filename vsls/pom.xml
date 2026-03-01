@@ -91,7 +91,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20240303</version>
+            <version>20251224</version>
         </dependency>
 
         <!-- S4J (SLS API Wrapper) -->
