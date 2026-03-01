@@ -2,7 +2,6 @@ package net.slimelabs.vsls.matchmaking.join;
 
 import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.events.Event;
@@ -19,6 +18,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Queue for a single server: wait until RUNNING then connect all waiting players.
  * Same UX as matchmaking (loading icon, "In queue for X", timeout, status listener).
+ * <p>
+ * We do not flush on OFFLINE because: (1) During first-time install the server stays
+ * offline until it starts—the panel often only emits STARTING then RUNNING, so we
+ * may never receive an OFFLINE event; flushing on OFFLINE would wrongly kick players
+ * who are waiting for install to finish. (2) When the server is deleted the panel
+ * emits OFFLINE then a deletion event (no STOPPING); we subscribe to deletion and
+ * flush with error there so players get a clear message.
  */
 public class ServerConnectionQueue {
 
@@ -27,8 +33,8 @@ public class ServerConnectionQueue {
     private final ConcurrentLinkedQueue<Player> waiting = new ConcurrentLinkedQueue<>();
     private final Animation loadingIcon = new Animation();
     private final AtomicBoolean flushed = new AtomicBoolean(false);
-    private ScheduledTask timeoutTask;
     private final Event.Handle statusHandle;
+    private final Event.Handle deletionHandle;
 
     /**
      * @param startServer if true, call server.start() when queue is created (e.g. direct join).
@@ -40,25 +46,37 @@ public class ServerConnectionQueue {
         statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
                 handle.remove();
+                removalDeletionHandle();
                 flush();
             }
-            if (status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
+            if (status == ServerStatus.STOPPING) {
                 handle.remove();
+                removalDeletionHandle();
                 flushWithError("Failed to join " + server.getName());
             }
         }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
+            removalDeletionHandle();
             flushWithError("Failed to join " + server.getName() + ". Queue timed out.");
+        });
+        deletionHandle = server.getEvents().onDeletion((deletion, handle) -> {
+            flushWithError("Server " + server.getName() + " was deleted.");
         });
         if (startServer) {
             server.start().executeAsync(v -> {}, failure -> {
+                removalDeletionHandle();
                 flushWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
             });
         }
     }
 
+    private void removalDeletionHandle() {
+        deletionHandle.remove();
+    }
+
     private void flush() {
         if (!flushed.compareAndSet(false, true)) return;
         statusHandle.remove();
+        deletionHandle.remove();
         onClosed.run();
         for (Player p : waiting) {
             ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(p);
@@ -72,6 +90,7 @@ public class ServerConnectionQueue {
     private void flushWithError(String message) {
         if (!flushed.compareAndSet(false, true)) return;
         statusHandle.remove();
+        deletionHandle.remove();
         onClosed.run();
         for (Player p : waiting) {
             ProtoMessage.chat().add(MessagePreset.SLS).add(message, NamedTextColor.RED).sendMessage(p);
@@ -97,6 +116,7 @@ public class ServerConnectionQueue {
         boolean removed = waiting.remove(player);
         if (removed && waiting.isEmpty()) {
             statusHandle.remove();
+            deletionHandle.remove();
             onClosed.run();
         }
         return removed;

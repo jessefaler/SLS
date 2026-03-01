@@ -99,7 +99,8 @@ public class CreateCommand {
             Map.entry("--version=", "Sets the software to use when running this server"),
             Map.entry("--image=", "Sets the software to use when running this server"),
             Map.entry("--seed=", "Patches the server.properties config with a custom seed"),
-            Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance")
+            Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance"),
+            Map.entry("--enable-command-block=", "Patches the server.properties config to set enable command blocks")
     );
 
     private static RequiredArgumentBuilder<CommandSource, String> overrides() {
@@ -139,7 +140,7 @@ public class CreateCommand {
 
                         // Suggest true/false for --save= and --oom_disabled=
                         overrides.stream()
-                                .filter(override -> override.startsWith("--save=") || override.startsWith("--oom_disabled="))
+                                .filter(override -> override.startsWith("--save=") || override.startsWith("--oom_disabled=") || override.startsWith("--enable-command-block="))
                                 .forEach(override -> {
                                     String prefix = override.contains("=") ? override.substring(override.indexOf('=') + 1) : "";
                                     List<String> options = List.of("true", "false");
@@ -192,6 +193,9 @@ public class CreateCommand {
                                 break;
                             case "--view-distance=":
                                 serverPropertiesFind.put("view-distance", value);
+                                break;
+                            case "--enable-command-block=":
+                                serverPropertiesFind.put("enable-command-block", value);
                                 break;
                             case "--cpu=":
                                 try {

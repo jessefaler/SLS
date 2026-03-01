@@ -5,6 +5,7 @@ import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
 import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
 import net.slimelabs.vsls.matchmaking.registry.GameType;
@@ -153,30 +154,49 @@ public class AllocationEngine {
 
         GameType gameType = pool.getGameType();
         pool.addProvisioning(server);
+        final Event.Handle[] deletionHandleRef = new Event.Handle[1];
         server.start().executeAsync(v -> {}, failure -> {
             pool.removeProvisioning(server);
+            if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
             flushWaitingWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
         });
-        server.getEvents().onStatusChange((status, handle) -> {
+        Event.Handle statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
                 handle.remove();
+                if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                 pool.removeProvisioning(server);
                 pool.addRunning(server);
                 attemptAllocation();
             }
-            if (status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
+            if (status == ServerStatus.STOPPING) {
                 handle.remove();
-                pool.removeProvisioning(server);
-                pool.removeRunning(server);
-                pendingAssignments.remove(server.getId());
+                if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
+                cleanupProvisioningAndMaybeFlush(server, gameType);
             }
         }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
             if (pool.getProvisioning().contains(server)) {
+                if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                 pool.removeProvisioning(server);
                 flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Queue timed out.");
             }
         });
+        deletionHandleRef[0] = server.getEvents().onDeletion((deletion, handle) -> {
+            handle.remove();
+            statusHandle.remove();
+            cleanupProvisioningAndMaybeFlush(server, gameType);
+        });
         return true;
+    }
+
+    private void cleanupProvisioningAndMaybeFlush(Server server, GameType gameType) {
+        pool.removeProvisioning(server);
+        pool.removeRunning(server);
+        pendingAssignments.remove(server.getId());
+        if (!pool.hasProvisioningInProgress()
+                && pool.getProvisioning().isEmpty()
+                && pool.getRunning().isEmpty()) {
+            flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
+        }
     }
 
     private void provisionNewServer() {
@@ -192,26 +212,48 @@ public class AllocationEngine {
 
         SLS.servers.createServer(creation).executeAsync(server -> {
             pool.addProvisioning(server);
-            server.getEvents().onStatusChange((status, handle) -> {
+            final Event.Handle[] deletionHandleRef = new Event.Handle[1];
+            Event.Handle statusHandle = server.getEvents().onStatusChange((status, handle) -> {
                 if (status == ServerStatus.RUNNING) {
                     handle.remove();
+                    if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                     pool.removeProvisioning(server);
                     pool.addRunning(server);
                     pool.decrementProvisioningInProgress();
                     attemptAllocation();
                 }
-                if (status == ServerStatus.STOPPING || status == ServerStatus.OFFLINE) {
+                if (status == ServerStatus.STOPPING) {
                     handle.remove();
+                    if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                     pool.removeProvisioning(server);
                     pool.removeRunning(server);
                     pendingAssignments.remove(server.getId());
                     pool.decrementProvisioningInProgress();
+                    if (!pool.hasProvisioningInProgress()
+                            && pool.getProvisioning().isEmpty()
+                            && pool.getRunning().isEmpty()) {
+                        flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
+                    }
                 }
             }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
                 if (pool.getProvisioning().contains(server)) {
+                    if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                     pool.removeProvisioning(server);
                     pool.decrementProvisioningInProgress();
                     flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Queue timed out.");
+                }
+            });
+            deletionHandleRef[0] = server.getEvents().onDeletion((deletion, handle) -> {
+                handle.remove();
+                statusHandle.remove();
+                pool.removeProvisioning(server);
+                pool.removeRunning(server);
+                pendingAssignments.remove(server.getId());
+                pool.decrementProvisioningInProgress();
+                if (!pool.hasProvisioningInProgress()
+                        && pool.getProvisioning().isEmpty()
+                        && pool.getRunning().isEmpty()) {
+                    flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
                 }
             });
         }, failure -> {

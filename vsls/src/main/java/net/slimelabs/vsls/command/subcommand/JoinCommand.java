@@ -71,13 +71,12 @@ public class JoinCommand {
                 })
                 .executes(context -> {
                     CommandSource source = context.getSource();
-                    if(!(source instanceof Player)) {
+                    if(!(source instanceof Player player)) {
                         Log.error("You must specify a player when running this command from console");
                         return 0;
                     }
                     String type = StringArgumentType.getString(context, "type");
                     String blueprint = StringArgumentType.getString(context, "blueprint");
-                    Player player = (Player) source;
                     if (blueprint.contains(".")) {
                         SLS.joinService.joinServer(player, blueprint.split("\\.", 2)[1]);
                     } else {

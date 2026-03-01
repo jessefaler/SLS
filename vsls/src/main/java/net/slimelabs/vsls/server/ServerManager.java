@@ -11,6 +11,7 @@ import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.events.ServerEventRouter;
 import net.slimelabs.vsls.server.lifecycle.LifecycleManager;
+import net.slimelabs.vsls.utils.VersionFetcher;
 import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
@@ -77,15 +78,12 @@ public class ServerManager implements ServerProvider {
             server = new Server(clientServer.getBlueprintId(), clientServer, () -> unRegister(clientServer.getId()));
             Log.warn("Blueprint not found for server {} with blueprint id: {}", clientServer.getId(), clientServer.getBlueprintId());
         }
-        // Set the version from the creation action or from the blueprint if not set
-        var overrides = clientServer.getOverrides();
-        String versionOverride = overrides != null ? overrides.getVersion() : null;
-        server.setVersion(
-                versionOverride != null && !versionOverride.isEmpty()
-                        ? versionOverride
-                        : (blueprint != null ? blueprint.getServerVersion() : "null")
-        );
         register(server);
+        VersionFetcher.resolveVersion(clientServer.getOverrides(), blueprint, api.getAllServers().getS4J())
+                .executeAsync(
+                        version -> server.setVersion(version != null ? version : "null"),
+                        failure -> Log.warn("Failed to resolve version for server {}: {}", clientServer.getId(), failure.getMessage())
+                );
         // Fetch the servers status and update it locally
         clientServer.getStatus().executeAsync(server::setStatus);
         return server;

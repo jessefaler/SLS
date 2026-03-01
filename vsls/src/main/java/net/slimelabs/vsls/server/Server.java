@@ -9,6 +9,7 @@ import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.server.actions.JoinActions;
 import net.slimelabs.vsls.server.events.ServerEvents;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -40,6 +41,7 @@ public class Server {
         this.id = client.getId();
         this.shortId = id.length() >= 6 ? id.substring(0, 6) : id;
         this.unregister = unregister;
+        new JoinActions(this);
     }
 
     /**
@@ -196,6 +198,14 @@ public class Server {
      */
     public SLSAction<Void> sendCommand(String command) {
         return client.sendCommand(command);
+    }
+
+    /**
+     * Executes a list of commands on the server console.
+     * @param commands the commands to execute
+     */
+    public SLSAction<Void> sendCommands(List<String> commands) {
+        return client.sendCommands(commands);
     }
 
     /**
