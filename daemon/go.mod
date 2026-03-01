@@ -16,7 +16,7 @@ require (
 	github.com/docker/go-connections v0.6.0
 	github.com/fatih/color v1.18.0
 	github.com/franela/goblin v0.0.0-20211003143422-0a4f594942bf
-	github.com/gabriel-vasile/mimetype v1.4.3
+	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gammazero/workerpool v1.1.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.11.0
