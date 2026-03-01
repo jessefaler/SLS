@@ -76,9 +76,11 @@ type ServerConfigurationResponse struct {
 	Invocation           string                  `json:"invocation"`
 	State                *blueprint.State        `json:"state"`
 	Limits               *environment.Limits     `json:"limits"`
-	ServerFolder         string                  `json:"server-folder"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
+	SoftwareId           string                  `json:"software-id"`
+	ServerFolder         string                  `json:"server-folder"`
+	SoftwareVersion      string                  `json:"software-version"`
 }
 
 type CreateServerRequest struct {
@@ -88,8 +90,8 @@ type CreateServerRequest struct {
 }
 
 type ServerOverrides struct {
-	Save   *bool                        `json:"save,omitempty"`
-	Limits *environment.Limits          `json:"limits,omitempty"`
+	Save   *bool               `json:"save,omitempty"`
+	Limits *environment.Limits `json:"limits,omitempty"`
 	// Configs are configuration file patches applied after software and blueprint
 	// patches. Same file/key is overridden; new keys are merged.
 	Configs map[string]blueprint.ConfigFile `json:"configs,omitempty"`

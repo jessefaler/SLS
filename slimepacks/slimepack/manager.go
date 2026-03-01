@@ -1,13 +1,14 @@
 package slimepack
 
 import (
-	"SlimePacks/config"
-	"SlimePacks/log"
-	"SlimePacks/mappings"
 	"context"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"protoxon.com/sls/slimepacks/config"
+	"protoxon.com/sls/slimepacks/log"
+	"protoxon.com/sls/slimepacks/mappings"
 
 	"emperror.dev/errors"
 	"protoxon.com/sls/protocube/blueprint"

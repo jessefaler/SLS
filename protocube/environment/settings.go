@@ -20,7 +20,7 @@ type Limits struct {
 	CpuLimit *int64 `yaml:"cpu_limit" json:"cpu_limit" default:"0"`
 
 	// The amount of disk space in megabytes that a server is allowed to use.
-	DiskSpace *int64 `yaml:"disk_space" json:"disk_space" default:"5120"`
+	DiskSpace *int64 `yaml:"disk_space" json:"disk_space" default:"8192"`
 
 	// Sets which CPU threads can be used by the docker instance.
 	Threads *string `yaml:"threads" json:"threads" default:""`

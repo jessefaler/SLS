@@ -184,20 +184,8 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		return nil, err
 	}
 
-	nodeReq := models.ServerConfigurationResponse{
-		Id:                   s.Id(),
-		ProcessConfiguration: cfg.ProcessConfiguration,
-		Image:                cfg.Image,
-		Invocation:           cfg.Invocation,
-		Limits:               cfg.Limits,
-		State:                bp.State,
-		ServerFolder:         cfg.ServerFolder,
-		Allocations:          alloc,
-		Save:                 cfg.Save,
-	}
-
 	// Request server creation on the remote node
-	_, err = node.CreateServer(ctx, nodeReq)
+	_, err = node.CreateServer(ctx, *cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +265,15 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 	if s.Overrides != nil && s.Overrides.Image != nil {
 		image = *s.Overrides.Image
 	}
+	// If no explicit image is set on the blueprint or via overrides,
+	// fall back to the software's version-aware image selection.
+	if image == "" {
+		selectedImage, err := sw.ImageForVersion(effectiveVersion)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to select image for version %s", effectiveVersion)
+		}
+		image = selectedImage
+	}
 
 	nodeReq := models.ServerConfigurationResponse{
 		Id:                   s.Id(),
@@ -288,6 +285,8 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		ServerFolder:         serverFolder,
 		Allocations:          s.Allocations,
 		Save:                 save,
+		SoftwareId:           sw.Id,
+		SoftwareVersion:      bp.Server.Version,
 	}
 	return &nodeReq, nil
 }

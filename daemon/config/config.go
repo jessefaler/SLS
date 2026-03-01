@@ -149,6 +149,10 @@ type SystemConfiguration struct {
 	// bind mounts. Custom mounts supplied by servers must live within one of these paths.
 	AllowedMounts []string `yaml:"allowed_mounts"`
 
+	// TmpDirectory specifies where temporary files for daemons installation processes
+	// should be created. This supports environments running docker-in-docker.
+	TmpDirectory string `default:"/tmp/sls/daemon" json:"-" yaml:"tmp_directory"`
+
 	Timezone string `yaml:"timezone"`
 
 	// The amount of time in seconds that can elapse before a server's disk space calculation is

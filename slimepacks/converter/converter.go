@@ -1,12 +1,13 @@
 package converter
 
 import (
-	"SlimePacks/config"
-	"SlimePacks/log"
-	"SlimePacks/utils"
 	"compress/flate"
 	"os/exec"
 	"path/filepath"
+
+	"protoxon.com/sls/slimepacks/config"
+	"protoxon.com/sls/slimepacks/log"
+	"protoxon.com/sls/slimepacks/utils"
 
 	"emperror.dev/errors"
 )

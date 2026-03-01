@@ -22,7 +22,7 @@ type OverlayVolume struct {
 
 // NewOverlayVolume creates a new overlay volume at the path
 // root is the directory where the overlay's will store their work and upper directories
-// root = internal/overlay2/<server_id>
+// root = internal/overlay/<server_id>
 func NewOverlayVolume(root string, serverPath string) (*OverlayVolume, error) {
 	return &OverlayVolume{
 		Root:       root,

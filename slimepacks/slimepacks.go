@@ -1,13 +1,14 @@
 package main
 
 import (
-	"SlimePacks/config"
-	"SlimePacks/log"
-	"SlimePacks/router"
-	"SlimePacks/slimepack"
-	"SlimePacks/updater"
 	"fmt"
 	"path/filepath"
+
+	"protoxon.com/sls/slimepacks/config"
+	"protoxon.com/sls/slimepacks/log"
+	"protoxon.com/sls/slimepacks/router"
+	"protoxon.com/sls/slimepacks/slimepack"
+	"protoxon.com/sls/slimepacks/updater"
 
 	"emperror.dev/errors"
 	"github.com/mitchellh/colorstring"
@@ -30,7 +31,7 @@ import (
 //         converted resource pack as a direct file download.
 //
 //    Example url for fetching version 1.20 of a resource pack from the blueprint combat_cube
-//        - https://slimelabs.net/api/slimepacks/combat_cube?=version=1.20
+//        - https://slimelabs.net/api/slimepacks/combat_cube?version=1.20
 
 // Building:
 // go build -buildmode=plugin

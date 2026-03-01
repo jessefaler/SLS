@@ -4,6 +4,7 @@ type Software struct {
 	Id            string                `yaml:"id"`
 	Name          string                `yaml:"name"`
 	DockerImages  map[string]string     `yaml:"images"`
+	Mappings      []map[string]string   `yaml:"mappings,omitempty"`
 	StopCommand   string                `yaml:"stop-command"`
 	Invocation    string                `yaml:"invocation"`
 	OnlineSignal  string                `yaml:"online-signal"`
@@ -17,7 +18,11 @@ type ConfigFile struct {
 }
 
 type InstallationScript struct {
-	ContainerImage string `yaml:"image"`
-	Entrypoint     string `yaml:"entrypoint"`
-	Script         string `yaml:"script"`
+	// Image is the Docker image used for the installation container.
+	// It is configured as "image" in YAML and exposed to the daemon as
+	// "container_image" in JSON to match daemon expectations.
+	Image       string `yaml:"image" json:"container_image"`
+	Entrypoint  string `yaml:"entrypoint" json:"entrypoint"`
+	Script      string `yaml:"script" json:"script"`
+	SkipScripts bool   `yaml:"skip-scripts,omitempty" json:"skip_scripts" default:"false"`
 }

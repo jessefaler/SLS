@@ -1,8 +1,6 @@
 package updater
 
 import (
-	"SlimePacks/config"
-	"SlimePacks/log"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"protoxon.com/sls/slimepacks/config"
+	"protoxon.com/sls/slimepacks/log"
 	"strings"
 
 	"emperror.dev/errors"

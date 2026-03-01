@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"protoxon.com/sls/daemon/config"
+	"protoxon.com/sls/daemon/environment"
 )
 
 // A generic type allowing for easy binding use when making requests to API
@@ -42,6 +43,22 @@ type NodeRegistration struct {
 	Url         string              `json:"url"`
 	Version     string              `json:"version"`
 	Allocations []config.Allocation `json:"allocations"`
+}
+
+type InstallStatusRequest struct {
+	Successful bool `json:"successful"`
+	Reinstall  bool `json:"reinstall"`
+}
+
+// InstallationScript defines installation script information for a server
+// process. This is used when a server version is installed for the first time, and when
+// a server version is marked for re-installation.
+type InstallationScript struct {
+	ContainerImage string             `json:"container_image"`
+	Entrypoint     string             `json:"entrypoint"`
+	Script         string             `json:"script"`
+	SkipScripts    bool               `json:"skip_scripts"`
+	InstallLimits  environment.Limits `json:"limits"`
 }
 
 type HeartBeat struct {

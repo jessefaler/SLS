@@ -16,6 +16,7 @@ import (
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/node"
 	"protoxon.com/sls/protocube/server"
+	"protoxon.com/sls/protocube/software"
 )
 
 // AttachRequestID attaches a unique ID to the incoming HTTP request so that any
@@ -293,6 +294,36 @@ func BlueprintExists(registry *blueprint.Registry) gin.HandlerFunc {
 		c.Set("blueprint", bp)
 		c.Next()
 	}
+}
+
+// SoftwareExists will ensure that the requested software exists in this setup.
+// Returns a 404 if we cannot locate it. If the software is found it is set into
+// the request context, and the logger for the context is also updated to include
+// the blueprint ID in the fields list.
+func SoftwareExists(registry *software.Registry) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var sw *software.Software
+		if c.Param("software") != "" {
+			sw = registry.Get(c.Param("software"))
+		}
+		if sw == nil {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			return
+		}
+		c.Set("logger", ExtractLogger(c).WithField("software_id", sw.Id))
+		c.Set("software", sw)
+		c.Next()
+	}
+}
+
+// ExtractSoftware will return the software from the gin.Context or panic if it is
+// not present.
+func ExtractSoftware(c *gin.Context) *software.Software {
+	v, ok := c.Get("software")
+	if !ok {
+		panic("router/middleware: cannot extract software: not present in request context")
+	}
+	return v.(*software.Software)
 }
 
 // ExtractBlueprint will return the blueprint from the gin.Context or panic if it is

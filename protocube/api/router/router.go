@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/auth"
@@ -38,7 +40,7 @@ func (r *Router) Configure() *gin.Engine {
 	blueprintGroup := router.Group("/api/blueprints/:blueprint")
 	blueprintGroup.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.BlueprintExists(r.BlueprintRegistry))
 	{
-		blueprintGroup.GET("", r.getBlueprint)
+		blueprintGroup.GET("", getBlueprint)
 	}
 
 	// These are server specific routes, and require that the request be authorized, and
@@ -55,7 +57,7 @@ func (r *Router) Configure() *gin.Engine {
 		server.GET("/stats", getServerStats)
 		server.POST("/commands", postServerCommands)
 		server.POST("/reset", postServerReset)
-		//server.POST("/install", postServerInstall)
+		server.GET("/install", r.getInstallationScript)
 		//server.POST("/reinstall", postServerReinstall)
 		//server.POST("/sync", postServerSync)
 		//server.POST("/ws/deny", postServerDenyWSTokens)
@@ -96,10 +98,20 @@ func (r *Router) Configure() *gin.Engine {
 		event.Use(middleware.ServerExists(r.ServerManager))
 		{
 			event.POST("/status", postNodeServerStatus)
+			event.POST("/install-status", postNodeServerInstallStatus)
 			event.POST("/crash", postEventServerCrash)
 			event.POST("/deleted", postEventServerDeleted)
 		}
 	}
+
+	// Return JSON error bodies for unmatched routes and methods so API clients
+	// (e.g. daemon remote client) get a parseable response instead of _MissingResponseCode.
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist."})
+	})
+	router.NoMethod(func(c *gin.Context) {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed."})
+	})
 
 	return router
 }

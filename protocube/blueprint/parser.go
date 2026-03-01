@@ -30,7 +30,7 @@ func LoadAllBlueprints(blueprintsRoot string, sw *software.Registry) ([]*Bluepri
 
 	err := filepath.Walk(blueprintsRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.WithField("path", path).Warnf("blueprint loader: Failed to access file: %v", err)
+			log.WithField("path", path).Warnf("blueprint parser: Failed to access file: %v", err)
 			return nil
 		}
 
@@ -203,9 +203,6 @@ func (s *Server) Validate() error {
 	if s.Software == "" {
 		return errors.New("missing required field: server.software")
 	}
-	if s.Image == "" {
-		return errors.New("missing required field: server.image")
-	}
 
 	// Make the software name all lowercase
 	s.Software = strings.ToLower(s.Software)
@@ -221,12 +218,25 @@ func (s *Server) Validate() error {
 		)
 	}
 
-	// Ensure the image this blueprint uses is defined in the software's docker images
-	if url, ok := sw.DockerImages[s.Image]; ok {
-		// Replace s.Image with the actual Docker image URL
-		s.Image = url
-	} else {
-		return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
+	// If no image was defined in the blueprint get it from software mappings
+	imageFromVersion := false
+	if s.Image == "" {
+		version, err := sw.ImageForVersion(s.Version)
+		if err != nil {
+			return err
+		}
+		s.Image = version
+		imageFromVersion = true
+	}
+
+	// Resolve image: blueprint may specify either a variant key (e.g. "java_8") or a full URL.
+	// When we got the image from ImageForVersion, it is already the final URL; otherwise look up by key.
+	if !imageFromVersion {
+		if url, ok := sw.DockerImages[s.Image]; ok {
+			s.Image = url
+		} else {
+			return fmt.Errorf("image %q is not defined in software %q", s.Image, sw.Name)
+		}
 	}
 
 	// Apply default limits when blueprint omits limits, or fill defaults for partial limits

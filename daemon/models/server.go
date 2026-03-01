@@ -20,9 +20,11 @@ type ServerConfigurationResponse struct {
 	Invocation           string                  `json:"invocation"`
 	State                State                   `json:"state"`
 	Limits               environment.Limits      `json:"limits"`
-	ServerFolder         string                  `json:"server-folder"`
 	Save                 bool                    `json:"save"`
 	Allocations          environment.Allocations `json:"allocations"`
+	ServerFolder         string                  `json:"server-folder"`
+	SoftwareId           string                  `json:"software-id"`
+	SoftwareVersion      string                  `json:"software-version"`
 }
 
 // Server data state configuration
@@ -55,9 +57,3 @@ const (
 	VolumeModeRO  VolumeMode = "ro"  // read-only bind
 	VolumeModeRW  VolumeMode = "rw"  // read-write bind
 )
-
-type InstallationScript struct {
-	ContainerImage string `yaml:"image"`
-	Entrypoint     string `yaml:"entrypoint"`
-	Script         string `yaml:"script"`
-}

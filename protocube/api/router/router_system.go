@@ -67,9 +67,29 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	})
 }
 
-func (r *Router) getBlueprint(c *gin.Context) {
+func getBlueprint(c *gin.Context) {
 	bp := middleware.ExtractBlueprint(c)
 	c.JSON(http.StatusOK, bp)
+}
+
+func (r *Router) getInstallationScript(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	s.BlueprintId()
+	bp := r.BlueprintRegistry.Get(s.BlueprintId())
+	if bp == nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error": "server uses unknown blueprint " + s.BlueprintId(),
+		})
+		return
+	}
+	sw := r.SoftwareRegistry.Get(bp.Server.Software)
+	if sw == nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error": "server uses blueprint with unknown software " + bp.Server.Software,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, sw.InstallScript)
 }
 
 // Returns all servers

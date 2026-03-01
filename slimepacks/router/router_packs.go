@@ -1,8 +1,9 @@
 package router
 
 import (
-	"SlimePacks/slimepack"
 	"path/filepath"
+
+	"protoxon.com/sls/slimepacks/slimepack"
 
 	"github.com/gin-gonic/gin"
 )

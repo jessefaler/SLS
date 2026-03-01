@@ -59,7 +59,6 @@ type Server struct {
 
 	resources   ResourceUsage
 	Environment environment.ProcessEnvironment `json:"-"`
-	installer   *Installer
 
 	// Defines the process configuration for the server instance.
 	procConfig *models.ProcessConfiguration
@@ -77,7 +76,8 @@ func New(client remote.Client) (*Server, error) {
 		client:    client,
 		powerLock: system.NewLocker(),
 		sinks: map[system.SinkName]*system.SinkPool{
-			system.LogSink: system.NewSinkPool(),
+			system.LogSink:    system.NewSinkPool(),
+			system.InstallSink: system.NewSinkPool(),
 		},
 		resources: ResourceUsage{
 			State: system.NewAtomicString("offline"),
@@ -97,6 +97,9 @@ func (s *Server) GetEnvironmentVariables() []string {
 		fmt.Sprintf("SERVER_MEMORY=%d", s.MemoryLimit()),
 		fmt.Sprintf("SERVER_IP=%s", s.Config().Allocations.DefaultMapping.Ip),
 		fmt.Sprintf(" %d", s.Config().Allocations.DefaultMapping.Port),
+	}
+	if v := s.Config().SoftwareVersion; v != "" {
+		out = append(out, fmt.Sprintf("VERSION=%s", v))
 	}
 
 eloop:
@@ -119,11 +122,6 @@ func (s *Server) ProcessConfiguration() *models.ProcessConfiguration {
 	defer s.RUnlock()
 
 	return s.procConfig
-}
-
-// Installer gets the server installer
-func (s *Server) Installer() *Installer {
-	return s.installer
 }
 
 func (s *Server) SetProcessConfiguration(cfg *models.ProcessConfiguration) {
@@ -352,6 +350,9 @@ func (s *Server) Sync() error {
 func (s *Server) SyncWithConfiguration(cfg models.ServerConfigurationResponse) error {
 	s.Lock()
 	s.procConfig = cfg.ProcessConfiguration
+	s.cfg.mu.Lock()
+	s.cfg.SoftwareVersion = cfg.SoftwareVersion
+	s.cfg.mu.Unlock()
 	s.Unlock()
 	return nil
 }

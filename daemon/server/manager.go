@@ -26,10 +26,9 @@ import (
 )
 
 type Manager struct {
-	mutex     sync.RWMutex
-	client    remote.Client
-	servers   map[string]*Server // key = server ID
-	installer *Installer
+	mutex   sync.RWMutex
+	client  remote.Client
+	servers map[string]*Server // key = server ID
 }
 
 // NewManager returns a new server manager instance.
@@ -37,9 +36,6 @@ func NewManager(client remote.Client) *Manager {
 	return &Manager{
 		client:  client,
 		servers: make(map[string]*Server),
-		installer: &Installer{
-			Processes: make(map[string]*InstallationProcess),
-		},
 	}
 }
 
@@ -59,6 +55,10 @@ func (m *Manager) Get(id string) (*Server, bool) {
 	return match, match != nil
 }
 
+func (m *Manager) Client() remote.Client {
+	return m.client
+}
+
 // Find returns a single element from the collection matching the filter. If
 // nothing is found, a nil result is returned.
 func (m *Manager) Find(filter func(match *Server) bool) *Server {
@@ -70,11 +70,6 @@ func (m *Manager) Find(filter func(match *Server) bool) *Server {
 		}
 	}
 	return nil
-}
-
-// Installer gets the server installer
-func (m *Manager) Installer() *Installer {
-	return m.installer
 }
 
 // Remove removes a server from the collection by its ID.
@@ -115,9 +110,8 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.Remove = func() {
 		m.Remove(s.id)
 	}
-	s.Config().Limits = req.Limits
+	s.Config().Build = req.Limits
 	s.Config().Allocations = req.Allocations
-	s.installer = m.Installer()
 	s.id = req.Id
 
 	// Replace the server.build.default.port variable with the servers actual port
@@ -128,6 +122,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	s.Config().Invocation = invocation
 	s.SetProcessConfiguration(req.ProcessConfiguration)
 	s.Config().Container.Image = req.Image
+	s.Config().SoftwareVersion = req.SoftwareVersion
 
 	// Get the path of the base server folder
 	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
@@ -249,7 +244,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	settings := environment.Settings{
 		Mounts:      s.Mounts(),
 		Allocations: s.Config().Allocations,
-		Limits:      s.cfg.Limits,
+		Limits:      s.cfg.Build,
 		Labels:      s.cfg.Labels,
 	}
 

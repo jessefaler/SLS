@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"emperror.dev/errors"
@@ -290,14 +291,48 @@ func (s *Server) onBeforeStart() error {
 	// and process resource limits are correctly applied.
 	s.SyncWithEnvironment()
 
-	// Check if the base server folder has been installed
-	if !s.Installer().IsInstalled(s.Filesystem().Overlay().ServerPath) {
-		// If the base server folder doesn't exist install the server
-		// This will block until installation is complete or fails
-		err := s.Installer().Install(s, s.Filesystem().Overlay().ServerPath, s.client)
-		if err != nil {
-			return errors.Wrap(err, "failed to install server")
+	// Install server base files only if the folder does not exist. Use a lock
+	// file serverPath/.lock so only one process installs; others wait and then
+	// skip when the folder has content (installed). If the lock is held longer
+	// than InstallLockTimeout, installers exit with timeout (and remove folder)
+	// and waiters remove the folder and retry.
+	serverPath := s.Filesystem().Overlay().ServerPath
+	for {
+		if !IsBaseInstalled(serverPath) {
+			release, needInstall, err := AcquireInstallLock(serverPath)
+			if err != nil {
+				return errors.Wrap(err, "install lock")
+			}
+			if needInstall {
+				installCtx, cancel := context.WithTimeout(s.Context(), InstallLockTimeout)
+				installErr := s.Install(installCtx)
+				cancel()
+				if installErr != nil {
+					release()
+					_ = os.RemoveAll(serverPath)
+					if errors.Is(installErr, context.DeadlineExceeded) {
+						return errors.Wrap(installErr, "installation timed out after 10 minutes")
+					}
+					return installErr
+				}
+				release()
+			} else {
+				release()
+			}
 		}
+
+		// If the folder exists but .lock is present, another server is still installing
+		// this base. Wait for it to finish (or for InstallLockTimeout); if timeout,
+		// WaitForInstallLockReleased removes the folder and returns ErrInstallLockStale
+		// and we retry so we can install ourselves.
+		err := WaitForInstallLockReleased(s.Context(), serverPath, InstallLockTimeout)
+		if errors.Is(err, ErrInstallLockStale) {
+			continue
+		}
+		if err != nil {
+			return errors.Wrap(err, "wait for install lock")
+		}
+		break
 	}
 
 	// Mount the overlay filesystem
@@ -364,7 +399,7 @@ func (s *Server) SyncWithEnvironment() {
 	s.Environment.Config().SetSettings(environment.Settings{
 		Mounts:      s.Mounts(),
 		Allocations: cfg.Allocations,
-		Limits:      cfg.Limits,
+		Limits:      cfg.Build,
 		Labels:      cfg.Labels,
 	})
 

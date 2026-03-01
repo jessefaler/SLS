@@ -1,8 +1,8 @@
 package router
 
 import (
-	"SlimePacks/slimepack"
 	"net/http"
+	"protoxon.com/sls/slimepacks/slimepack"
 
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/api/router/middleware"

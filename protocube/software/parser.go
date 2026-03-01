@@ -112,6 +112,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Id            string                `yaml:"id"`
 		Name          string                `yaml:"name"`
 		DockerImages  map[string]string     `yaml:"images"`
+		Mappings      []map[string]string   `yaml:"mappings,omitempty"`
 		StopCommand   string                `yaml:"stop-command"`
 		Invocation    string                `yaml:"invocation"`
 		OnlineSignal  string                `yaml:"online-signal"`
@@ -146,6 +147,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	s.Id = tmp.Id
 	s.Name = tmp.Name
 	s.DockerImages = tmp.DockerImages
+	s.Mappings = tmp.Mappings
 	s.StopCommand = tmp.StopCommand
 	s.Invocation = tmp.Invocation
 	s.OnlineSignal = tmp.OnlineSignal
@@ -164,8 +166,8 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates the InstallationScript fields.
 func (is *InstallationScript) Validate() error {
-	if is.ContainerImage == "" {
-		return errors.New("missing required field: install-script.container_image")
+	if is.Image == "" {
+		return errors.New("missing required field: install-script.image")
 	}
 	if is.Entrypoint == "" {
 		return errors.New("missing required field: install-script.entrypoint")

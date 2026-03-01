@@ -1,13 +1,13 @@
 package slimepack
 
 import (
-	"SlimePacks/config"
-	"SlimePacks/converter"
-	"SlimePacks/mappings"
-	"SlimePacks/utils"
 	"compress/flate"
 	"fmt"
 	"path/filepath"
+	"protoxon.com/sls/slimepacks/config"
+	"protoxon.com/sls/slimepacks/converter"
+	"protoxon.com/sls/slimepacks/mappings"
+	"protoxon.com/sls/slimepacks/utils"
 
 	"emperror.dev/errors"
 )

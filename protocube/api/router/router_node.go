@@ -103,6 +103,29 @@ func postNodeServerStatus(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// installStatusBody is the JSON body for daemon install completion notifications.
+type installStatusBody struct {
+	Successful bool `json:"successful"`
+	Reinstall  bool `json:"reinstall"`
+}
+
+func postNodeServerInstallStatus(c *gin.Context) {
+	var body installStatusBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	s := middleware.ExtractServer(c)
+	log.WithFields(log.Fields{
+		"server":     system.Red(s.Id()),
+		"successful": body.Successful,
+		"reinstall":  body.Reinstall,
+	}).Debug("Server install status update.")
+	// After install the server process is offline.
+	s.SetStatus(server.ProcessOfflineState)
+	c.Status(http.StatusOK)
+}
+
 func postEventServerCrash(c *gin.Context) {
 	var crash server.CrashData
 	if err := c.ShouldBindJSON(&crash); err != nil {

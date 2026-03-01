@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"sync"
 
@@ -256,4 +257,16 @@ func (a *Atomic[T]) MarshalJSON() ([]byte, error) {
 func PathId(target string) string {
 	h := sha1.Sum([]byte(target))
 	return hex.EncodeToString(h[:])[:8]
+}
+
+func DirExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		// handle other errors if needed
+		return false
+	}
+	return info.IsDir()
 }

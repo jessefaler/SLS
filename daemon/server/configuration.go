@@ -21,6 +21,10 @@ type Configuration struct {
 	// be started or modified except in certain scenarios by an admin user.
 	Suspended bool `json:"suspended"`
 
+	// By default, this is false, however if selected within the software configuration while installing or re-installing a
+	// server, specific installation scripts will be skipped for the server process.
+	SkipInstallScripts bool `json:"skip_install_scripts"`
+
 	// The command that should be usced when booting up the server instane.
 	Invocation string `json:"invocation"`
 
@@ -32,7 +36,7 @@ type Configuration struct {
 	Labels map[string]string `json:"labels"`
 
 	Allocations           environment.Allocations `json:"allocations"`
-	Limits                environment.Limits      `json:"limits"`
+	Build                 environment.Limits      `json:"build"`
 	CrashDetectionEnabled bool                    `json:"crash_detection_enabled"`
 	Mounts                []Mount                 `json:"mounts"`
 	// VolumeMounts are RO/RW binds from State.Volumes
@@ -44,6 +48,10 @@ type Configuration struct {
 		// Defines the Docker image that will be used for this server
 		Image string `json:"image,omitempty"`
 	} `json:"container,omitempty"`
+
+	// SoftwareVersion is the server's software version from the panel (e.g. egg version).
+	// Exposed as VERSION in the server and install container environment.
+	SoftwareVersion string `json:"software_version,omitempty"`
 }
 
 func (s *Server) Config() *Configuration {
@@ -56,13 +64,13 @@ func (s *Server) Config() *Configuration {
 func (s *Server) DiskSpace() int64 {
 	s.cfg.mu.RLock()
 	defer s.cfg.mu.RUnlock()
-	return s.cfg.Limits.DiskSpace * 1024.0 * 1024.0
+	return s.cfg.Build.DiskSpace * 1024.0 * 1024.0
 }
 
 func (s *Server) MemoryLimit() int64 {
 	s.cfg.mu.RLock()
 	defer s.cfg.mu.RUnlock()
-	return s.cfg.Limits.MemoryLimit
+	return s.cfg.Build.MemoryLimit
 }
 
 func (c *Configuration) SetSuspended(s bool) {

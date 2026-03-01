@@ -16,21 +16,21 @@ import (
 // - {{server.build.memory}} -> build.memory
 func (s *Server) buildServerDataJSON() ([]byte, error) {
 	cfg := s.Config()
-	
+
 	serverData := map[string]interface{}{
 		"build": map[string]interface{}{
 			"default": map[string]interface{}{
 				"ip":   cfg.Allocations.DefaultMapping.Ip,
 				"port": cfg.Allocations.DefaultMapping.Port,
 			},
-			"memory":      cfg.Limits.MemoryLimit,
-			"memory_limit": cfg.Limits.MemoryLimit,
-			"swap":        cfg.Limits.Swap,
-			"cpu":         cfg.Limits.CpuLimit,
-			"cpu_limit":   cfg.Limits.CpuLimit,
-			"disk":        cfg.Limits.DiskSpace,
-			"disk_space":  cfg.Limits.DiskSpace,
-			"io_weight":   cfg.Limits.IoWeight,
+			"memory":       cfg.Build.MemoryLimit,
+			"memory_limit": cfg.Build.MemoryLimit,
+			"swap":         cfg.Build.Swap,
+			"cpu":          cfg.Build.CpuLimit,
+			"cpu_limit":    cfg.Build.CpuLimit,
+			"disk":         cfg.Build.DiskSpace,
+			"disk_space":   cfg.Build.DiskSpace,
+			"io_weight":    cfg.Build.IoWeight,
 		},
 	}
 

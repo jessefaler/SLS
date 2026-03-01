@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Overlay is a wrapper around the overlay2 filesystem mount
+// Overlay is a wrapper around the Linux kernel overlay filesystem mount
 // see https://docs.kernel.org/filesystems/overlayfs.html
 type Overlay struct {
 	Lower  []string

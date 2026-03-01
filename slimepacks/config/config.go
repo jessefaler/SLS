@@ -1,9 +1,9 @@
 package config
 
 import (
-	"SlimePacks/log"
 	"os"
 	"path/filepath"
+	"protoxon.com/sls/slimepacks/log"
 	"sync"
 
 	"emperror.dev/errors"
