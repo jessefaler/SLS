@@ -9,7 +9,7 @@ require (
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/apex/log v1.9.0
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/beevik/etree v1.3.0
+	github.com/beevik/etree v1.6.0
 	github.com/buger/jsonparser v1.1.1
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v28.3.3+incompatible
