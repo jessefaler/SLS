@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.LoaderOptions;
 
 public class Config {
 
@@ -48,7 +49,8 @@ public class Config {
         Path targetPath = Path.of(path);
         createDefault(targetPath);
 
-        Yaml yaml = new Yaml(new Constructor(Config.class));
+        LoaderOptions options = new LoaderOptions();
+        Yaml yaml = new Yaml(new Constructor(Config.class, options));
         try (InputStream in = Files.newInputStream(targetPath)) {
             return yaml.load(in);
         } catch (Exception e) {
@@ -85,7 +87,8 @@ public class Config {
             createDefault(targetPath);
         }
 
-        Yaml yaml = new Yaml(new Constructor(Config.class));
+        LoaderOptions options = new LoaderOptions();
+        Yaml yaml = new Yaml(new Constructor(Config.class, options));
         try (InputStream in = Files.newInputStream(targetPath)) {
             SLS.config = yaml.load(in);
             Log.info("Configuration reloaded.");
