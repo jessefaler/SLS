@@ -128,7 +128,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
 
 	// create the overlay volume
-	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay2", s.id), serverFolder)
+	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay", s.id), serverFolder)
 	if err != nil {
 		return nil, err
 	}
