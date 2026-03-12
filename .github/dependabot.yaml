@@ -8,6 +8,10 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   # Go modules
   - package-ecosystem: gomod
@@ -17,7 +21,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: gomod
     directory: /slimepacks
     schedule:
@@ -25,7 +33,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: gomod
     directory: /daemon
     schedule:
@@ -33,6 +45,10 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   # Maven projects
   - package-ecosystem: maven
@@ -42,7 +58,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: maven
     directory: /vsls
     schedule:
@@ -50,7 +70,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
   - package-ecosystem: maven
     directory: /
     schedule:
@@ -58,3 +82,7 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
