@@ -19,6 +19,7 @@ import (
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/environment/docker"
+	"protoxon.com/sls/daemon/internal/overlay"
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/server/filesystem"
@@ -127,6 +128,14 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	// Get the path of the base server folder
 	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
 
+	// Validate required directories exist before building overlay - fail fast with clear error
+	if exists, err := overlay.DirExists(serverFolder); err != nil {
+		return nil, errors.Wrapf(err, "failed to check server folder: %s", serverFolder)
+	} else if !exists {
+		return nil, errors.Wrapf(ErrInvalidServerConfig,
+			"server folder does not exist: %s (check blueprint server-folder is installed on this daemon)", serverFolder)
+	}
+
 	// create the overlay volume
 	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay", s.id), serverFolder)
 	if err != nil {
@@ -168,6 +177,11 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			}
 			if !filesystem.WithinPath(absResolved, volumesRoot) {
 				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, v.Source, volumesRoot)
+			}
+			if exists, err := overlay.DirExists(absResolved); err != nil {
+				return nil, errors.Wrapf(err, "volume '%s': failed to check source path: %s", v.Name, absResolved)
+			} else if !exists {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': source path does not exist: %s", v.Name, absResolved)
 			}
 			target := filepath.Clean(v.Target)
 			if target == "." {
@@ -213,6 +227,11 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			}
 			if !filesystem.WithinPath(absResolved, volumesRoot) {
 				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, resolved, volumesRoot)
+			}
+			if exists, err := overlay.DirExists(absResolved); err != nil {
+				return nil, errors.Wrapf(err, "volume '%s': failed to check source path: %s", v.Name, absResolved)
+			} else if !exists {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': source path does not exist: %s", v.Name, absResolved)
 			}
 			sources = append(sources, absResolved)
 		}
