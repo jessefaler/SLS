@@ -34,12 +34,9 @@ public class MessageChannel {
     public static class SLSMessageListener {
         @Subscribe
         public void onPluginMessage(PluginMessageEvent event) {
-
-            Log.error("REC: MSG");
             if (!event.getIdentifier().equals(SLS_CHANNEL)) {
                 return;
             }
-            Log.error("REC: CHANNEL MSG");
 
             String resultString = new String(event.getData());
             String[] parts = resultString.split(";");
