@@ -50,6 +50,10 @@ func migrations() error {
 	if err != nil {
 		return errors.Wrap(err, "database: failed to auto migrate node state data")
 	}
+	err = Instance().AutoMigrate(&models.StoredKey{})
+	if err != nil {
+		return errors.Wrap(err, "database: failed to auto migrate api key data")
+	}
 	return nil
 }
 

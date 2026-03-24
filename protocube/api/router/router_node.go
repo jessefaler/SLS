@@ -8,7 +8,6 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"protoxon.com/sls/protocube/api/router/middleware"
-	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node/allocator"
@@ -47,8 +46,8 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 		return
 	}
 
-	// Generate a token the node will use to authenticate future requests from Protocube
-	token, err := auth.GenerateToken()
+	// Generate a key the node will use to authenticate future requests from Protocube
+	token, err := system.GenerateKey()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to generate auth token"))
 		return
@@ -63,10 +62,10 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 	}
 
 	// Connect the node in the node manager
-	r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String(), alloc)
+	r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token, alloc)
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": token.String(),
+		"token": token,
 	})
 }
 

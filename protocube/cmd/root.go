@@ -55,11 +55,8 @@ func run(cmd *cobra.Command, _ []string) {
 		serverManager.AttachNodeClientToServers(nodeId, node)
 	})
 
-	// Initialize the token store
-	tokenStore, err := auth.LoadAllTokens()
-	if err != nil {
-		log.WithError(err).Fatal("Failed to load token store.")
-	}
+	// Initialize the api key service
+	keyService := auth.NewKeyService()
 
 	// =========================================================
 	// Initialize the software configurations
@@ -93,7 +90,7 @@ func run(cmd *cobra.Command, _ []string) {
 		SoftwareRegistry:  softwareRegistry,
 		NodeManager:       nodeManager,
 		Client:            remoteClient,
-		VerifyToken:       tokenStore.Verify,
+		KeyService:        keyService,
 	})
 
 	// =========================================================

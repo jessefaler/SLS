@@ -11,6 +11,7 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/grokify/coreforge/identity/apikey"
 	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/config"
@@ -155,7 +156,7 @@ func NodeExists(manager *node.Manager) gin.HandlerFunc {
 }
 
 // RequireAuthorization authenticates the request using the verification function.
-func RequireAuthorization(verify func(token string, keyType auth.KeyType) (bool, error), keyType auth.KeyType) gin.HandlerFunc {
+func RequireAuthorization(service *auth.KeyService, scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -163,7 +164,6 @@ func RequireAuthorization(verify func(token string, keyType auth.KeyType) (bool,
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "The required authorization header was not present in the request.",
 			})
-			logUnauthorisedAccess("The required authorization header was not present in the request.", c, "")
 			return
 		}
 
@@ -171,36 +171,43 @@ func RequireAuthorization(verify func(token string, keyType auth.KeyType) (bool,
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "Invalid authorization header format.",
 			})
-			logUnauthorisedAccess("Invalid authorization header format", c, "")
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		// Extract the actual token
+		token := strings.TrimPrefix(authHeader, "Bearer ")
 
-		valid, err := verify(tokenStr, keyType)
-		if !valid {
+		// Verify the key using CoreForge
+		key, err := service.Validate(c.Request.Context(), token)
+		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error":  "You are not authorized to access this endpoint.",
 				"reason": err.Error(),
 			})
-			logUnauthorisedAccess("Invalid token: "+err.Error(), c, tokenStr)
 			return
 		}
 
+		// Check the required scope
+		if scope != "" && !key.HasScope(scope) {
+			log.WithFields(log.Fields{
+				"owner_id":   key.OwnerID,
+				"scope":      scope,
+				"key_prefix": key.Prefix,
+				"endpoint":   c.FullPath(),
+				"method":     c.Request.Method,
+			}).Error("Api key key does not have required scope for this endpoint")
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error":  "Insufficient privileges",
+				"reason": "Api key missing required scope for this endpoint",
+			})
+			return
+		}
+
+		// Store the verified key in Gin context
+		c.Set("apiKey", key)
+
 		c.Next()
 	}
-}
-
-func logUnauthorisedAccess(reason string, c *gin.Context, tokenStr string) {
-	log.WithFields(log.Fields{
-		"reason":      reason,
-		"client_ip":   c.ClientIP(),
-		"remote_addr": c.Request.RemoteAddr,
-		"method":      c.Request.Method,
-		"path":        c.Request.URL.Path,
-		"token_len":   len(tokenStr),
-		"token_head":  tokenHead(tokenStr),
-	}).Warn("unauthorized access attempt rejected")
 }
 
 // Timeout sets a 30-second timeout on all requests
@@ -236,13 +243,14 @@ func Timeout() gin.HandlerFunc {
 	}
 }
 
-// tokenHead returns the leading token segment (e.g., "SLS_aB3dE1").
-func tokenHead(token string) string {
-	parts := strings.Split(token, "_")
-	if len(parts) >= 2 {
-		return parts[0] + "_" + parts[1]
+// GetAPIKey retrieves the verified API key from Gin context
+func GetAPIKey(c *gin.Context) *apikey.APIKey {
+	if key, ok := c.Get("apiKey"); ok {
+		if ak, ok := key.(*apikey.APIKey); ok {
+			return ak
+		}
 	}
-	return ""
+	return nil
 }
 
 // ExtractLogger pulls the logger out of the request context and returns it. By
