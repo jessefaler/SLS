@@ -287,6 +287,8 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		Save:                 save,
 		SoftwareId:           sw.Id,
 		SoftwareVersion:      bp.Server.Version,
+		HasInstallScript:     sw.InstallScript.Script != "",
+		SkipInstallScript:    sw.InstallScript.SkipScripts,
 	}
 	return &nodeReq, nil
 }

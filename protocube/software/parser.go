@@ -166,9 +166,6 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Validate validates the InstallationScript fields.
 func (is *InstallationScript) Validate() error {
-	if is.Image == "" {
-		return errors.New("missing required field: install-script.image")
-	}
 	if is.Entrypoint == "" {
 		return errors.New("missing required field: install-script.entrypoint")
 	}

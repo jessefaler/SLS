@@ -18,10 +18,6 @@ type ConfigFile struct {
 }
 
 type InstallationScript struct {
-	// Image is the Docker image used for the installation container.
-	// It is configured as "image" in YAML and exposed to the daemon as
-	// "container_image" in JSON to match daemon expectations.
-	Image       string `yaml:"image" json:"container_image"`
 	Entrypoint  string `yaml:"entrypoint" json:"entrypoint"`
 	Script      string `yaml:"script" json:"script"`
 	SkipScripts bool   `yaml:"skip-scripts,omitempty" json:"skip_scripts" default:"false"`

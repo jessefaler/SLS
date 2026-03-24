@@ -26,7 +26,7 @@ import (
 )
 
 // Install executes the installation stack for a server process. Bubbles any
-// errors up to the calling function which should handle contacting the panel to
+// errors up to the calling function which should handle contacting protocube to
 // notify it of the server state.
 //
 // Install runs the installation process. Pass a context with timeout (e.g. from
@@ -39,30 +39,27 @@ func (s *Server) Install(ctx context.Context) error {
 func (s *Server) install(ctx context.Context, reinstall bool) error {
 	var err error
 	if !s.Config().SkipInstallScripts {
-		// Send the start event so the Panel can automatically update. We don't
-		// send this unless the process is actually going to run, otherwise all
-		// sorts of weird rapid UI behavior happens since there isn't an actual
-		// install process being executed.
+		// Send the start event so protocube can automatically update.
 		s.Events().Publish(InstallStartedEvent, "")
 
 		err = s.internalInstall(ctx)
 	} else {
-		s.Log().Info("server configured to skip running installation scripts for this egg, not executing process")
+		s.Log().Info("server configured to skip running installation scripts for this software, not executing process")
 	}
 
-	// Notify panel of install state. On failure, do this in the background so we return
+	// Notify protocube of install state. On failure, do this in the background so we return
 	// (and the caller can log the error) immediately instead of blocking on a slow/timeout HTTP call.
 	successful := err == nil
-	s.Log().WithField("was_successful", successful).Debug("notifying panel of server install state")
-	notifyPanel := func() {
+	s.Log().WithField("was_successful", successful).Debug("notifying protocube of server install state")
+	notifyProtocube := func() {
 		if serr := s.SyncInstallState(successful, reinstall); serr != nil {
-			s.Log().WithField("was_successful", successful).WithField("error", serr).Warn("failed to notify panel of server install state")
+			s.Log().WithField("was_successful", successful).WithField("error", serr).Warn("failed to notify protocube of server install state")
 		}
 	}
 	if successful {
-		notifyPanel()
+		notifyProtocube()
 	} else {
-		go notifyPanel()
+		go notifyProtocube()
 	}
 
 	// Ensure that the server is marked as offline at this point, otherwise you
@@ -70,14 +67,14 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 	s.Environment.SetState(environment.ProcessOfflineState)
 
 	// Push an event to the websocket, so we can auto-refresh the information in
-	// the panel once the installation is completed.
+	// protocube once the installation is completed.
 	s.Events().Publish(InstallCompletedEvent, "")
 
 	return errors.WithStackIf(err)
 }
 
 // Reinstall reinstalls a server's software by utilizing the installation script
-// for the server egg. This does not touch any existing files for the server,
+// for the server software. This does not touch any existing files for the server,
 // other than what the script modifies.
 func (s *Server) Reinstall() error {
 	if s.Environment.State() != environment.ProcessOfflineState {
@@ -89,13 +86,13 @@ func (s *Server) Reinstall() error {
 
 	s.Log().Info("syncing server state with remote source before executing re-installation process")
 	if err := s.Sync(); err != nil {
-		return errors.WrapIf(err, "install: failed to sync server state with Panel")
+		return errors.WrapIf(err, "install: failed to sync server state with Protocube")
 	}
 
 	return s.install(s.Context(), true)
 }
 
-// Internal installation function used to simplify reporting back to the Panel.
+// Internal installation function used to simplify reporting back to Protocube.
 func (s *Server) internalInstall(ctx context.Context) error {
 	script, err := s.client.GetInstallationScript(ctx, s.ID())
 	if err != nil {
@@ -116,9 +113,9 @@ func (s *Server) internalInstall(ctx context.Context) error {
 }
 
 type InstallationProcess struct {
-	Server    *Server
-	Script    *remote.InstallationScript
-	client    *client.Client
+	Server     *Server
+	Script     *remote.InstallationScript
+	client     *client.Client
 	installCtx context.Context // cancelled when install timeout or server is deleted
 }
 
@@ -478,8 +475,8 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	}
 
 	// Resolve container user and chown base folder so the install script can write.
-	// Mount the base server folder (egg template) at /home/container so the install script
-	// writes directly to the base on the host. No overlay or server volume involved.
+	// Mount the base server folder at /home/container so the install script
+	// writes directly to the base on the host.
 	baseServerFolder := ip.Server.Filesystem().Overlay().ServerPath
 	containerUser, hostUID, hostGID := ip.installContainerUser()
 	if err := chownRecursiveTo(baseServerFolder, hostUID, hostGID); err != nil {
@@ -585,8 +582,7 @@ func (ip *InstallationProcess) Execute() (string, error) {
 }
 
 // StreamOutput streams the output of the installation process to a log file in
-// the server configuration directory, as well as to a websocket listener so
-// that the process can be viewed in the panel by administrators.
+// the server configuration directory, as well as to a websocket listener
 func (ip *InstallationProcess) StreamOutput(ctx context.Context, id string) error {
 	opts := container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true}
 	reader, err := ip.client.ContainerLogs(ctx, id, opts)
@@ -639,7 +635,7 @@ func (ip *InstallationProcess) resourceLimits() container.Resources {
 	return resources
 }
 
-// SyncInstallState makes an HTTP request to the Panel instance notifying it that
+// SyncInstallState makes an HTTP request to the Protocube instance notifying it that
 // the server has completed the installation process, and what the state of the
 // server is.
 func (s *Server) SyncInstallState(successful, reinstall bool) error {

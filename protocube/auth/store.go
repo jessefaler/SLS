@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// How long the key can be cached before checking the database again
 const CachedKeyTTL = 5 * time.Minute
 
 // CachedStore is an in memory store for API keys that allows quick and efficient lookups.

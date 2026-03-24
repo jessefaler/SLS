@@ -81,6 +81,8 @@ type ServerConfigurationResponse struct {
 	SoftwareId           string                  `json:"software-id"`
 	ServerFolder         string                  `json:"server-folder"`
 	SoftwareVersion      string                  `json:"software-version"`
+	HasInstallScript     bool                    `json:"has-install-script"`
+	SkipInstallScript    bool                    `json:"skip-install-script"`
 }
 
 type CreateServerRequest struct {

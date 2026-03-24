@@ -108,6 +108,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	}()
 
 	s.save = req.Save
+	s.Config().SkipInstallScripts = req.SkipInstallScript
 	s.Remove = func() {
 		m.Remove(s.id)
 	}
@@ -128,12 +129,15 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	// Get the path of the base server folder
 	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
 
-	// Validate required directories exist before building overlay - fail fast with clear error
-	if exists, err := overlay.DirExists(serverFolder); err != nil {
-		return nil, errors.Wrapf(err, "failed to check server folder: %s", serverFolder)
-	} else if !exists {
-		return nil, errors.Wrapf(ErrInvalidServerConfig,
-			"server folder does not exist: %s (check blueprint server-folder is installed on this daemon)", serverFolder)
+	// If the server does not have an installation script or is configured to skip it check to ensure
+	// that the server folder exists before proceeding that way if it doesn't exist we can send an error back to the user
+	if !req.HasInstallScript || req.SkipInstallScript {
+		if exists, err := overlay.DirExists(serverFolder); err != nil {
+			return nil, errors.Wrapf(err, "failed to check server folder: %s", serverFolder)
+		} else if !exists {
+			return nil, errors.Wrapf(ErrInvalidServerConfig,
+				"server folder does not exist: either add an install script to your software configuration or manually create the server folder. path=%s", serverFolder)
+		}
 	}
 
 	// create the overlay volume
