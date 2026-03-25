@@ -171,7 +171,7 @@ public class AllocationEngine {
             if (status == ServerStatus.STOPPING) {
                 handle.remove();
                 if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
-                cleanupProvisioningAndMaybeFlush(server, gameType);
+                cleanupProvisioningAndFlush(server, gameType);
             }
         }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
             if (pool.getProvisioning().contains(server)) {
@@ -183,20 +183,16 @@ public class AllocationEngine {
         deletionHandleRef[0] = server.getEvents().onDeletion((deletion, handle) -> {
             handle.remove();
             statusHandle.remove();
-            cleanupProvisioningAndMaybeFlush(server, gameType);
+            cleanupProvisioningAndFlush(server, gameType);
         });
         return true;
     }
 
-    private void cleanupProvisioningAndMaybeFlush(Server server, GameType gameType) {
+    private void cleanupProvisioningAndFlush(Server server, GameType gameType) {
         pool.removeProvisioning(server);
         pool.removeRunning(server);
         pendingAssignments.remove(server.getId());
-        if (!pool.hasProvisioningInProgress()
-                && pool.getProvisioning().isEmpty()
-                && pool.getRunning().isEmpty()) {
-            flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-        }
+        flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
     }
 
     private void provisionNewServer() {
@@ -229,11 +225,7 @@ public class AllocationEngine {
                     pool.removeRunning(server);
                     pendingAssignments.remove(server.getId());
                     pool.decrementProvisioningInProgress();
-                    if (!pool.hasProvisioningInProgress()
-                            && pool.getProvisioning().isEmpty()
-                            && pool.getRunning().isEmpty()) {
-                        flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-                    }
+                    flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
                 }
             }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
                 if (pool.getProvisioning().contains(server)) {
@@ -250,11 +242,7 @@ public class AllocationEngine {
                 pool.removeRunning(server);
                 pendingAssignments.remove(server.getId());
                 pool.decrementProvisioningInProgress();
-                if (!pool.hasProvisioningInProgress()
-                        && pool.getProvisioning().isEmpty()
-                        && pool.getRunning().isEmpty()) {
-                    flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-                }
+                flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
             });
         }, failure -> {
             pool.decrementProvisioningInProgress();
