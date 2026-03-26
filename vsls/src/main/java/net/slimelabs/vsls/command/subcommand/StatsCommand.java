@@ -85,7 +85,7 @@ public class StatsCommand {
             ProtoMessage.chat().addMiniMessage("<dark_aqua>Stats</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                     " <gold>-</gold> <dark_gray>Status:</dark_gray> " + statusColor + state.getStatus() + statusColorClose + "\n" +
-                    " <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
+                    " <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red><dark_gray> / </dark_gray><red>" + stats.getCpuLimitFormatted() + "</red>\n" +
                     " <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                     " <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                     " <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +

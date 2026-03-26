@@ -17,6 +17,10 @@ type Stats struct {
 	// does not take into account any limits on the server process itself.
 	CpuAbsolute float64 `json:"cpu_absolute"`
 
+	// The absolute CPU limit is the amount of CPU the server process is allowed to use
+	// in relation to the entire system
+	CpuAbsoluteLimit float64 `json:"cpu_absolute_limit"`
+
 	// Current network transmit in & out for a container.
 	Network NetworkStats `json:"network"`
 

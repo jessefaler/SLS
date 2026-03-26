@@ -95,7 +95,7 @@ public class InfoCommand {
                     " <hover:show_text:'<dark_purple>Allocation: " + allocation + "\nImage: " + image + "</dark_purple>'><gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue></hover>\n" +
                     " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
                     " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
-                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "<dark_gray> / </dark_gray><red>" + stats.getCpuLimitFormatted() + "</red>\n" +
                     "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                     "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +

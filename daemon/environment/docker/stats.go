@@ -77,11 +77,12 @@ func (e *Environment) pollResources(ctx context.Context) error {
 			}
 
 			st := environment.Stats{
-				Uptime:      uptime,
-				Memory:      calculateDockerMemory(v.MemoryStats),
-				MemoryLimit: v.MemoryStats.Limit,
-				CpuAbsolute: calculateDockerAbsoluteCpu(v.PreCPUStats, v.CPUStats),
-				Network:     environment.NetworkStats{},
+				Uptime:           uptime,
+				Memory:           calculateDockerMemory(v.MemoryStats),
+				MemoryLimit:      v.MemoryStats.Limit,
+				CpuAbsolute:      calculateDockerAbsoluteCpu(v.PreCPUStats, v.CPUStats),
+				CpuAbsoluteLimit: float64(e.Configuration.Limits().CpuLimit),
+				Network:          environment.NetworkStats{},
 			}
 
 			for _, nw := range v.Networks {

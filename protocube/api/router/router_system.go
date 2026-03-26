@@ -150,6 +150,17 @@ func getSystemInformation(c *gin.Context) {
 }
 
 func (r *Router) postCreateServer(c *gin.Context) {
+
+	//todo -> debug testing trying to track a race condition
+	for _, n := range r.NodeManager.GetNodes() {
+		log.Error("Node: " + n.Id())
+	}
+
+	//todo -> debug testing trying to track a race condition
+	for _, n := range r.LoadBalancer.Get().ListNodes() {
+		log.Error("Balanced Node: " + n.Id())
+	}
+
 	var req models.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.WithError(err).Error("Failed to create server")
