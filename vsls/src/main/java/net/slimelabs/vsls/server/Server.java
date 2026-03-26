@@ -11,6 +11,7 @@ import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.actions.JoinActions;
 import net.slimelabs.vsls.server.events.ServerEvents;
+import net.slimelabs.vsls.utils.loader.Animation;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
@@ -263,6 +264,7 @@ public class Server {
                 targetServer -> player.createConnectionRequest(targetServer).connectWithIndication().thenAccept(connection -> {
                 }).exceptionally(throwable -> {
                     // Handle connection failure
+                    Animation.clearSwitching(player.getUniqueId());
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
                             .add("Error: Could not connect to " + getShortId(), NamedTextColor.RED)
@@ -270,10 +272,13 @@ public class Server {
                     Log.withField("reason", throwable.getMessage()).error("Failed to connect {} to {}", player.getUsername(), getShortId());
                     return null;
                 }),
-                () -> ProtoMessage.chat()
-                        .add(MessagePreset.SLS)
-                        .add("Error: Server not registered with velocity", NamedTextColor.RED)
-                        .sendMessage(player)
+                () -> {
+                    Animation.clearSwitching(player.getUniqueId());
+                    ProtoMessage.chat()
+                            .add(MessagePreset.SLS)
+                            .add("Error: Server not registered with velocity", NamedTextColor.RED)
+                            .sendMessage(player);
+                }
         );
     }
 

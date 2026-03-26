@@ -21,8 +21,8 @@ public class Animation {
 
     private final LoadingIcon icon = new LoadingIcon();
     private final Map<UUID, ScheduledTask> tasks = new ConcurrentHashMap<>();
-    // Keeps track of players who are transferring between servers
-    private final Set<UUID> switchingPlayers = ConcurrentHashMap.newKeySet();
+    // Shared transfer state so any failed/successful transfer can clear it globally.
+    private static final Set<UUID> switchingPlayers = ConcurrentHashMap.newKeySet();
 
     public Animation() {
         // Register the event listener
@@ -67,6 +67,11 @@ public class Animation {
         if (task != null) {
             task.cancel();
         }
+    }
+
+    /** Clears transfer state for a player if a connection attempt failed. */
+    public static void clearSwitching(UUID playerId) {
+        switchingPlayers.remove(playerId);
     }
 
     @Subscribe
