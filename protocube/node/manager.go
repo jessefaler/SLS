@@ -56,6 +56,17 @@ func (m *Manager) SetOnNodeRegistered(callback func(nodeId string, node *Node)) 
 	m.onNodeRegistered = callback
 }
 
+// TriggerNodeRegistered invokes the onNodeRegistered callback if it's set.
+// This is used to re-attach node clients to existing servers when a node reconnects.
+func (m *Manager) TriggerNodeRegistered(nodeId string, node *Node) {
+	m.mutex.RLock()
+	callback := m.onNodeRegistered
+	m.mutex.RUnlock()
+	if callback != nil {
+		callback(nodeId, node)
+	}
+}
+
 // Register creates a new Node, initializes its NodeClient, adds it to the Manager's
 // internal collection, and registers it with the Manager's load balancer.
 // Returns the newly created Node instance.
