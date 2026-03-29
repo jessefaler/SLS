@@ -140,8 +140,11 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		}
 	}
 
+	// Create the path to the servers volume
+	volume := filepath.Join(config.Get().System.Data, s.id)
+
 	// create the overlay volume
-	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay", s.id), serverFolder)
+	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay", s.id), volume, serverFolder)
 	if err != nil {
 		return nil, err
 	}
@@ -161,9 +164,6 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		}
 		s.cfg.EnvVars = envVars
 	}
-
-	// Create the path to the servers volume
-	volume := filepath.Join(config.Get().System.Data, s.id)
 
 	// Set volume mounts from the state configuration
 	volumesRoot := filepath.Join(config.Get().System.Volumes)
@@ -247,13 +247,14 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			continue
 		}
 
-		// Otherwise, create a new overlay
+		// create a new overlay
 		name := system.PathId(target)
 		overlayTarget := filepath.Join(volume, strings.TrimPrefix(cleanTarget, "/"))
 		ov.NewOverlay(name, sources, overlayTarget)
 	}
 
-	// Copy files into the server filesystem at start (source:destination entries; applied after overlay mount)
+	// Set files to copy into the server filesystem
+	// These will be copied when the server starts
 	s.cfg.Copy = req.State.Copy
 
 	// create the filesystem
@@ -274,6 +275,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	envCfg := environment.NewConfiguration(settings, s.GetEnvironmentVariables())
 	meta := docker.Metadata{
 		Image: s.Config().Container.Image,
+		Stop:  req.ProcessConfiguration.Stop,
 	}
 
 	env, err := docker.New(s.id, &meta, envCfg)
