@@ -8,6 +8,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"gopkg.in/yaml.v3"
+	"protoxon.com/sls/protocube/environment"
 )
 
 // LoadAllSoftware walks the Software root directory recursively,
@@ -117,6 +118,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Invocation    string                `yaml:"invocation"`
 		OnlineSignal  string                `yaml:"online-signal"`
 		InstallScript *InstallationScript   `yaml:"install-script"`
+		Limits        *environment.Limits   `yaml:"limits,omitempty"`
 		Configs       map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 	}
 	if err := unmarshal(&tmp); err != nil {
@@ -151,6 +153,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	s.StopCommand = tmp.StopCommand
 	s.Invocation = tmp.Invocation
 	s.OnlineSignal = tmp.OnlineSignal
+	s.Limits = tmp.Limits
 	s.Configs = tmp.Configs
 
 	// If install-script is provided, validate it

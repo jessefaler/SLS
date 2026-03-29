@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
-	
+
 	"protoxon.com/sls/protocube/environment"
 )
 

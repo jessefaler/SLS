@@ -16,6 +16,10 @@ software:
     image: "sls:java_8"  # Docker image used for installation
     entrypoint: "/bin/bash"  # Entrypoint for the installation process
     script: "paper-installer.sh"
+  # Optional defaults for container resource limits (blueprint server.limits overrides per field)
+  limits:
+    memory_limit: 2048
+    cpu_limit: 200
   configs:
     server.properties:
       parser: properties

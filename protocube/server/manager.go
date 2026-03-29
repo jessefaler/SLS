@@ -240,7 +240,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		},
 		Stop: models.ProcessStopConfiguration{
 			Type:  "command",
-			Value: "stop",
+			Value: sw.StopCommand,
 		},
 		ConfigurationFiles: configFiles,
 	}
@@ -253,7 +253,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		if s.Overrides.Save != nil {
 			save = *s.Overrides.Save
 		}
-		limits = MergeLimits(limits, s.Overrides.Limits)
+		limits = environment.MergeLimits(limits, s.Overrides.Limits)
 	}
 
 	serverFolder := bp.Server.Path
@@ -266,7 +266,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		image = *s.Overrides.Image
 	}
 	// If no explicit image is set on the blueprint or via overrides,
-	// fall back to the software's version-aware image selection.
+	// fall back to the software's image mappings selection.
 	if image == "" {
 		selectedImage, err := sw.ImageForVersion(effectiveVersion)
 		if err != nil {
@@ -370,32 +370,3 @@ func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *n
 	return server, nil
 }
 
-func MergeLimits(base *environment.Limits, override *environment.Limits) *environment.Limits {
-	if override == nil {
-		return base
-	}
-
-	if override.MemoryLimit != nil {
-		base.MemoryLimit = override.MemoryLimit
-	}
-	if override.Swap != nil {
-		base.Swap = override.Swap
-	}
-	if override.IoWeight != nil {
-		base.IoWeight = override.IoWeight
-	}
-	if override.CpuLimit != nil {
-		base.CpuLimit = override.CpuLimit
-	}
-	if override.DiskSpace != nil {
-		base.DiskSpace = override.DiskSpace
-	}
-	if override.Threads != nil {
-		base.Threads = override.Threads
-	}
-	if override.OOMDisabled != nil {
-		base.OOMDisabled = override.OOMDisabled
-	}
-
-	return base
-}
