@@ -318,6 +318,69 @@ func ChownRecursiveUnsafe(paths ...string) error {
 	return nil
 }
 
+// ChgrpRecursiveUnsafe sets only the group on each path (recursively), leaving
+// owners unchanged. Uses the configured daemon GID.
+func ChgrpRecursiveUnsafe(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	gid := cfg.System.User.Gid
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if err := os.Chown(p, -1, gid); err != nil {
+				return errors.Wrapf(err, "failed to chgrp %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chgrp %s", path)
+		}
+	}
+	return nil
+}
+
+// ChmodAddGroupRWXRecursiveUnsafe ORs group rwx into the mode of each file and directory.
+// This does not verify if the paths are within the servers volume.
+func ChmodAddGroupRWXRecursiveUnsafe(paths ...string) error {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			mode := info.Mode()
+			if err := os.Chmod(p, mode|0o070); err != nil {
+				return errors.Wrapf(err, "failed to chmod %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chmod (group +rwx) %s", path)
+		}
+	}
+	return nil
+}
+
 // ChmodUnsafe recursively sets permissions on the provided paths.
 // This does not verify if the paths are within the servers volume.
 func ChmodUnsafe(mode fs.FileMode, paths ...string) error {

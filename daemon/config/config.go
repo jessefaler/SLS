@@ -6,17 +6,23 @@ import (
 	"fmt"
 	log2 "log"
 	"os"
+	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"text/template"
 
 	"emperror.dev/errors"
+	"github.com/acobaugh/osrelease"
 	"github.com/apex/log"
 	"github.com/google/uuid"
 	"github.com/mitchellh/colorstring"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
+	"protoxon.com/sls/daemon/system"
 )
 
 //go:embed config.yml
@@ -81,7 +87,7 @@ type Backups struct {
 	// Defaults to 0 (unlimited)
 	WriteLimit int `default:"0" yaml:"write_limit"`
 
-	// CompressionLevel determines how much backups created by wings should be compressed.
+	// CompressionLevel determines how much backups created by the daemon should be compressed.
 	//
 	// "none" -> no compression will be applied
 	// "best_speed" -> uses gzip level 1 for fast speed
@@ -155,9 +161,13 @@ type SystemConfiguration struct {
 
 	Timezone string `yaml:"timezone"`
 
+	// If set to false the daemon will not attempt to write a log rotate configuration to the disk
+	// when it boots and one is not detected.
+	EnableLogRotate bool `default:"true" yaml:"enable_log_rotate"`
+
 	// The amount of time in seconds that can elapse before a server's disk space calculation is
 	// considered stale and a re-check should occur. DANGER: setting this value too low can seriously
-	// impact system performance and cause massive I/O bottlenecks and high CPU usage for the Wings
+	// impact system performance and cause massive I/O bottlenecks and high CPU usage for the daemon
 	// process.
 	//
 	// Set to 0 to disable disk checking entirely. This will always return 0 for the disk space used
@@ -187,6 +197,9 @@ type SystemConfiguration struct {
 	} `yaml:"user"`
 
 	OpenatMode string `default:"auto" yaml:"openat_mode"`
+
+	// The user that should own all of the server files, and be used for containers.
+	Username string `default:"sls" yaml:"username"`
 
 	// Directory where the server data is stored at.
 	Data string `default:"/var/lib/sls/data" json:"-" yaml:"data"`
@@ -240,6 +253,138 @@ func ConfigureDirectories() error {
 	}
 
 	return nil
+}
+
+// EnsureSLSUser ensures that the SLS core user exists on the
+// system. This user will be the owner of all data in the root data directory
+// and is used as the user within containers. If files are not owned by this
+// user there will be issues with permissions on Docker mount points.
+//
+// This function IS NOT thread safe and should only be called in the main thread
+// when the application is booting.
+func EnsureSLSUser() error {
+	sysName, err := getSystemName()
+	if err != nil {
+		return err
+	}
+
+	// Our way of detecting if sls is running inside of Docker.
+	if sysName == "distroless" {
+		config.System.Username = system.FirstNotEmpty(os.Getenv("SLS_USERNAME"), "sls")
+		config.System.User.Uid = system.MustInt(system.FirstNotEmpty(os.Getenv("SLS_UID"), "988"))
+		config.System.User.Gid = system.MustInt(system.FirstNotEmpty(os.Getenv("SLS_GID"), "988"))
+		return nil
+	}
+
+	if config.System.User.Rootless.Enabled {
+		log.Info("rootless mode is enabled, skipping user creation...")
+		u, err := user.Current()
+		if err != nil {
+			return err
+		}
+		config.System.Username = u.Username
+		config.System.User.Uid = system.MustInt(u.Uid)
+		config.System.User.Gid = system.MustInt(u.Gid)
+		return nil
+	}
+
+	log.WithField("username", config.System.Username).Info("checking for sls system user")
+	u, err := user.Lookup(config.System.Username)
+	// If an error is returned but it isn't the unknown user error just abort
+	// the process entirely. If we did find a user, return it immediately.
+	if err != nil {
+		if _, ok := err.(user.UnknownUserError); !ok {
+			return err
+		}
+	} else {
+		config.System.User.Uid = system.MustInt(u.Uid)
+		config.System.User.Gid = system.MustInt(u.Gid)
+		return nil
+	}
+
+	command := fmt.Sprintf("useradd --system --no-create-home --shell /usr/sbin/nologin %s", config.System.Username)
+	// Alpine Linux is the only OS we currently support that doesn't work with the useradd
+	// command, so in those cases we just modify the command a bit to work as expected.
+	if strings.HasPrefix(sysName, "alpine") {
+		command = fmt.Sprintf("adduser -S -D -H -G %[1]s -s /sbin/nologin %[1]s", config.System.Username)
+		// We have to create the group first on Alpine, so do that here before continuing on
+		// to the user creation process.
+		if _, err := exec.Command("addgroup", "-S", config.System.Username).Output(); err != nil {
+			return err
+		}
+	}
+
+	split := strings.Split(command, " ")
+	if _, err := exec.Command(split[0], split[1:]...).Output(); err != nil {
+		return err
+	}
+	u, err = user.Lookup(config.System.Username)
+	if err != nil {
+		return err
+	}
+	config.System.User.Uid = system.MustInt(u.Uid)
+	config.System.User.Gid = system.MustInt(u.Gid)
+	return nil
+}
+
+// EnableLogRotation writes a logrotate file for sls to the system logrotate
+// configuration directory if one exists and a logrotate file is not found. This
+// allows us to basically automate away the log rotation for most installs, but
+// also enable users to make modifications on their own.
+//
+// This function IS NOT thread-safe.
+func EnableLogRotation() error {
+	if !config.System.EnableLogRotate {
+		log.Info("skipping log rotate configuration, disabled in sls config file")
+		return nil
+	}
+
+	if st, err := os.Stat("/etc/logrotate.d"); err != nil && !os.IsNotExist(err) {
+		return err
+	} else if (err != nil && os.IsNotExist(err)) || !st.IsDir() {
+		return nil
+	}
+	if _, err := os.Stat("/etc/logrotate.d/sls"); err == nil || !os.IsNotExist(err) {
+		return err
+	}
+
+	log.Info("no log rotation configuration found: adding file now")
+	// If we've gotten to this point it means the logrotate directory exists on the system
+	// but there is not a file for sls already. In that case, let us write a new file to
+	// it so files can be rotated easily.
+	f, err := os.Create("/etc/logrotate.d/sls")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	t, err := template.New("logrotate").Parse(`{{.LogDirectory}}/sls.log {
+    size 10M
+    compress
+    delaycompress
+    dateext
+    maxage 7
+    missingok
+    notifempty
+    postrotate
+        /usr/bin/systemctl kill -s HUP sls.service >/dev/null 2>&1 || true
+    endscript
+}`)
+	if err != nil {
+		return err
+	}
+
+	return errors.Wrap(t.Execute(f, config.System), "config: failed to write logrotate to disk")
+}
+
+// Gets the system release name.
+func getSystemName() (string, error) {
+	// use osrelease to get release version and ID
+	release, err := osrelease.Read()
+	if err != nil {
+		return "", err
+	}
+	return release["ID"], nil
 }
 
 var (

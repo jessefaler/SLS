@@ -3,6 +3,7 @@ package filesystem
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -12,21 +13,23 @@ import (
 
 // OverlayVolume represents a single logical volume composed of multiple OverlayFS
 type OverlayVolume struct {
-	mu         sync.Mutex
-	Root       string
-	mounted    atomic.Bool
-	usage      atomic.Int64
-	Overlays   []*overlay.Overlay
-	ServerPath string
+	mu           sync.Mutex
+	Root         string
+	mounted      atomic.Bool
+	serverVolume string
+	usage        atomic.Int64
+	Overlays     []*overlay.Overlay
+	ServerPath   string
 }
 
 // NewOverlayVolume creates a new overlay volume at the path
 // root is the directory where the overlay's will store their work and upper directories
 // root = internal/overlay/<server_id>
-func NewOverlayVolume(root string, serverPath string) (*OverlayVolume, error) {
+func NewOverlayVolume(root string, serverVolume string, serverPath string) (*OverlayVolume, error) {
 	return &OverlayVolume{
-		Root:       root,
-		ServerPath: serverPath,
+		Root:         root,
+		ServerPath:   serverPath,
+		serverVolume: serverVolume,
 	}, nil
 }
 
@@ -70,10 +73,10 @@ func (ov *OverlayVolume) Mount() error {
 
 	}
 
-	// Ensure the overlay directories are owned by the server
-	err := ov.EnsureOwned()
+	// Ensure file/folder permissions are correctly set so that the container can access its files
+	err := ov.SetPermissions()
 	if err != nil {
-		return errors.Wrap(err, "failed to set overlay volume ownership")
+		return errors.Wrap(err, "failed to set overlay volume permissions")
 	}
 
 	ov.mounted.Store(true)
@@ -180,31 +183,62 @@ func (ov *OverlayVolume) SetUsage(newUsage int64) int64 {
 	return ov.usage.Swap(newUsage)
 }
 
-// EnsureOwned ensures that all overlay directories are owned by the container user
-// Ownership of the lower directories is required because OverlayFS preserves
-// the original permissions and ownership when copying up files or directories.
-// If the server does not own these directories, it will not be able to write to them.
-// todo this can likely be fixed with user groups or idmapped mounts
-func (ov *OverlayVolume) EnsureOwned() error {
-	// Chown and chmod the overlay directories
+// SetPermissions ensures that all overlay directories are owned by the container user
+// Lower directories retain original ownership but the daemon user is added as a group with rwx permissions
+// so that containers can properly access files in the lower directories
+func (ov *OverlayVolume) SetPermissions() error {
 	for _, o := range ov.Overlays {
 		if err := ChownRecursiveUnsafe(o.Upper, o.Work); err != nil {
 			return errors.Wrap(err, "failed to recursively chown overlay directory")
 		}
-		if err := ChownRecursiveUnsafe(o.Lower...); err != nil {
-			return errors.Wrap(err, "failed to recursively chown overlay lower directory")
+		if err := ChgrpRecursiveUnsafe(o.Lower...); err != nil {
+			return errors.Wrap(err, "failed to recursively chgrp overlay lower directory")
 		}
+
 		if err := ChmodUnsafe(0o755, o.Upper, o.Work); err != nil {
 			return errors.Wrap(err, "failed to chmod overlay directory")
 		}
-		if err := ChmodUnsafe(0o755, o.Lower...); err != nil {
-			return errors.Wrap(err, "failed to chmod overlay lower directory")
+		if err := ChmodAddGroupRWXRecursiveUnsafe(o.Lower...); err != nil {
+			return errors.Wrap(err, "failed to chmod overlay lower directory (group +rwx)")
 		}
-		// Perform a non-recursive chown on the merged directory so the server can access its files.
+
+		// Perform a non-recursive chown on all directories from the volume root to the merged folder
 		// A recursive chown would propagate ownership to all files, causing them to be copied up unnecessarily.
-		if err := ChownUnsafe(o.Merged); err != nil {
-			return errors.Wrap(err, "failed to chown world overlay directories")
+		parents, err := walkTo(o.Merged, ov.serverVolume)
+		if err != nil {
+			return errors.Wrap(err, "invalid overlay path")
+		}
+
+		for _, parent := range parents {
+			if err := ChownUnsafe(parent); err != nil {
+				return errors.Wrapf(err, "failed to chown parent directory %s", parent)
+			}
 		}
 	}
 	return nil
+}
+
+// walkTo returns all parent directories from 'from' up to and including 'to'.
+func walkTo(from, to string) ([]string, error) {
+	from = filepath.Clean(from)
+	to = filepath.Clean(to)
+
+	rel, err := filepath.Rel(to, from)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to compute relative path from %s to %s", from, to)
+	}
+
+	if strings.HasPrefix(rel, "..") {
+		return nil, errors.Errorf("invalid overlay path: path %s is not inside %s", from, to)
+	}
+
+	var dirs []string
+	for {
+		dirs = append(dirs, from)
+		if from == to {
+			break
+		}
+		from = filepath.Dir(from)
+	}
+	return dirs, nil
 }
