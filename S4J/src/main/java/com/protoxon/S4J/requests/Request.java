@@ -20,14 +20,17 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-import com.protoxon.S4J.exceptions.*;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
+import com.protoxon.S4J.exceptions.HttpException;
+import com.protoxon.S4J.exceptions.RateLimitedException;
 import okhttp3.RequestBody;
 
 public class Request<T> {
 
 	private final SLSActionImpl<T> action;
 	private final Consumer<? super T> onSuccess;
-	private final Consumer<? super Throwable> onFailure;
+	private final Consumer<? super ApiFailure> failureConsumer;
 	private final Route.CompiledRoute route;
 	private final RequestBody requestBody;
 	private final boolean shouldQueue;
@@ -39,14 +42,14 @@ public class Request<T> {
 	public Request(
 			SLSActionImpl<T> action,
 			Consumer<? super T> onSuccess,
-			Consumer<? super Throwable> onFailure,
+			Consumer<? super ApiFailure> failureConsumer,
 			Route.CompiledRoute route,
 			RequestBody requestBody,
 			boolean shouldQueue,
 			long deadline) {
 		this.action = action;
 		this.onSuccess = onSuccess;
-		this.onFailure = onFailure;
+		this.failureConsumer = failureConsumer;
 		this.route = route;
 		this.requestBody = requestBody;
 		this.shouldQueue = shouldQueue;
@@ -68,48 +71,34 @@ public class Request<T> {
 
 	public void setOnFailure(Response response) {
 		if (response.isRateLimit()) {
-			onFailure(new RateLimitedException(route, response.getRetryAfter()));
-		} else
-			switch (response.getCode()) {
-				case -1:
-					// Connection/exception error
-					if (response.getException() != null) {
-						String exceptionMessage = response.getException().getMessage();
-						String errorMessage = exceptionMessage != null
+			onFailure(RateLimitedException.fromResponse(route, response));
+			return;
+		}
+		if (response.getCode() == Response.ERROR_CODE) {
+			if (response.getException() != null) {
+				String exceptionMessage = response.getException().getMessage();
+				String errorMessage =
+						exceptionMessage != null
 								? "Unable to reach the api server: " + exceptionMessage
-								: "Unable to reach the api server: " + response.getException().getClass().getSimpleName();
-						onFailure(new HttpException(errorMessage));
-					} else {
-						onFailure(new HttpException("Unable to reach the API server (unknown error)"));
-					}
-					break;
-				case 403:
-					onFailure(new LoginException(
-							"The provided token is either incorrect or does not have access to process this request."));
-					break;
-				case 404:
-					onFailure(new NotFoundException("The requested entity was not found."));
-					break;
-				case 422:
-					onFailure(new MissingActionException(
-							"The request is missing required fields.", response.getObject()));
-					break;
-				case 500:
-					onFailure(new ServerException("The server has encountered an Internal Server Error."));
-					break;
-				default:
-					onFailure(new HttpException(
-							String.format("S4J has encountered a %d error.", response.getCode()), response));
-					break;
+								: "Unable to reach the api server: "
+										+ response.getException().getClass().getSimpleName();
+				onFailure(new HttpException(errorMessage));
+			} else {
+				onFailure(new HttpException("Unable to reach the API server (unknown error)"));
 			}
+			return;
+		}
+		onFailure(ApiError.fromResponse(response));
 	}
 
 	public void onFailure(Throwable failException) {
 		if (done) return;
 		done = true;
+		ApiError err = ApiError.coerce(failException);
+		ApiError.logFailure(route, err);
 		action.getS4J().getCallbackPool().execute(() -> {
 			try {
-				onFailure.accept(failException);
+				failureConsumer.accept(err);
 			} catch (Throwable t) {
 				System.err.printf("Encountered error while processing failure consumer: %s%n", t);
 				throw t;

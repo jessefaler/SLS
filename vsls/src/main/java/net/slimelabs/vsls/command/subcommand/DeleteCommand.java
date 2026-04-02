@@ -41,13 +41,7 @@ public class DeleteCommand {
                                             .add("Deleted " + server.getShortId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to delete server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to delete server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -74,7 +68,7 @@ public class DeleteCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.delete().executeAsync(
                                         success -> {},
-                                        failure -> Log.warn("Failed to delete server " + server.getId() + " reason: " + failure.getMessage())
+                                        failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -92,13 +86,7 @@ public class DeleteCommand {
                                             .add("Deleted " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to delete server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to delete server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to delete server " + id, failure, source)
                         );
                     } else {
                         // No such server exists
@@ -124,7 +112,7 @@ public class DeleteCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.delete(true).executeAsync(
                                         success -> {},
-                                        failure -> Log.warn("Failed to delete server " + server.getId() + " reason: " + failure.getMessage())
+                                        failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -142,13 +130,7 @@ public class DeleteCommand {
                                             .add("Deleting " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to delete server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to delete server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to delete server " + id, failure, source)
                         );
                     } else {
                         // No such server exists

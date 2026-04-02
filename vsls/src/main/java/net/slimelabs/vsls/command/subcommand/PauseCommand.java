@@ -33,13 +33,7 @@ public class PauseCommand {
                                             .add("Paused " + server.getShortId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to pause server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to pause server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to pause server " + server.getShortId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -70,13 +64,7 @@ public class PauseCommand {
                                             .add("Pausing " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to pause server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to pause server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to pause server " + id, failure, source)
                         );
                     } else {
                         // No such server exists

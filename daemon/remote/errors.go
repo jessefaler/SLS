@@ -7,15 +7,18 @@ import (
 	"emperror.dev/errors"
 )
 
+// RequestErrors is a legacy wire format from older APIs (errors array).
 type RequestErrors struct {
 	Errors []RequestError `json:"errors"`
 }
 
+// RequestError is returned when a remote HTTP API responds with an error body.
 type RequestError struct {
 	response *http.Response
 	Code     string `json:"code"`
 	Status   string `json:"status"`
 	Detail   string `json:"detail"`
+	Hint     string `json:"hint,omitempty"`
 }
 
 // IsRequestError checks if the given error is of the RequestError type.
@@ -48,8 +51,10 @@ func (re *RequestError) Error() string {
 	if re.response != nil {
 		c = re.response.StatusCode
 	}
-
-	return fmt.Sprintf("Error response from Remote: %s: %s (HTTP/%d)", re.Code, re.Detail, c)
+	if re.Hint != "" {
+		return fmt.Sprintf("Error response from Remote: %s %s: %s (hint: %s) (HTTP/%d)", re.Code, re.Status, re.Detail, re.Hint, c)
+	}
+	return fmt.Sprintf("Error response from Remote: %s %s: %s (HTTP/%d)", re.Code, re.Status, re.Detail, c)
 }
 
 // StatusCode returns the status code of the response.

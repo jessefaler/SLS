@@ -14,6 +14,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/cenkalti/backoff/v4"
+	"protoxon.com/sls/daemon/api/router/httperror"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/system"
 )
@@ -194,8 +195,11 @@ func isUnregistered(resp *Response) bool {
 			return false
 		}
 
-		// Check the error field
+		// Legacy {"error":"Unregistered"} or structured {"detail":"Unregistered",...}
 		if e, ok := data["error"].(string); ok && e == "Unregistered" {
+			return true
+		}
+		if d, ok := data["detail"].(string); ok && d == "Unregistered" {
 			return true
 		}
 	}
@@ -326,24 +330,46 @@ func (r *Response) Error() error {
 		return nil
 	}
 
-	var errs RequestErrors
-	_ = r.BindJSON(&errs)
+	b, err := r.Read()
+	if err != nil {
+		return errors.WithStackDepth(err, 1)
+	}
 
 	e := &RequestError{
 		Code:   "_MissingResponseCode",
-		Status: strconv.Itoa(r.StatusCode),
+		Status: http.StatusText(r.StatusCode),
 		Detail: "No error response returned from API endpoint.",
 	}
-	if len(errs.Errors) > 0 {
-		e = &errs.Errors[0]
-	} else {
-		// Try to parse simple error format: {"error": "error message"}
-		var simpleError struct {
-			Error string `json:"error"`
+
+	var apiErr httperror.Error
+	if json.Unmarshal(b, &apiErr) == nil && (apiErr.Code != "" || apiErr.Detail != "" || apiErr.Hint != "") {
+		e.Code = apiErr.Code
+		e.Status = apiErr.Status
+		e.Detail = apiErr.Detail
+		e.Hint = apiErr.Hint
+		if e.Code == "" {
+			e.Code = strconv.Itoa(r.StatusCode)
 		}
-		if r.BindJSON(&simpleError) == nil && simpleError.Error != "" {
-			e.Code = r.Status
-			e.Detail = simpleError.Error
+		if e.Status == "" {
+			e.Status = http.StatusText(r.StatusCode)
+		}
+	} else {
+		var errs RequestErrors
+		if json.Unmarshal(b, &errs) == nil && len(errs.Errors) > 0 {
+			first := errs.Errors[0]
+			e.Code = first.Code
+			e.Status = first.Status
+			e.Detail = first.Detail
+			e.Hint = first.Hint
+		} else {
+			var simpleError struct {
+				Error string `json:"error"`
+			}
+			if json.Unmarshal(b, &simpleError) == nil && simpleError.Error != "" {
+				e.Code = strconv.Itoa(r.StatusCode)
+				e.Status = http.StatusText(r.StatusCode)
+				e.Detail = simpleError.Error
+			}
 		}
 	}
 

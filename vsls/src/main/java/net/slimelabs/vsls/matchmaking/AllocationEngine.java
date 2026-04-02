@@ -2,9 +2,11 @@ package net.slimelabs.vsls.matchmaking;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
 import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
@@ -158,7 +160,7 @@ public class AllocationEngine {
         server.start().executeAsync(v -> {}, failure -> {
             pool.removeProvisioning(server);
             if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
-            flushWaitingWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
+            flushWaitingWithApiError("Failed to start server " + server.getName(), failure);
         });
         Event.Handle statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
@@ -246,7 +248,7 @@ public class AllocationEngine {
             });
         }, failure -> {
             pool.decrementProvisioningInProgress();
-            flushWaitingWithError("Failed to start server: " + failure.getMessage());
+            flushWaitingWithApiError("Failed to create server for blueprint " + blueprint.getName(), failure);
         });
     }
 
@@ -255,6 +257,15 @@ public class AllocationEngine {
         while ((q = pool.waiting().poll()) != null) {
             pool.stopLoading(q.player());
             ProtoMessage.chat().add(MessagePreset.SLS).add(message, NamedTextColor.RED).sendMessage(q.player());
+            ChatPackets.enableActionBarPackets(q.player().getUniqueId());
+        }
+    }
+
+    private void flushWaitingWithApiError(String message, ApiFailure failure) {
+        QueuedPlayer q;
+        while ((q = pool.waiting().poll()) != null) {
+            pool.stopLoading(q.player());
+            Log.requestError(message, failure, q.player());
             ChatPackets.enableActionBarPackets(q.player().getUniqueId());
         }
     }

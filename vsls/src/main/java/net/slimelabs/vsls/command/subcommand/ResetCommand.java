@@ -152,12 +152,7 @@ public class ResetCommand {
                             .sendMessage(player);
                 }).delay(2, TimeUnit.SECONDS).schedule();
             }
-        }, failure -> {
-            ProtoMessage.chat()
-                    .add(MessagePreset.SLS)
-                    .add("Failed to reset " + server.getShortId() + " Reason: " + failure.getMessage(), NamedTextColor.RED)
-                    .sendMessage(source);
-        });
+        }, failure -> Log.requestError("Failed to reset server " + server.getShortId(), failure, source));
     }
 
     public static void showResetTitle(Audience target, String serverName) {

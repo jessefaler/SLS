@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/auth/scope"
 )
@@ -107,10 +108,10 @@ func (r *Router) Configure() *gin.Engine {
 	// Return JSON error bodies for unmatched routes and methods so API clients
 	// (e.g. daemon remote client) get a parseable response instead of _MissingResponseCode.
 	router.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist."})
+		httperror.JSON(c, http.StatusNotFound, "no matching route", "The requested resource does not exist.")
 	})
 	router.NoMethod(func(c *gin.Context) {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed."})
+		httperror.JSON(c, http.StatusMethodNotAllowed, "method not allowed for route", "Method not allowed.")
 	})
 
 	return router

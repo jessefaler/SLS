@@ -17,6 +17,7 @@
 package com.protoxon.S4J.requests.action.operator;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiFailure;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +39,7 @@ public class DelaySLSAction<T> extends SLSActionOperator<T, T> {
 	}
 
 	@Override
-	public void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure) {
+	public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
 		action.executeAsync((result) -> scheduler.schedule(() -> doSuccess(success, result), delay, unit), failure);
 	}
 

@@ -496,6 +496,10 @@ func loadConfigFromFile(path string) error {
 		config.RemoteApi.Token = envToken
 	}
 
+	if err := ValidateImagePullPolicy(&config.Docker); err != nil {
+		return errors.Wrap(err, "config: invalid docker settings")
+	}
+
 	// Store this configuration in the global state.
 	Set(&config)
 	return nil

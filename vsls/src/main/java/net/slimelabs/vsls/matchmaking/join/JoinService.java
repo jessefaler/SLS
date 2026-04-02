@@ -22,7 +22,9 @@ public class JoinService {
         }
     }
 
-    /** Connects the player directly to the server with the given id (short or prefix). */
+    /**
+     * Connects the player directly to the server with the given id (short or prefix).
+     */
     public void joinServer(Player player, String serverId) {
         direct.join(player, serverId);
     }

@@ -201,7 +201,7 @@ public class BlueprintRegistry {
             registry.setBlueprints(blueprints);
             Log.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
         }, failure -> {
-            Log.warn("Failed to load blueprints: {}. Retrying in 30 seconds...", failure.getMessage());
+            Log.warn("Failed to load blueprints: {}. Retrying in 30 seconds...", failure.info());
             // Schedule a retry after 30 seconds
             SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
                 loadBlueprints(registry);

@@ -49,13 +49,7 @@ public class StartCommand {
                                             .add("Starting " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to start server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to start server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to start server " + id, failure, source)
                         );
                     } else {
                         // No such server exists

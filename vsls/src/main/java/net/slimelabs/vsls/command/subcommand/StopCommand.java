@@ -38,13 +38,7 @@ public class StopCommand {
                                             .add("Stopped " + server.getShortId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to stop server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to stop server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to stop server " + server.getShortId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -78,7 +72,7 @@ public class StopCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.stop().executeAsync(
                                         success -> {},
-                                        failure -> Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage())
+                                        failure -> Log.requestError("Failed to stop server " + server.getShortId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -97,13 +91,7 @@ public class StopCommand {
                                             .add("Shutdown " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to stop server " + id, failure, source)
                         );
                     } else {
                         // No such server exists
@@ -149,7 +137,7 @@ public class StopCommand {
                                 server.stop().executeAsync(
                                         success -> {},
                                         failure -> {
-                                            Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                            Log.requestError("Failed to stop server " + server.getShortId(), failure, source);
                                             SLS.servers.unRegister(server.getId());
                                         }
                                 )
@@ -170,11 +158,7 @@ public class StopCommand {
                                             .sendMessage(source);
                                 },
                                 failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to stop server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to stop server " + server.getId() + " reason: " + failure.getMessage());
+                                    Log.requestError("Failed to stop server " + id, failure, source);
                                     SLS.servers.unRegister(server.getId());
                                 }
                         );

@@ -37,13 +37,7 @@ public class ResumeCommand {
                                             .add("Resumed " + server.getShortId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to resume server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to resume server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to resume server " + server.getShortId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -74,13 +68,7 @@ public class ResumeCommand {
                                             .add("Resuming " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to resume server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to resume server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to resume server " + id, failure, source)
                         );
                     } else {
                         // No such server exists

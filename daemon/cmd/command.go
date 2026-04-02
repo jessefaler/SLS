@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	log2 "log"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -23,6 +24,18 @@ func init() {
 	rootCommand.AddCommand(versionCommand)
 }
 
+func checkCapabilities() {
+	// Ensure the program is running with sufficient capabilities.
+	// CAP_SYS_ADMIN is required to perform mount operations.
+	admin, err := system.HasCapSysAdmin()
+	if err != nil {
+		log2.Fatalf("Failed to check CAP_SYS_ADMIN capability: %v", err)
+	}
+	if !admin {
+		log2.Fatal("Insufficient privileges: this program requires the CAP_SYS_ADMIN capability to run.")
+	}
+}
+
 // initEnvironment sets up config, logging, and registries.
 func initEnvironment(cmd *cobra.Command) {
 	err := config.InitConfig()
@@ -42,6 +55,7 @@ var rootCommand = &cobra.Command{
 	Use:   "SLS",
 	Short: "Runs the SLS daemon allowing programmatic control of game servers.",
 	PreRun: func(cmd *cobra.Command, args []string) {
+		checkCapabilities()
 		initEnvironment(cmd)
 	},
 	Run: run,

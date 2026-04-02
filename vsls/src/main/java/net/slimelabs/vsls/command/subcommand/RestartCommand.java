@@ -50,13 +50,7 @@ public class RestartCommand {
                                     // Queue them to rejoin when it is ready
                                     queuePlayers(server, players);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to restart server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to restart server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to restart server " + server.getShortId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -93,13 +87,7 @@ public class RestartCommand {
                                     // Queue them to rejoin when it is ready
                                     queuePlayers(server, players);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to restart server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to restart server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to restart server " + id, failure, source)
                         );
                     } else {
                         // No such server exists

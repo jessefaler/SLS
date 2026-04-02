@@ -11,6 +11,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/daemon/api/router/httperror"
 	"protoxon.com/sls/daemon/api/router/middleware"
 	"protoxon.com/sls/daemon/server"
 )
@@ -36,9 +37,9 @@ func postServerPower(c *gin.Context) {
 	}
 
 	if !data.Action.IsValid() {
-		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "The power action provided was not valid, should be one of \"start\", \"stop\", \"restart\", \"kill\", \"pause\", \"unpause\"",
-		})
+		httperror.AbortWithJSON(c, http.StatusUnprocessableEntity,
+			"power action must be one of start, stop, restart, kill, pause, unpause",
+			"The power action provided was not valid.")
 		return
 	}
 
@@ -49,9 +50,7 @@ func postServerPower(c *gin.Context) {
 	// We don't really care about any of the other actions at this point, they'll all result
 	// in the process being stopped, which should have happened anyways if the server is suspended.
 	if (data.Action == server.PowerActionStart || data.Action == server.PowerActionRestart) && s.IsSuspended() {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": "Cannot start or restart a server that is suspended.",
-		})
+		httperror.AbortWithJSON(c, http.StatusBadRequest, "server is suspended", "Cannot start or restart a server that is suspended.")
 		return
 	}
 
@@ -103,9 +102,7 @@ func postServerCommands(c *gin.Context) {
 		middleware.CaptureAndAbort(c, err)
 		return
 	} else if !running {
-		c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{
-			"error": "Cannot send commands to a stopped server instance.",
-		})
+		httperror.AbortWithJSON(c, http.StatusBadGateway, "server process not running", "Cannot send commands to a stopped server instance.")
 		return
 	}
 

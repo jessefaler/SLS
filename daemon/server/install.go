@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"html/template"
@@ -15,12 +14,13 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/environment/docker"
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/system"
 )
@@ -227,80 +227,65 @@ func (ip *InstallationProcess) writeScriptToDisk() error {
 }
 
 // Pulls the docker image to be used for the installation container (server's image).
+// Behavior follows docker.image_pull_policy
 func (ip *InstallationProcess) pullInstallationImage() error {
 	img := ip.ContainerImage()
 	if img == "" {
 		return errors.New("server has no container image configured")
 	}
 
-	// Get a registry auth configuration from the config.
-	var registryAuth *config.RegistryConfiguration
-	for registry, c := range config.Get().Docker.Registries {
-		if !strings.HasPrefix(img, registry) {
-			continue
+	// Images prefixed with ~ are local images that we do not try to pull.
+	if strings.HasPrefix(img, "~") {
+		return nil
+	}
+
+	policy := config.Get().Docker.ImagePullPolicy
+
+	pull := func() error {
+		pullCtx, cancelPull := context.WithTimeout(ip.installContext(), 15*time.Minute)
+		defer cancelPull()
+		return docker.PullImageWithOfflineFallback(pullCtx, ip.client, img, nil)
+	}
+
+	switch policy {
+	case config.ImagePullPolicyNever:
+		inspectCtx, cancel := context.WithTimeout(ip.installContext(), 30*time.Second)
+		defer cancel()
+		if _, err := ip.client.ImageInspect(inspectCtx, img); errdefs.IsNotFound(err) {
+			return errors.Errorf("installation image %q is not present locally (docker.image_pull_policy is Never)", img)
+		} else if err != nil {
+			return errors.Wrap(err, "failed to inspect installation image")
 		}
+		return nil
 
-		log.WithField("registry", registry).Debug("using authentication for registry")
-		registryAuth = &c
-		break
-	}
-
-	// Get the ImagePullOptions.
-	imagePullOptions := image.PullOptions{All: false}
-	if registryAuth != nil {
-		b64, err := registryAuth.Base64()
-		if err != nil {
-			log.WithError(err).Error("failed to get registry auth credentials")
+	case config.ImagePullPolicyIfNotPresent:
+		inspectCtx, cancel := context.WithTimeout(ip.installContext(), 30*time.Second)
+		defer cancel()
+		if ok, err := docker.ImageExistsLocally(inspectCtx, ip.client, img); err != nil {
+			return err
+		} else if ok {
+			log.WithField("image", img).Debug("installation image already present locally; skipping pull")
+			return nil
 		}
+		return pull()
 
-		// b64 is a string so if there is an error it will just be empty, not nil.
-		imagePullOptions.RegistryAuth = b64
-	}
-
-	ctx := ip.installContext()
-	r, err := ip.client.ImagePull(ctx, img, imagePullOptions)
-	if err != nil {
-		images, ierr := ip.client.ImageList(ctx, image.ListOptions{})
-		if ierr != nil {
-			// Well damn, something has gone really wrong here, just go ahead and abort there
-			// isn't much anything we can do to try and self-recover from this.
-			return ierr
+	case config.ImagePullPolicySchedule:
+		docker.RegisterScheduledPullImage(img)
+		inspectCtx, cancel := context.WithTimeout(ip.installContext(), 30*time.Second)
+		defer cancel()
+		if ok, err := docker.ImageExistsLocally(inspectCtx, ip.client, img); err != nil {
+			return err
+		} else if ok {
+			log.WithField("image", img).Debug("installation image already present locally; skipping pull (scheduled)")
+			return nil
 		}
+		return pull()
 
-		for _, imageInfo := range images {
-			for _, t := range imageInfo.RepoTags {
-				if t != img {
-					continue
-				}
-
-				log.WithFields(log.Fields{
-					"image": img,
-					"err":   err.Error(),
-				}).Warn("unable to pull requested image from remote source, however the image exists locally")
-
-				// Okay, we found a matching container image, in that case just go ahead and return
-				// from this function, since there is nothing else we need to do here.
-				return nil
-			}
-		}
-
-		return err
+	case config.ImagePullPolicyAlways:
+		fallthrough
+	default:
+		return pull()
 	}
-	defer r.Close()
-
-	log.WithField("image", img).Debug("pulling docker image... this could take a bit of time")
-
-	// Block continuation until the image has been pulled successfully.
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		log.Debug(scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // BeforeExecute runs before the container is executed. This pulls down the

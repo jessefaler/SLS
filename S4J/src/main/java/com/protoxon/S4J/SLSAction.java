@@ -3,6 +3,8 @@ package com.protoxon.S4J;
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.requests.action.operator.*;
 import com.protoxon.S4J.utils.Checks;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.exceptions.RateLimitedException;
 import com.protoxon.S4J.requests.SLSActionImpl;
 
@@ -55,7 +57,7 @@ public interface SLSAction<T> {
      *
      * @return The fallback failure consumer
      */
-    static Consumer<? super Throwable> getDefaultFailure() {
+    static Consumer<? super ApiFailure> getDefaultFailure() {
         return SLSActionImpl.DEFAULT_FAILURE;
     }
 
@@ -138,7 +140,7 @@ public interface SLSAction<T> {
      * @param failure
      *        The failure callback that will be called if the Request encounters an exception at its execution point. (can be null to use default)
      */
-    void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure);
+    void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure);
 
     /**
      * Schedules a timeout for this SLSAction instance.
@@ -244,7 +246,7 @@ public interface SLSAction<T> {
      *
      * @return SLSAction with fallback handling
      */
-    default SLSAction<T> onErrorMap(Function<? super Throwable, ? extends T> map) {
+    default SLSAction<T> onErrorMap(Function<? super ApiError, ? extends T> map) {
         return onErrorMap(null, map);
     }
 
@@ -274,7 +276,7 @@ public interface SLSAction<T> {
      * @return SLSAction with fallback handling
      */
     default SLSAction<T> onErrorMap(
-            Predicate<? super Throwable> condition, Function<? super Throwable, ? extends T> map) {
+            Predicate<? super ApiError> condition, Function<? super ApiError, ? extends T> map) {
         Checks.notNull(map, "Function");
         return new MapErrorSLSAction<>(this, condition == null ? (x) -> true : condition, map);
     }
@@ -373,7 +375,7 @@ public interface SLSAction<T> {
      *
      * @return SLSAction with fallback handling
      */
-    default SLSAction<T> onErrorFlatMap(Function<? super Throwable, ? extends SLSAction<? extends T>> map) {
+    default SLSAction<T> onErrorFlatMap(Function<? super ApiError, ? extends SLSAction<? extends T>> map) {
         return onErrorFlatMap(null, map);
     }
 
@@ -408,8 +410,8 @@ public interface SLSAction<T> {
      * @return SLSAction with fallback handling
      */
     default SLSAction<T> onErrorFlatMap(
-            Predicate<? super Throwable> condition,
-            Function<? super Throwable, ? extends SLSAction<? extends T>> map) {
+            Predicate<? super ApiError> condition,
+            Function<? super ApiError, ? extends SLSAction<? extends T>> map) {
         Checks.notNull(map, "Function");
         return new FlatMapErrorSLSAction<>(this, condition == null ? (x) -> true : condition, map);
     }

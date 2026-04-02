@@ -17,6 +17,8 @@
 package com.protoxon.S4J.requests.action.operator;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.exceptions.SLSException;
 import com.protoxon.S4J.utils.ExceptionUtils;
 
@@ -28,26 +30,29 @@ import java.util.function.Predicate;
 
 public class MapErrorSLSAction<T> extends SLSActionOperator<T, T> {
 
-	private final Predicate<? super Throwable> check;
-	private final Function<? super Throwable, ? extends T> map;
+	private final Predicate<? super ApiError> check;
+	private final Function<? super ApiError, ? extends T> map;
 
 	public MapErrorSLSAction(
-            SLSAction<T> action, Predicate<? super Throwable> check, Function<? super Throwable, ? extends T> map) {
+			SLSAction<T> action, Predicate<? super ApiError> check, Function<? super ApiError, ? extends T> map) {
 		super(action);
 		this.check = check;
 		this.map = map;
 	}
 
 	@Override
-	public void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure) {
-		action.executeAsync(success, (error) -> {
-			try {
-				if (check.test(error)) doSuccess(success, map.apply(error));
-				else doFailure(failure, error);
-			} catch (Throwable e) {
-				doFailure(failure, ExceptionUtils.appendCause(e, error));
-			}
-		});
+	public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
+		action.executeAsync(
+				success,
+				(err) -> {
+					ApiError error = (ApiError) err;
+					try {
+						if (check.test(error)) doSuccess(success, map.apply(error));
+						else doFailure(failure, error);
+					} catch (Throwable e) {
+						doFailureCoerced(failure, ExceptionUtils.appendCause(e, error));
+					}
+				});
 	}
 
 	@Override
@@ -56,7 +61,8 @@ public class MapErrorSLSAction<T> extends SLSActionOperator<T, T> {
 			return action.execute(shouldQueue);
 		} catch (Throwable error) {
 			try {
-				if (check.test(error)) return map.apply(error);
+				ApiError err = ApiError.coerce(error);
+				if (check.test(err)) return map.apply(err);
 			} catch (Throwable e) {
 				fail(ExceptionUtils.appendCause(e, error));
 			}

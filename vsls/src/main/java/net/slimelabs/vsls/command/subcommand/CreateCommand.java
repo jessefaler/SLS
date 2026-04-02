@@ -8,6 +8,7 @@ import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.Id;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -74,11 +75,7 @@ public class CreateCommand {
                                 .add(server.getShortId(), NamedTextColor.DARK_GRAY)
                                 .add(")", NamedTextColor.GRAY)
                                 .sendMessage(source);
-                    }, failure -> {
-                        ProtoMessage.chat()
-                                .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                .sendMessage(source);
-                    });
+                    }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));
 
                     return 0;
                 }).then(overrides());
@@ -281,11 +278,7 @@ public class CreateCommand {
                                     .add(server.getShortId(), NamedTextColor.DARK_GRAY)
                                     .add(")", NamedTextColor.GRAY)
                                     .sendMessage(source);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));
                     };
 
                     // If node was specified, fetch node IDs asynchronously and then create server
@@ -295,11 +288,7 @@ public class CreateCommand {
                             String nodeId = Id.findFullId(finalNodeValue, nodeIds);
                             creation.setNodeId(nodeId);
                             createServer.run();
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to fetch node ids for node " + finalNodeValue, failure, source));
                     } else {
                         // No node specified, create server immediately
                         createServer.run();

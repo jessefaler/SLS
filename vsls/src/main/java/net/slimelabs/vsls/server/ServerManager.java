@@ -56,7 +56,7 @@ public class ServerManager implements ServerProvider {
                 Log.info("Initialized server registry. Loaded {} servers", servers.size());
             });
         }, failure -> {
-            Log.warn("Failed to load servers: {}. Retrying in 30 seconds...", failure.getMessage());
+            Log.warn("Failed to load servers: {}. Retrying in 30 seconds...", failure.info());
             // Schedule a retry after 30 seconds
             SLS.proxy.getScheduler().buildTask(SLS.plugin, () -> {
                 loadServers(registry, api);
@@ -82,7 +82,7 @@ public class ServerManager implements ServerProvider {
         VersionFetcher.resolveVersion(clientServer.getOverrides(), blueprint, api.getAllServers().getS4J())
                 .executeAsync(
                         version -> server.setVersion(version != null ? version : "null"),
-                        failure -> Log.warn("Failed to resolve version for server {}: {}", clientServer.getId(), failure.getMessage())
+                        failure -> Log.warn("Failed to resolve version for server {}: {}", clientServer.getId(), failure.info())
                 );
         // Fetch the servers status and update it locally
         clientServer.getStatus().executeAsync(server::setStatus);

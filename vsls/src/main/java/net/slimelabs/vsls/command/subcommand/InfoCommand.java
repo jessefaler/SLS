@@ -106,10 +106,7 @@ public class InfoCommand {
                     " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
         },  failure -> {
-            ProtoMessage.chat()
-                    .add(MessagePreset.SLS)
-                    .add("Failed to fetch server stats reason: " + failure.getMessage(), NamedTextColor.RED)
-                    .sendMessage(source);
+            Log.requestError("Failed to fetch server stats for " + server.getShortId(), failure, source);
         });
     }
 

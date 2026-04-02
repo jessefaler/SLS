@@ -71,12 +71,7 @@ public class LogsCommand {
                             }
                             source.sendMessage(builder.build());
                             ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－－－－－</st></b><red> END </red><b><st>－－－－－－－－</st></b></dark_gray>").sendMessage(source);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to get logs for server " + id + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to get logs for server " + id, failure, source));
                     } else {
                         // No such server exists
                         ProtoMessage.chat()
@@ -129,12 +124,7 @@ public class LogsCommand {
                             }
                             source.sendMessage(builder.build());
                             ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－－－－－</st></b><red> END </red><b><st>－－－－－－－－</st></b></dark_gray>").sendMessage(source);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to get logs for server " + id + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to get logs for server " + id, failure, source));
                     } else {
                         // No such server exists
                         ProtoMessage.chat()

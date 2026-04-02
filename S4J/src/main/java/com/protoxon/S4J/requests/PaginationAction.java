@@ -1,6 +1,7 @@
 package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.utils.Checks;
 import com.protoxon.S4J.utils.Procedure;
 import com.protoxon.S4J.utils.StreamUtils;
@@ -407,21 +408,21 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	 *         else
 	 *             return false;
 	 *         return true;
-	 *     }, Throwable::printStackTrace);
+	 *     }, f -> f.detail());
 	 * }
 	 * }</pre>
 	 *
 	 * @param  action
 	 *         {@link com.protoxon.S4J.utils.Procedure Procedure} returning {@code true} if iteration should continue
 	 * @param  failure
-	 *         {@link Consumer Consumer} that should handle any throwables from the action
+	 *         {@link Consumer Consumer} that should handle {@link com.protoxon.S4J.exceptions.ApiFailure API failures}
 	 *
 	 * @throws IllegalArgumentException
 	 *         If the provided Procedure or the failure Consumer is {@code null}
 	 *
 	 * @return {@link CompletableFuture CompletableFuture} that can be cancelled to stop iteration from outside
 	 */
-	CompletableFuture<?> forEachAsync(Procedure<? super T> action, Consumer<? super Throwable> failure);
+	CompletableFuture<?> forEachAsync(Procedure<? super T> action, Consumer<? super ApiFailure> failure);
 
 	/**
 	 * Iterates over all remaining entities until the provided action returns {@code false}
@@ -483,21 +484,21 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	 *         else
 	 *             return false;
 	 *         return true;
-	 *     }, Throwable::printStackTrace);
+	 *     }, f -> f.detail());
 	 * }
 	 * }</pre>
 	 *
 	 * @param  action
 	 *         {@link com.protoxon.S4J.utils.Procedure Procedure} returning {@code true} if iteration should continue
 	 * @param  failure
-	 *         {@link Consumer Consumer} that should handle any throwables from the action
+	 *         {@link Consumer Consumer} that should handle {@link com.protoxon.S4J.exceptions.ApiFailure API failures}
 	 *
 	 * @throws IllegalArgumentException
 	 *         If the provided Procedure or the failure Consumer is {@code null}
 	 *
 	 * @return {@link CompletableFuture CompletableFuture} that can be cancelled to stop iteration from outside
 	 */
-	CompletableFuture<?> forEachRemainingAsync(Procedure<? super T> action, Consumer<? super Throwable> failure);
+	CompletableFuture<?> forEachRemainingAsync(Procedure<? super T> action, Consumer<? super ApiFailure> failure);
 
 	/**
 	 * Iterates over all remaining entities until the provided action returns {@code false}

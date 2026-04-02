@@ -18,6 +18,8 @@ package com.protoxon.S4J.requests.action.operator;
 
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
 
 import java.util.function.Consumer;
 
@@ -37,9 +39,13 @@ public abstract class SLSActionOperator<I, O> implements SLSAction<O> {
 		else callback.accept(value);
 	}
 
-	protected static void doFailure(Consumer<? super Throwable> callback, Throwable throwable) {
-		if (callback == null) SLSAction.getDefaultFailure().accept(throwable);
-		else callback.accept(throwable);
+	protected static void doFailure(Consumer<? super ApiFailure> callback, ApiFailure failure) {
+		if (callback == null) SLSAction.getDefaultFailure().accept(failure);
+		else callback.accept(failure);
+	}
+
+	protected static void doFailureCoerced(Consumer<? super ApiFailure> callback, Throwable throwable) {
+		doFailure(callback, ApiError.coerce(throwable));
 	}
 
 	@Override

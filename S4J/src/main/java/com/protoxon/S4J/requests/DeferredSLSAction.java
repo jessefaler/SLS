@@ -18,6 +18,7 @@ package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.exceptions.RateLimitedException;
 
 import java.util.concurrent.CompletableFuture;
@@ -45,7 +46,7 @@ public class DeferredSLSAction<T> implements SLSAction<T> {
 	}
 
 	@Override
-	public void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure) {
+	public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
 		CompletableFuture.supplyAsync(value, api.getSupplierPool())
 				.thenAcceptAsync(success == null ? SLSAction.getDefaultSuccess() : success);
 	}

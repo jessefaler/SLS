@@ -73,7 +73,8 @@ public class JoinActions {
                             .map(cmd -> cmd.replace("{PLAYER_NAME}", player.getUsername()))
                             .toList()
             ).executeAsync(success -> {}, failure -> {
-                Log.warn("JoinActions: failed to run commands on player join. reason: " + failure.getMessage());
+                Log.warn("JoinActions: failed to run commands on player join. reason: " + failure.info());
+                Log.requestError("Failed to run join commands on " + server.getShortId(), failure, player);
             });
         }
     }

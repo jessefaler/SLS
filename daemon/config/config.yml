@@ -88,6 +88,9 @@ docker:
       max-file: "1"
       max-size: 5m
       mode: non-blocking
+  # Always | IfNotPresent | Never | Schedule (Schedule defaults image_pull_schedule to 0 1 1 * * if omitted)
+  image_pull_policy: Schedule
+  image_pull_schedule: "0 1 1 * *"
 
 throttles:
   enabled: true

@@ -11,7 +11,7 @@ services:
       - SYS_ADMIN
     restart: always
     networks:
-      - sls0
+      - sls
     ports:
       - "5585:5585"
     extra_hosts:
@@ -43,11 +43,11 @@ services:
           propagation: rshared
 
 networks:
-  sls0:
-    name: sls0
+  sls:
+    name: sls
     driver: bridge
     ipam:
       config:
-        - subnet: "172.21.0.0/16"
+        - subnet: "172.10.0.0/16"
     driver_opts:
-      com.docker.network.bridge.name: sls0
+      com.docker.network.bridge.name: sls

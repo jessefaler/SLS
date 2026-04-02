@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/grokify/coreforge/identity/apikey"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/config"
@@ -64,7 +65,7 @@ func CaptureErrors() gin.HandlerFunc {
 			status = c.Writer.Status()
 		}
 		if err.Error() == io.EOF.Error() {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "The data passed in the request was not in a parsable format. Please try again."})
+			httperror.AbortWithJSON(c, http.StatusBadRequest, "empty or unreadable request body", "The data passed in the request was not in a parsable format.")
 			return
 		}
 		captured := NewError(err.Err)
@@ -127,7 +128,7 @@ func ServerExists(manager *server.Manager) gin.HandlerFunc {
 			s = manager.GetServer(c.Param("server"))
 		}
 		if s == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("server_id", s.Id()))
@@ -146,7 +147,7 @@ func NodeExists(manager *node.Manager) gin.HandlerFunc {
 			n, _ = manager.Get(c.Param("node"))
 		}
 		if n == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("node_id", n.Id()))
@@ -161,16 +162,12 @@ func RequireAuthorization(service *auth.KeyService, scope string) gin.HandlerFun
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Header("WWW-Authenticate", "Bearer")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "The required authorization header was not present in the request.",
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "The required authorization header was not present in the request.")
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header format.",
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "Invalid authorization header format.")
 			return
 		}
 
@@ -180,10 +177,7 @@ func RequireAuthorization(service *auth.KeyService, scope string) gin.HandlerFun
 		// Verify the key using CoreForge
 		key, err := service.Validate(c.Request.Context(), token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":  "You are not authorized to access this endpoint.",
-				"reason": err.Error(),
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, err.Error(), "You are not authorized to access this endpoint.")
 			return
 		}
 
@@ -196,10 +190,7 @@ func RequireAuthorization(service *auth.KeyService, scope string) gin.HandlerFun
 				"endpoint":   c.FullPath(),
 				"method":     c.Request.Method,
 			}).Error("Api key key does not have required scope for this endpoint")
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error":  "Insufficient privileges",
-				"reason": "Api key missing required scope for this endpoint",
-			})
+			httperror.AbortWithJSON(c, http.StatusForbidden, "Api key missing required scope for this endpoint", "Insufficient privileges")
 			return
 		}
 
@@ -237,7 +228,7 @@ func Timeout() gin.HandlerFunc {
 
 		// Check if the request has been canceled due to timeout
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Request timed out"})
+			httperror.JSON(c, http.StatusGatewayTimeout, "request deadline exceeded", "Request timed out")
 			return
 		}
 	}
@@ -295,7 +286,7 @@ func BlueprintExists(registry *blueprint.Registry) gin.HandlerFunc {
 			bp = registry.Get(c.Param("blueprint"))
 		}
 		if bp == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("blueprint_id", bp.Meta.ID))
@@ -315,7 +306,7 @@ func SoftwareExists(registry *software.Registry) gin.HandlerFunc {
 			sw = registry.Get(c.Param("software"))
 		}
 		if sw == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("software_id", sw.Id))

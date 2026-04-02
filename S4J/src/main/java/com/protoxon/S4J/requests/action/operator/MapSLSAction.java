@@ -17,6 +17,7 @@
 package com.protoxon.S4J.requests.action.operator;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiFailure;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -33,7 +34,7 @@ public class MapSLSAction<I, O> extends SLSActionOperator<I, O> {
 	}
 
 	@Override
-	public void executeAsync(Consumer<? super O> success, Consumer<? super Throwable> failure) {
+	public void executeAsync(Consumer<? super O> success, Consumer<? super ApiFailure> failure) {
 		action.executeAsync(
 				(result) -> doSuccess(success, function.apply(result)), (error) -> doFailure(failure, error));
 	}

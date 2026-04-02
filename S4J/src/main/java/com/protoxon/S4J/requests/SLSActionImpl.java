@@ -8,6 +8,8 @@ import java.util.function.Supplier;
 
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.entities.S4J;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.exceptions.SLSException;
 import com.protoxon.S4J.utils.S4JLogger;
 import okhttp3.RequestBody;
@@ -72,8 +74,7 @@ public class SLSActionImpl<T> implements SLSAction<T> {
     }
 
     public static final Consumer<Object> DEFAULT_SUCCESS = o -> {};
-    public static final Consumer<? super Throwable> DEFAULT_FAILURE =
-            t -> System.err.printf("Action execute returned failure: %s%n", t.getMessage());
+    public static final Consumer<? super ApiFailure> DEFAULT_FAILURE = f -> {};
 
     @Override
     public T execute(boolean shouldQueue) {
@@ -91,13 +92,13 @@ public class SLSActionImpl<T> implements SLSAction<T> {
     }
 
     @Override
-    public void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure) {
+    public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
         Route.CompiledRoute route = finalizeRoute();
         if (success == null) success = DEFAULT_SUCCESS;
         if (failure == null) failure = DEFAULT_FAILURE;
 
         Consumer<? super T> finalizedSuccess = success;
-        Consumer<? super Throwable> finalizedFailure = failure;
+        Consumer<? super ApiFailure> finalizedFailure = failure;
 
         api.getActionPool().submit(() -> {
             RequestBody data = finalizeData();

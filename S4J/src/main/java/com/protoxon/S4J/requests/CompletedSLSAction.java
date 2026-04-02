@@ -18,6 +18,9 @@ package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
+
 import java.util.function.Consumer;
 
 public class CompletedSLSAction<T> implements SLSAction<T> {
@@ -53,13 +56,15 @@ public class CompletedSLSAction<T> implements SLSAction<T> {
 		return value;
 	}
 
-	public void executeAsync(Consumer<? super T> success, Consumer<? super Throwable> failure) {
+	public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
 		if (error == null) {
 			if (success == null) SLSAction.getDefaultSuccess().accept(value);
 			else success.accept(value);
 		} else {
-			if (failure == null) SLSAction.getDefaultFailure().accept(error);
-			else failure.accept(error);
+			ApiError err = ApiError.coerce(error);
+			ApiError.logFailure(null, err);
+			if (failure == null) SLSAction.getDefaultFailure().accept(err);
+			else failure.accept(err);
 		}
 	}
 

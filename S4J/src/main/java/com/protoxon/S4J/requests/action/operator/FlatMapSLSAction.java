@@ -17,6 +17,7 @@
 package com.protoxon.S4J.requests.action.operator;
 
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiFailure;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -39,12 +40,12 @@ public class FlatMapSLSAction<I, O> extends SLSActionOperator<I, O> {
 	}
 
 	@Override
-	public void executeAsync(Consumer<? super O> success, Consumer<? super Throwable> failure) {
+	public void executeAsync(Consumer<? super O> success, Consumer<? super ApiFailure> failure) {
 		action.executeAsync(
 				(result) -> {
 					if (condition != null && !condition.test(result)) return;
                     SLSAction<O> then = function.apply(result);
-					if (then == null) doFailure(failure, new IllegalStateException("FlatMap operand is null"));
+					if (then == null) doFailureCoerced(failure, new IllegalStateException("FlatMap operand is null"));
 					else then.executeAsync(success, failure);
 				},
 				failure);

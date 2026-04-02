@@ -16,58 +16,20 @@
 
 package com.protoxon.S4J.exceptions;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class MissingActionException extends SLSException {
+/**
+ * Thrown when the API reports a validation or unprocessable request (typically HTTP 422).
+ */
+public class MissingActionException extends ApiError {
 
 	public MissingActionException(String text, JSONObject json) {
-		super(formatMessage(text, json));
+		this(
+				ApiError.composeMessage(text, ApiError.buildFields(json, 422), "\t- "),
+				ApiError.buildFields(json, 422));
 	}
 
-	public static String formatMessage(String text, JSONObject json) {
-		StringBuilder message = new StringBuilder(text + "\n\n");
-
-		// Handle "errors" array format (existing format with meta information)
-		if (json.has("errors") && json.get("errors") instanceof JSONArray) {
-			JSONArray errorsArray = json.getJSONArray("errors");
-			for (int i = 0; i < errorsArray.length(); i++) {
-				Object o = errorsArray.get(i);
-				if (o instanceof JSONObject obj) {
-                    String detail = obj.has("detail") ? obj.getString("detail") : obj.toString();
-
-					if (obj.has("meta") && obj.get("meta") instanceof JSONObject) {
-						JSONObject meta = obj.getJSONObject("meta");
-						if (meta.has("source_field")) {
-							message.append("\t- ")
-									.append(detail)
-									.append(" (Source: ")
-									.append(meta.getString("source_field"))
-									.append(")\n");
-						} else {
-							message.append("\t- ").append(detail).append("\n");
-						}
-					} else {
-						message.append("\t- ").append(detail).append("\n");
-					}
-				} else {
-					message.append("\t- ").append(o.toString()).append("\n");
-				}
-			}
-		}
-		// Handle "error" string format
-		else if (json.has("error")) {
-			message.append("\t- ").append(json.getString("error")).append("\n");
-		}
-		// Handle "message" string format
-		else if (json.has("message")) {
-			message.append("\t- ").append(json.getString("message")).append("\n");
-		}
-		// Show raw JSON if no recognized error format
-		else {
-			message.append("\t- ").append(json.toString()).append("\n");
-		}
-
-		return message.toString();
+	MissingActionException(String message, ApiError.Fields fields) {
+		super(message, fields);
 	}
 }

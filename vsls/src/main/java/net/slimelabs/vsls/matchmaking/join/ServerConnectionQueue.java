@@ -1,9 +1,11 @@
 package net.slimelabs.vsls.matchmaking.join;
 
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.server.Server;
@@ -64,7 +66,7 @@ public class ServerConnectionQueue {
         if (startServer) {
             server.start().executeAsync(v -> {}, failure -> {
                 removalDeletionHandle();
-                flushWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
+                flushWithApiError("Failed to start server " + server.getName(), failure);
             });
         }
     }
@@ -94,6 +96,19 @@ public class ServerConnectionQueue {
         onClosed.run();
         for (Player p : waiting) {
             ProtoMessage.chat().add(MessagePreset.SLS).add(message, NamedTextColor.RED).sendMessage(p);
+            ChatPackets.enableActionBarPackets(p.getUniqueId());
+            loadingIcon.stop(p.getUniqueId());
+        }
+        waiting.clear();
+    }
+
+    private void flushWithApiError(String message, ApiFailure failure) {
+        if (!flushed.compareAndSet(false, true)) return;
+        statusHandle.remove();
+        deletionHandle.remove();
+        onClosed.run();
+        for (Player p : waiting) {
+            Log.requestError(message, failure, p);
             ChatPackets.enableActionBarPackets(p.getUniqueId());
             loadingIcon.stop(p.getUniqueId());
         }

@@ -74,7 +74,7 @@ func (c *CachedStore) GetByPrefix(ctx context.Context, prefix string) (*apikey.A
 		return nil, "", err
 	}
 
-	// cache only this single key
+	// cache the key
 	c.mu.Lock()
 	c.cache[prefix] = &cachedEntry{
 		key:     key,
@@ -104,7 +104,7 @@ func (c *CachedStore) GetByID(ctx context.Context, id uuid.UUID) (*apikey.APIKey
 		return nil, err
 	}
 
-	// cache only this single key
+	// cache the key
 	c.mu.Lock()
 	c.cache[key.Prefix] = &cachedEntry{
 		key:     key,

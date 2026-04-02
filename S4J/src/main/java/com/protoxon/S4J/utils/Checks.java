@@ -32,7 +32,7 @@ public final class Checks {
 
 	public static void notBlank(String s, String name) {
 		notNull(s, name);
-		if (s.equals("")) {
+		if (s.isEmpty()) {
 			throw new IllegalArgumentException(name + " cannot be empty!");
 		}
 	}

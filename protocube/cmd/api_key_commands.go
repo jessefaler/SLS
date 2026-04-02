@@ -113,7 +113,6 @@ var revokeApiKeyCommand = &cobra.Command{
 func init() {
 	createApiKeyCommand.Flags().StringVar(&createKeyName, "name", "", "Key name (required)")
 	createApiKeyCommand.Flags().StringVar(&createKeyOwnerID, "owner-id", "", "Owner UUID (required)")
-	createApiKeyCommand.Flags().StringVar(&createKeyOrgID, "org-id", "", "Organization UUID (optional)")
 	createApiKeyCommand.Flags().StringVar(&createKeyScopes, "scopes", "", "Comma-separated scopes (e.g. app:admin,node)")
 	createApiKeyCommand.Flags().StringVar(&createKeyDescription, "description", "", "Key description")
 	createApiKeyCommand.Flags().StringVar(&createKeyEnvironment, "environment", "live", "Environment: live or test")
@@ -401,13 +400,7 @@ func buildCreateKeyRequestFromFlags() (apikey.CreateKeyRequest, error) {
 	}
 	req.OwnerID = ownerID
 
-	if createKeyOrgID != "" {
-		orgID, err := uuid.Parse(createKeyOrgID)
-		if err != nil {
-			return req, fmt.Errorf("invalid --org-id: %w", err)
-		}
-		req.OrganizationID = &orgID
-	}
+	req.OrganizationID = &uuid.Nil
 
 	if createKeyScopes != "" {
 		req.Scopes = parseScopes(createKeyScopes)

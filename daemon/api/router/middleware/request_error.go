@@ -8,6 +8,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/daemon/api/router/httperror"
 	"protoxon.com/sls/daemon/server"
 )
 
@@ -84,10 +85,11 @@ func (re *RequestError) Abort(c *gin.Context, status int) {
 	if re.msg == "" {
 		re.msg = "An unexpected error was encountered while processing this request"
 	}
-	// Now abort the request with the error message and include the unique request
-	// ID that was present to make things super easy on people who don't know how
-	// or cannot view the response headers (where X-Request-Id would be present).
-	c.AbortWithStatusJSON(status, gin.H{"error": re.msg, "request_id": reqId})
+	finalStatus := status
+	if re.status != 0 {
+		finalStatus = re.status
+	}
+	httperror.AbortWithRequestID(c, finalStatus, re.err.Error(), re.msg, reqId)
 }
 
 // Cause returns the underlying error.

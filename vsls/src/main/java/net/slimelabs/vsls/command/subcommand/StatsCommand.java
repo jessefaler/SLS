@@ -93,12 +93,7 @@ public class StatsCommand {
                     " <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                     " <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
                     "<dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
-        }, failure -> {
-            ProtoMessage.chat()
-                    .add(MessagePreset.SLS)
-                    .add("Failed to fetch stats from remote api. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                    .sendMessage(source);
-        });
+        }, failure -> Log.requestError("Failed to fetch server stats for " + server.getShortId(), failure, source));
     }
 
 }
