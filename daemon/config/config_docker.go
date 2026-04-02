@@ -11,8 +11,8 @@ import (
 
 type dockerNetworkInterfaces struct {
 	V4 struct {
-		Subnet  string `default:"172.28.0.0/16"`
-		Gateway string `default:"172.28.0.1"`
+		Subnet  string `default:"172.60.0.0/16"`
+		Gateway string `default:"172.60.0.1"`
 	}
 	V6 struct {
 		Subnet  string `default:"fdba:17c8:6c94::/64"`
@@ -23,7 +23,7 @@ type dockerNetworkInterfaces struct {
 type DockerNetworkConfiguration struct {
 	// The interface that should be used to create the network. Must not conflict
 	// with any other interfaces in use by Docker or on the system.
-	Interface string `default:"172.28.0.1" json:"interface" yaml:"interface"`
+	Interface string `default:"172.32.0.1" json:"interface" yaml:"interface"`
 
 	// The DNS settings for containers.
 	Dns []string `default:"[\"1.1.1.1\", \"1.0.0.1\"]"`
@@ -31,7 +31,7 @@ type DockerNetworkConfiguration struct {
 	// The name of the network to use. If this network already exists it will not
 	// be created. If it is not found, a new network will be created using the interface
 	// defined.
-	Name       string                  `default:"sls_nw"`
+	Name       string                  `default:"sls"`
 	ISPN       bool                    `default:"false" yaml:"ispn"`
 	Driver     string                  `default:"bridge"`
 	Mode       string                  `default:"sls_nw" yaml:"network_mode"`
@@ -70,8 +70,8 @@ type DockerConfiguration struct {
 	// is used in conjunction with the server's defined limits. Whichever value is higher will
 	// take precedence in the installer containers.
 	InstallerLimits struct {
-		Memory int64 `default:"1024" json:"memory" yaml:"memory"`
-		Cpu    int64 `default:"100" json:"cpu" yaml:"cpu"`
+		Memory int64 `default:"3072" json:"memory" yaml:"memory"`
+		Cpu    int64 `default:"200" json:"cpu" yaml:"cpu"`
 	} `json:"installer_limits" yaml:"installer_limits"`
 
 	// Overhead controls the memory overhead given to all containers to circumvent certain
@@ -92,6 +92,15 @@ type DockerConfiguration struct {
 		Type   string            `default:"local" json:"type" yaml:"type"`
 		Config map[string]string `default:"{\"max-size\":\"5m\",\"max-file\":\"1\",\"compress\":\"false\",\"mode\":\"non-blocking\"}" json:"config" yaml:"config"`
 	} `json:"log_config" yaml:"log_config"`
+
+	// ImagePullPolicy controls when images are pulled before a container is created.
+	// Always: pull every time. IfNotPresent: pull only if missing locally. Never: require a local image.
+	// Schedule: like IfNotPresent on start plus periodic pulls (default policy when omitted).
+	ImagePullPolicy ImagePullPolicy `json:"image_pull_policy" yaml:"image_pull_policy"`
+
+	// ImagePullSchedule is a five-field cron expression used when ImagePullPolicy is Schedule.
+	// If Schedule is selected and this is empty, it defaults to 0 1 1 * * (see DefaultImagePullSchedule).
+	ImagePullSchedule string `json:"image_pull_schedule" yaml:"image_pull_schedule"`
 }
 
 func (c DockerConfiguration) ContainerLogConfig() container.LogConfig {

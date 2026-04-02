@@ -11,7 +11,7 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
-	"github.com/buger/jsonparser"
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
@@ -113,7 +113,7 @@ func (e *Environment) InSituUpdate() error {
 		// to the disk.
 		//
 		// We'll let a boot process make modifications to the container if needed at this point.
-		if client.IsErrNotFound(err) {
+		if errdefs.IsNotFound(err) {
 			return nil
 		}
 		return errors.Wrap(err, "environment/docker: could not inspect container")
@@ -142,7 +142,7 @@ func (e *Environment) Create() error {
 	// container anyways.
 	if _, err := e.ContainerInspect(ctx); err == nil {
 		return nil
-	} else if !client.IsErrNotFound(err) {
+	} else if !errdefs.IsNotFound(err) {
 		return errors.WrapIf(err, "environment/docker: failed to inspect container")
 	}
 
@@ -200,7 +200,7 @@ func (e *Environment) Create() error {
 		networkMode = container.NetworkMode(networkName)
 
 		if _, err := e.client.NetworkInspect(ctx, networkName, network.InspectOptions{}); err != nil {
-			if !client.IsErrNotFound(err) {
+			if !errdefs.IsNotFound(err) {
 				return err
 			}
 
@@ -281,7 +281,7 @@ func (e *Environment) Destroy() error {
 
 	// Don't trigger a destroy failure if we try to delete a container that does not
 	// exist on the system. We're just a step ahead of ourselves in that case.
-	if err != nil && client.IsErrNotFound(err) {
+	if err != nil && errdefs.IsNotFound(err) {
 		return nil
 	}
 
@@ -334,99 +334,83 @@ func (e *Environment) Readlog(lines int) ([]string, error) {
 	return out, nil
 }
 
-// Pulls the image from Docker. If there is an error while pulling the image
-// from the source but the image already exists locally, we will report that
-// error to the logger but continue with the process.
+// Pulls the image from Docker according to docker.image_pull_policy. If there is an error while
+// pulling from the remote but the image already exists locally, we log and continue.
 func (e *Environment) ensureImageExists(img string) error {
-	e.Events().Publish(environment.DockerImagePullStarted, "")
-	defer e.Events().Publish(environment.DockerImagePullCompleted, "")
-
 	// Images prefixed with a ~ are local images that we do not need to try and pull.
 	if strings.HasPrefix(img, "~") {
 		return nil
 	}
 
-	// Give it up to 15 minutes to pull the image. I think this should cover 99.8% of cases where an
-	// image pull might fail. I can't imagine it will ever take more than 15 minutes to fully pull
-	// an image. Let me know when I am inevitably wrong here...
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
-	defer cancel()
+	policy := config.Get().Docker.ImagePullPolicy
+	ctx, cancelInspect := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelInspect()
 
-	// Get a registry auth configuration from the config.
-	var registryAuth *config.RegistryConfiguration
-	for registry, c := range config.Get().Docker.Registries {
-		if !strings.HasPrefix(img, registry) {
-			continue
+	switch policy {
+	case config.ImagePullPolicyNever:
+		if _, err := e.client.ImageInspect(ctx, img); errdefs.IsNotFound(err) {
+			return errors.Errorf("environment/docker: image %q is not present locally (image_pull_policy is Never)", img)
+		} else if err != nil {
+			return errors.Wrap(err, "environment/docker: failed to inspect image")
 		}
+		return nil
 
-		log.WithField("registry", registry).Debug("using authentication for registry")
-		registryAuth = &c
-		break
-	}
-
-	// Get the ImagePullOptions.
-	imagePullOptions := image.PullOptions{All: false}
-	if registryAuth != nil {
-		b64, err := registryAuth.Base64()
-		if err != nil {
-			log.WithError(err).Error("failed to get registry auth credentials")
+	case config.ImagePullPolicyIfNotPresent:
+		if ok, err := ImageExistsLocally(ctx, e.client, img); err != nil {
+			return err
+		} else if ok {
+			log.WithField("image", img).WithField("container_id", e.Id).Debug("docker image already present locally; skipping pull")
+			return nil
 		}
+		return e.pullImageForServer(img)
 
-		// b64 is a string so if there is an error it will just be empty, not nil.
-		imagePullOptions.RegistryAuth = b64
+	case config.ImagePullPolicySchedule:
+		RegisterScheduledPullImage(img)
+		if ok, err := ImageExistsLocally(ctx, e.client, img); err != nil {
+			return err
+		} else if ok {
+			log.WithField("image", img).WithField("container_id", e.Id).Debug("docker image already present locally; skipping pull (scheduled)")
+			return nil
+		}
+		return e.pullImageForServer(img)
+
+	case config.ImagePullPolicyAlways:
+		fallthrough
+	default:
+		return e.pullImageForServer(img)
 	}
+}
 
-	out, err := e.client.ImagePull(ctx, img, imagePullOptions)
+// ImageExistsLocally checks if the provided image tag already exists locally
+func ImageExistsLocally(ctx context.Context, client *client.Client, img string) (bool, error) {
+	images, err := client.ImageList(ctx, image.ListOptions{})
 	if err != nil {
-		images, ierr := e.client.ImageList(ctx, image.ListOptions{})
-		if ierr != nil {
-			// Well damn, something has gone really wrong here, just go ahead and abort there
-			// isn't much anything we can do to try and self-recover from this.
-			return errors.Wrap(ierr, "environment/docker: failed to list images")
-		}
-
-		for _, img2 := range images {
-			for _, t := range img2.RepoTags {
-				if t != img {
-					continue
-				}
-
-				log.WithFields(log.Fields{
-					"image":        img,
-					"container_id": e.Id,
-					"err":          err.Error(),
-				}).Warn("unable to pull requested image from remote source, however the image exists locally")
-
-				// Okay, we found a matching container image, in that case just go ahead and return
-				// from this function, since there is nothing else we need to do here.
-				return nil
+		return false, errors.Wrap(err, "environment/docker: failed to list images")
+	}
+	for _, img2 := range images {
+		for _, t := range img2.RepoTags {
+			if t == img {
+				return true, nil
 			}
 		}
-
-		return errors.Wrapf(err, "environment/docker: failed to pull \"%s\" image for server", img)
 	}
-	defer out.Close()
+	return false, nil
+}
 
-	log.WithField("image", img).Debug("pulling docker image... this could take a bit of time")
+func (e *Environment) pullImageForServer(img string) error {
+	start := time.Now()
+	e.Events().Publish(environment.DockerImagePullStarted, "")
+	defer e.Events().Publish(environment.DockerImagePullCompleted, "")
 
-	// I'm not sure what the best approach here is, but this will block execution until the image
-	// is done being pulled, which is what we need.
-	scanner := bufio.NewScanner(out)
+	ctx, cancel := context.WithTimeout(context.Background(), pullTimeout)
+	defer cancel()
 
-	for scanner.Scan() {
-		b := scanner.Bytes()
-		status, _ := jsonparser.GetString(b, "status")
-		progress, _ := jsonparser.GetString(b, "progress")
-
-		e.Events().Publish(environment.DockerImagePullStatus, status+" "+progress)
-	}
-
-	if err := scanner.Err(); err != nil {
+	if err := PullImageWithOfflineFallback(ctx, e.client, img, func(status string) {
+		e.Events().Publish(environment.DockerImagePullStatus, status)
+	}); err != nil {
 		return err
 	}
-
-	log.WithField("image", img).Debug("completed docker image pull")
-
+	log.Info("docker image pull complete took " + time.Since(start).String())
 	return nil
 }
 
