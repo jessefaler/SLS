@@ -282,7 +282,7 @@ func (s *Server) onBeforeStart() error {
 	}
 
 	// Disallow start & restart if the server is suspended. Do this check after performing a sync
-	// action with the Panel to ensure that we have the most up-to-date information for that server.
+	// action with Protocube to ensure that we have the most up-to-date information for that server.
 	if s.IsSuspended() {
 		return ErrSuspended
 	}

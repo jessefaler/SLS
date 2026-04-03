@@ -236,17 +236,7 @@ func (f *ConfigurationFile) Parse(file ufs.File, serverData []byte) error {
 		return errors.Errorf("parser: unknown parser type %q", f.Parser)
 	}
 
-	if err != nil {
-		return err
-	}
-
-	// Sync the file to ensure all data is written to disk before releasing the lock.
-	// This prevents the server process from reading stale or partially written data.
-	if err := unix.Fsync(int(fd)); err != nil {
-		return errors.Wrap(err, "parser: failed to sync configuration file to disk")
-	}
-
-	return nil
+	return err
 }
 
 // Parses an xml file.

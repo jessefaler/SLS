@@ -72,7 +72,7 @@ func (r *Router) getAllServers(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// Returns information about the system that wings is running on.
+// Returns information about the system that the daemon is running on.
 func getSystemInformation(c *gin.Context) {
 	i, err := system.GetSystemInformation()
 	if err != nil {

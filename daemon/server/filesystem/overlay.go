@@ -183,23 +183,16 @@ func (ov *OverlayVolume) SetUsage(newUsage int64) int64 {
 	return ov.usage.Swap(newUsage)
 }
 
-// SetPermissions ensures that all overlay directories are owned by the container user
+// SetPermissions ensures that all overlay directories have the correct permissions set
 // Lower directories retain original ownership but the daemon user is added as a group with rwx permissions
 // so that containers can properly access files in the lower directories
 func (ov *OverlayVolume) SetPermissions() error {
 	for _, o := range ov.Overlays {
-		if err := ChownRecursiveUnsafe(o.Upper, o.Work); err != nil {
-			return errors.Wrap(err, "failed to recursively chown overlay directory")
+		if err := setOverlayUpperWorkPermissions(o.Upper, o.Work); err != nil {
+			return errors.Wrap(err, "failed to set overlay upper/work permissions")
 		}
-		if err := ChgrpRecursiveUnsafe(o.Lower...); err != nil {
-			return errors.Wrap(err, "failed to recursively chgrp overlay lower directory")
-		}
-
-		if err := ChmodUnsafe(0o755, o.Upper, o.Work); err != nil {
-			return errors.Wrap(err, "failed to chmod overlay directory")
-		}
-		if err := ChmodAddGroupRWXRecursiveUnsafe(o.Lower...); err != nil {
-			return errors.Wrap(err, "failed to chmod overlay lower directory (group +rwx)")
+		if err := setOverlayLowerPermissions(o.Lower...); err != nil {
+			return errors.Wrap(err, "failed to set overlay lower permissions")
 		}
 
 		// Perform a non-recursive chown on all directories from the volume root to the merged folder
@@ -215,6 +208,7 @@ func (ov *OverlayVolume) SetPermissions() error {
 			}
 		}
 	}
+
 	return nil
 }
 

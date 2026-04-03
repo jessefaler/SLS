@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"emperror.dev/errors"
@@ -245,7 +246,7 @@ func (fs *Filesystem) Chown(p string) error {
 		return nil
 	}
 
-	// This walker is probably some of the most efficient code in Wings. It has
+	// This walker is probably some of the most efficient code in the daemon. It has
 	// an internally re-used buffer for listing directory entries and doesn't
 	// need to check if every individual path it touches is safe as the code
 	// doesn't traverse symlinks, is immune to symlink timing attacks, and
@@ -402,6 +403,102 @@ func ChmodUnsafe(mode fs.FileMode, paths ...string) error {
 
 		if err != nil {
 			return errors.Wrapf(err, "failed to recursively chmod %s", path)
+		}
+	}
+	return nil
+}
+
+// setOverlayUpperWorkPermissions walks each path once, applying chown+chmod (0o755).
+// It skips syscalls when the stat result already matches the desired owner and mode.
+func setOverlayUpperWorkPermissions(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	uid := cfg.System.User.Uid
+	gid := cfg.System.User.Gid
+	want := fs.FileMode(0o755)
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			doChown := true
+			if st, ok := info.Sys().(*syscall.Stat_t); ok {
+				if int(st.Uid) == uid && int(st.Gid) == gid {
+					doChown = false
+				}
+			}
+			if doChown {
+				if err := os.Chown(p, uid, gid); err != nil {
+					return errors.Wrapf(err, "failed to chown %s", p)
+				}
+			}
+			if info.Mode().Perm() != want.Perm() {
+				if err := os.Chmod(p, want); err != nil {
+					return errors.Wrapf(err, "failed to chmod %s", p)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to set overlay upper/work permissions %s", path)
+		}
+	}
+	return nil
+}
+
+// setOverlayLowerPermissions walks each path once, applying chgrp (daemon GID) and
+// OR-ing group rwx into the mode. It skips syscalls when already satisfied.
+func setOverlayLowerPermissions(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	gid := cfg.System.User.Gid
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			doChgrp := true
+			if st, ok := info.Sys().(*syscall.Stat_t); ok {
+				if int(st.Gid) == gid {
+					doChgrp = false
+				}
+			}
+			if doChgrp {
+				if err := os.Chown(p, -1, gid); err != nil {
+					return errors.Wrapf(err, "failed to chgrp %s", p)
+				}
+			}
+			mode := info.Mode()
+			if mode&0o070 != 0o070 {
+				if err := os.Chmod(p, mode|0o070); err != nil {
+					return errors.Wrapf(err, "failed to chmod %s", p)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to set overlay lower permissions %s", path)
 		}
 	}
 	return nil
