@@ -170,6 +170,42 @@ func (m *Meta) Validate() error {
 	return nil
 }
 
+func (v *Volume) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err == nil && strings.TrimSpace(s) != "" {
+		return v.unmarshalShorthand(strings.TrimSpace(s))
+	}
+
+	type volumeAlias Volume
+	var tmp volumeAlias
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	}
+	*v = Volume(tmp)
+	return nil
+}
+
+// unmarshalShorthand parses name:source:target[:mode], e.g.
+// world:worlds/world:/world:cow
+func (v *Volume) unmarshalShorthand(s string) error {
+	parts := strings.Split(s, ":")
+	if len(parts) < 3 {
+		return fmt.Errorf("invalid volume shorthand %q: expected name:source:target[:mode]", s)
+	}
+	if len(parts) > 4 {
+		return fmt.Errorf("invalid volume shorthand %q: too many ':' segments (use mapping form if paths contain ':')", s)
+	}
+	v.Name = parts[0]
+	v.Source = parts[1]
+	v.Target = parts[2]
+	if len(parts) == 4 {
+		v.Mode = VolumeMode(parts[3])
+	} else {
+		v.Mode = VolumeModeCOW
+	}
+	return nil
+}
+
 func (v *Volume) Validate() error {
 	if v.Name == "" {
 		return errors.New("volume.name cannot be empty")
