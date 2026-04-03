@@ -22,22 +22,45 @@ func Initialize() error {
 	if !o.SwapIf(true) {
 		panic("database: attempt to initialize more than once during application lifecycle")
 	}
+
 	p := filepath.Join(config.Get().System.RootDirectory, "protocube.db")
+
 	instance, err := gorm.Open(sqlite.Open(p), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		return errors.Wrap(err, "database: could not open database file")
 	}
+
 	db = instance
-	if sql, err := db.DB(); err != nil {
+
+	sqlDB, err := db.DB()
+	if err != nil {
 		return errors.WithStack(err)
-	} else {
-		sql.SetMaxOpenConns(1)
 	}
+
+	// Use a single connection for SQLite safety
+	sqlDB.SetMaxOpenConns(1)
+
+	// Set performance PRAGMAs
+	if err := db.Exec("PRAGMA journal_mode = WAL;").Error; err != nil {
+		return errors.Wrap(err, "failed to set journal_mode")
+	}
+	if err := db.Exec("PRAGMA synchronous = NORMAL;").Error; err != nil {
+		return errors.Wrap(err, "failed to set synchronous mode")
+	}
+	if err := db.Exec("PRAGMA temp_store = MEMORY;").Error; err != nil {
+		return errors.Wrap(err, "failed to set temp_store")
+	}
+	if err := db.Exec("PRAGMA mmap_size = 268435456;").Error; err != nil {
+		return errors.Wrap(err, "failed to set mmap_size")
+	}
+
+	// Run migrations after DB is fully configured
 	if err := migrations(); err != nil {
 		return errors.Wrap(err, "database: migration failed")
 	}
+
 	return nil
 }
 
