@@ -37,7 +37,7 @@ public class Config {
     public LifeCycleConfig lifecycle = new LifeCycleConfig();
     public static class LifeCycleConfig {
         public boolean enabled = true;
-        public int check_interval = 5; // Minutes
+        public int check_interval = 2; // Minutes
         public int stop_delay = 20; // Seconds
     }
 

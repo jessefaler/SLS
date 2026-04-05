@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ServerConnectionQueue {
 
     private final Server server;
-    /** If true, this queue called {@link Server#start()} — abort boot if everyone leaves while still starting. */
+    /** If true, this queue called {@link Server#start()} abort boot if everyone leaves while still starting. */
     private final boolean startServer;
     private final Runnable onClosed;
     private final ConcurrentLinkedQueue<Player> waiting = new ConcurrentLinkedQueue<>();
