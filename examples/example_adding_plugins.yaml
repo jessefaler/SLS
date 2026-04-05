@@ -11,7 +11,7 @@ server:
 state:
   volumes:
     - name: "world" 
-      source: "worlds/experimental/spider_garden"
+      source: "worlds/archives/SLSMP1"
       target: "/world"
       mode: cow
 
