@@ -104,9 +104,9 @@
 
         <!-- S4J (SLS API Wrapper) -->
         <dependency>
-            <groupId>com.protoxon</groupId>
+            <groupId>io.github.protoxon</groupId>
             <artifactId>S4J</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
     </dependencies>
 

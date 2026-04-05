@@ -1,3 +1,13 @@
+[version]: https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Frepo1.maven.org%2Fmaven2%2Fio%2Fgithub%2Fprotoxon%2FS4J%2Fmaven-metadata.xml&color=informational&label=Maven%20Central
+[github]: https://github.com/jessefaler/SLS/tree/main/S4J
+[github-shield]: https://img.shields.io/badge/GitHub-S4J-181717?logo=github
+[javadocs]: https://javadoc.io/doc/io.github.protoxon/S4J
+[javadoc-shield]: https://javadoc.io/badge2/io.github.protoxon/S4J/javadoc.svg
+[download]: #download
+[ ![version][] ][download]
+[ ![github-shield][] ][github]
+[ ![javadoc-shield][] ][javadocs]
+
 # S4J
 
 S4J is a java wrapper for the SLS Protocube REST API
@@ -153,3 +163,41 @@ With this approach, there can be an "unlimited" number of pending requests waiti
 to be handled when it is convenient for S4J.
 
 Queuing requests asynchronously is generally faster than a synchronous approach, which is why the former is preferred to the latter.
+
+## Download
+Latest version: [ ![version][] ][download]
+
+Artifacts are on **Maven Central** (`https://repo1.maven.org/maven2/io/github/protoxon/S4J/`). Use the version from the badge above, or substitute **`1.0.1`** with a newer release when available.
+
+**Maven**
+```xml
+<dependency>
+    <groupId>io.github.protoxon</groupId>
+    <artifactId>S4J</artifactId>
+    <version>1.0.1</version>
+</dependency>
+```
+
+**Gradle (Kotlin DSL)**
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.github.protoxon:S4J:1.0.1")
+}
+```
+
+**Gradle (Groovy)**
+```gradle
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'io.github.protoxon:S4J:1.0.1'
+}
+```
+
+**Javadoc:** [javadoc.io](https://javadoc.io/doc/io.github.protoxon/S4J)
