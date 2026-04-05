@@ -3,7 +3,6 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.protoxon.S4J.DataType;
 import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
@@ -12,7 +11,6 @@ import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.ServerUtils;
-import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
@@ -82,7 +80,7 @@ public class StatsCommand {
                 statusColorClose = "</red>";
             }
 
-            ProtoMessage.chat().addMiniMessage("<dark_aqua>Stats</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
+            ProtoMessage.chat().addMiniMessage("<dark_aqua>Stats</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getCompositeId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                     " <gold>-</gold> <dark_gray>Status:</dark_gray> " + statusColor + state.getStatus() + statusColorClose + "\n" +
                     " <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red><dark_gray> / </dark_gray><red>" + stats.getCpuLimitFormatted() + "</red>\n" +
@@ -93,7 +91,7 @@ public class StatsCommand {
                     " <gold>-</gold> <dark_gray>Disk (Logical):</dark_gray> <red>" + stats.getDiskFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxDiskFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getDiskUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                     " <gold>-</gold> <dark_gray>Disk (Physical):</dark_gray> <red>" + stats.getOverlayFormattedAuto() + "</red>" +
                     "<dark_gray><b><st>\n－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
-        }, failure -> Log.requestError("Failed to fetch server stats for " + server.getShortId(), failure, source));
+        }, failure -> Log.requestError("Failed to fetch server stats for " + server.getCompositeId(), failure, source));
     }
 
 }

@@ -3,7 +3,6 @@ package net.slimelabs.vsls.server.lifecycle;
 import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
-import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
@@ -120,7 +119,7 @@ public class LifecycleManager {
      * Schedule shutdown if not already scheduled
      */
     private void shutdown(Server server) {
-        String id = server.getShortId();
+        String id = server.getCompositeId();
 
         // Prevent duplicate shutdown scheduling
         if (!shuttingDown.add(id)) {

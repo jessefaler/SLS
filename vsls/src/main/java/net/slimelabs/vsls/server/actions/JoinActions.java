@@ -3,7 +3,6 @@ package net.slimelabs.vsls.server.actions;
 import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
-import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -30,7 +29,7 @@ public class JoinActions {
 
     @Subscribe
     public void onServerPostConnect(ServerConnectedEvent event) {
-        if(event.getServer().getServerInfo().getName().equals(server.getShortId())) {
+        if(event.getServer().getServerInfo().getName().equals(server.getCompositeId())) {
             runJoinCommands(event.getPlayer());
         }
     }
@@ -74,7 +73,7 @@ public class JoinActions {
                             .toList()
             ).executeAsync(success -> {}, failure -> {
                 Log.warn("JoinActions: failed to run commands on player join. reason: " + failure.info());
-                Log.requestError("Failed to run join commands on " + server.getShortId(), failure, player);
+                Log.requestError("Failed to run join commands on " + server.getCompositeId(), failure, player);
             });
         }
     }

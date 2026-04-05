@@ -6,7 +6,6 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.protoxon.S4J.ServerStatus;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -16,13 +15,11 @@ import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.ServerUtils;
-import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class RestartCommand {
@@ -42,7 +39,7 @@ public class RestartCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Restarting " + server.getShortId(), NamedTextColor.GRAY)
+                                            .add("Restarting " + server.getCompositeId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                     RegisteredServer rs = ServerUtils.getRegisteredServer((Player) source);
                                     // Get the players currently connected to the server we are restarting
@@ -50,7 +47,7 @@ public class RestartCommand {
                                     // Queue them to rejoin when it is ready
                                     queuePlayers(server, players);
                                 },
-                                failure -> Log.requestError("Failed to restart server " + server.getShortId(), failure, source)
+                                failure -> Log.requestError("Failed to restart server " + server.getCompositeId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()

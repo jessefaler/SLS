@@ -4,7 +4,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -16,7 +15,6 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public class StopCommand {
 
@@ -35,10 +33,10 @@ public class StopCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Stopped " + server.getShortId(), NamedTextColor.GRAY)
+                                            .add("Stopped " + server.getCompositeId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> Log.requestError("Failed to stop server " + server.getShortId(), failure, source)
+                                failure -> Log.requestError("Failed to stop server " + server.getCompositeId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -72,7 +70,7 @@ public class StopCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.stop().executeAsync(
                                         success -> {},
-                                        failure -> Log.requestError("Failed to stop server " + server.getShortId(), failure, source)
+                                        failure -> Log.requestError("Failed to stop server " + server.getCompositeId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -137,7 +135,7 @@ public class StopCommand {
                                 server.stop().executeAsync(
                                         success -> {},
                                         failure -> {
-                                            Log.requestError("Failed to stop server " + server.getShortId(), failure, source);
+                                            Log.requestError("Failed to stop server " + server.getCompositeId(), failure, source);
                                             SLS.servers.unRegister(server.getId());
                                         }
                                 )

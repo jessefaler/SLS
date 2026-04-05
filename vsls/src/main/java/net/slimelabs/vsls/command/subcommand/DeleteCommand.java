@@ -3,23 +3,15 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.protoxon.S4J.client.entities.ClientServer;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.ServerUtils;
-import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public class DeleteCommand {
 
@@ -38,10 +30,10 @@ public class DeleteCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Deleted " + server.getShortId(), NamedTextColor.GRAY)
+                                            .add("Deleted " + server.getCompositeId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
+                                failure -> Log.requestError("Failed to delete server " + server.getCompositeId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -68,7 +60,7 @@ public class DeleteCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.delete().executeAsync(
                                         success -> {},
-                                        failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
+                                        failure -> Log.requestError("Failed to delete server " + server.getCompositeId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -112,7 +104,7 @@ public class DeleteCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.delete(true).executeAsync(
                                         success -> {},
-                                        failure -> Log.requestError("Failed to delete server " + server.getShortId(), failure, source)
+                                        failure -> Log.requestError("Failed to delete server " + server.getCompositeId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()

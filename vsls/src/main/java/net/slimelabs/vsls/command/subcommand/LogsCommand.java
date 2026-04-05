@@ -63,7 +63,7 @@ public class LogsCommand {
                     if (server != null) {
                         server.getLogs().executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();
-                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getShortId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
+                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getCompositeId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
                             for (String log : logs) {
                                 builder.append(
                                         Component.text(log + "\n", NamedTextColor.GRAY)
@@ -116,7 +116,7 @@ public class LogsCommand {
                     if (server != null) {
                         server.getLogs(lines).executeAsync(logs -> {
                             ComponentBuilder<TextComponent, TextComponent.Builder> builder = Component.text();
-                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getShortId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
+                            ProtoMessage.chat().addMiniMessage("<dark_gray><b><st>－－－－</st></b><gold> Logs for " + server.getCompositeId() + " </gold><b><st>－－－－</st></b></dark_gray>\n").sendMessage(source);
                             for (String log : logs) {
                                 builder.append(
                                         Component.text(log + "\n", NamedTextColor.GRAY)

@@ -53,13 +53,13 @@ public class ServerEventRouter {
         ServerStatus status = event.getStatus();
         server.setStatus(status);
         server.getEvents().fireStatus(status);
-        logStatusChange(status, server.getShortId());
+        logStatusChange(status, server.getCompositeId());
     }
 
     private void handleCrash(Server server, ServerCrashEvent event) {
         server.getEvents().fireCrash(event);
         Log.warn("Server {} crashed: Reason={}, ExitCode={}, Timestamp={}",
-                server.getShortId(), event.getReason(), event.getExitCode(),
+                server.getCompositeId(), event.getReason(), event.getExitCode(),
                 TimeUtils.formatTimestamp(event.getTimestamp()));
     }
 
@@ -67,7 +67,7 @@ public class ServerEventRouter {
         server.getEvents().fireStatus(ServerStatus.OFFLINE);
         server.getEvents().fireDeletion(event);
         server.unregister();
-        Log.info("Server {} was deleted", server.getShortId());
+        Log.info("Server {} was deleted", server.getCompositeId());
     }
 
     // Logs a status change to the debug log level

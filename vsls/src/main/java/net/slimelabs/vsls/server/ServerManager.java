@@ -110,14 +110,18 @@ public class ServerManager implements ServerProvider {
     }
 
     /**
-     * Finds the first server whose ID starts with the provided prefix.
+     * Finds the first server that matches the given string as either the full API id,
+     * a prefix of the API id, or a prefix of the composite id ({@link Server#getCompositeId()}).
      *
-     * @param id the ID prefix to search for
-     * @return the first matching Server, or null if no server matches the prefix
+     * @param id the API id, composite id, or a prefix of either
+     * @return the first matching Server, or null if no server matches
      */
     public Server resolve(String id) {
+        Server exact = servers.get(id);
+        if (exact != null) return exact;
         for (Server server : servers.values()) {
             if (server.getId().startsWith(id)) return server;
+            if (server.getCompositeId().startsWith(id)) return server;
         }
         return null;
     }
@@ -157,7 +161,7 @@ public class ServerManager implements ServerProvider {
                 server.getAllocation().getAlias().isEmpty() ? server.getAllocation().getIp() : server.getAllocation().getAlias(),
                 server.getAllocation().getPort()
         );
-        ServerInfo serverInfo = new ServerInfo(server.getShortId(), address);
+        ServerInfo serverInfo = new ServerInfo(server.getCompositeId(), address);
         SLS.proxy.registerServer(serverInfo);
         // Register the server with ViaVersion
         ViaVersion.register(server);
@@ -177,7 +181,7 @@ public class ServerManager implements ServerProvider {
      */
     public Collection<String> getShortIds() {
         return servers.values().stream()
-                .map(Server::getShortId)
+                .map(Server::getCompositeId)
                 .toList();
     }
 
@@ -199,7 +203,7 @@ public class ServerManager implements ServerProvider {
         if(server != null) {
             server.getEvents().clearAllListeners();
             // Unregister the server in velocity
-            SLS.proxy.getServer(server.getShortId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
+            SLS.proxy.getServer(server.getCompositeId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
             ViaVersion.unregister(id);
         }
     }

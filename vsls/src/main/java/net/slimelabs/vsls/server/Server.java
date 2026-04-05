@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class Server {
 
     private final String id;
+    private final String compositeId;
     private final String shortId;
     private final String name;
 
@@ -41,6 +42,7 @@ public class Server {
         this.client = client;
         this.id = client.getId();
         this.shortId = id.length() >= 6 ? id.substring(0, 6) : id;
+        this.compositeId = getBlueprintId() + "." + shortId;
         this.unregister = unregister;
         new JoinActions(this);
     }
@@ -81,7 +83,23 @@ public class Server {
     }
 
     /**
-     * Returns a shortened version of the servers id
+     * Returns a composite identifier for this server in the format:
+     * {@code <blueprintId>.<shortId>} (e.g., {@code example.zds89d}).
+     * <p>
+     * This identifier is human-readable and uniquely identifies a server
+     * within the scope of its blueprint. It is useful for logging, display,
+     * routing, and referencing servers in a concise, namespaced form.
+     *
+     * @return the composite (namespaced) server identifier
+     */
+    public String getCompositeId() {
+        return compositeId;
+    }
+
+    /**
+     * Returns the short server id: the first six characters of the API id (or the full id if shorter).
+     * This is the suffix in {@link #getCompositeId()} after the blueprint id and separator.
+     *
      * @return the shortened id
      */
     public String getShortId() {
@@ -214,7 +232,7 @@ public class Server {
      * as reported by the proxy.
      */
     public int getPlayerCount() {
-        return SLS.proxy.getServer(getShortId())
+        return SLS.proxy.getServer(getCompositeId())
                 .map(rs -> rs.getPlayersConnected().size())
                 .orElse(0);
     }
@@ -260,16 +278,16 @@ public class Server {
      * @param player the player to connect
      */
     public void connect(Player player) {
-        SLS.proxy.getServer(getShortId()).ifPresentOrElse(
+        SLS.proxy.getServer(getCompositeId()).ifPresentOrElse(
                 targetServer -> player.createConnectionRequest(targetServer).connectWithIndication().thenAccept(connection -> {
                 }).exceptionally(throwable -> {
                     // Handle connection failure
                     Animation.clearSwitching(player.getUniqueId());
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
-                            .add("Error: Could not connect to " + getShortId(), NamedTextColor.RED)
+                            .add("Error: Could not connect to " + getCompositeId(), NamedTextColor.RED)
                             .sendMessage(player);
-                    Log.withField("reason", throwable.getMessage()).error("Failed to connect {} to {}", player.getUsername(), getShortId());
+                    Log.withField("reason", throwable.getMessage()).error("Failed to connect {} to {}", player.getUsername(), getCompositeId());
                     return null;
                 }),
                 () -> {
@@ -289,7 +307,7 @@ public class Server {
      * @return a comma-separated list of player usernames
      */
     public String getPlayerNames() {
-        return SLS.proxy.getServer(getShortId())
+        return SLS.proxy.getServer(getCompositeId())
                 .map(rs -> rs.getPlayersConnected().stream()
                         .map(Player::getUsername)
                         .collect(Collectors.joining(", ")))
@@ -303,7 +321,7 @@ public class Server {
      * @return a list of players
      */
     public ArrayList<Player> getPlayers() {
-        return SLS.proxy.getServer(getShortId())
+        return SLS.proxy.getServer(getCompositeId())
                 .map(rs -> new ArrayList<>(rs.getPlayersConnected()))
                 .orElseGet(ArrayList::new);
     }

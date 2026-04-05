@@ -29,8 +29,7 @@ import java.util.concurrent.TimeUnit;
  * It performs the following actions:
  * <ul>
  *   <li>Stops the server.</li>
- *   <li>Deletes the contents of the upper and work directories in the server and world folder.</li>
- *   <li>Sends all players connected to the server being reset to a fallback server.</li>
+ *   <li>Deletes the contents of the upper and work directories of the overlays.</li>
  *   <li>Starts the server.</li>
  *   <li>Queues the players to join the server once it's reset.</li>
  * </ul>
@@ -152,7 +151,7 @@ public class ResetCommand {
                             .sendMessage(player);
                 }).delay(2, TimeUnit.SECONDS).schedule();
             }
-        }, failure -> Log.requestError("Failed to reset server " + server.getShortId(), failure, source));
+        }, failure -> Log.requestError("Failed to reset server " + server.getCompositeId(), failure, source));
     }
 
     public static void showResetTitle(Audience target, String serverName) {

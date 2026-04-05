@@ -72,7 +72,7 @@ public class CreateCommand {
                                 .add(MessagePreset.SLS)
                                 .add("Created " + blueprint, NamedTextColor.GREEN)
                                 .add(" (", NamedTextColor.GRAY)
-                                .add(server.getShortId(), NamedTextColor.DARK_GRAY)
+                                .add(server.getCompositeId(), NamedTextColor.DARK_GRAY)
                                 .add(")", NamedTextColor.GRAY)
                                 .sendMessage(source);
                     }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));
@@ -275,7 +275,7 @@ public class CreateCommand {
                                     .add(MessagePreset.SLS)
                                     .add("Created " + blueprint, NamedTextColor.GREEN)
                                     .add(" (", NamedTextColor.GRAY)
-                                    .add(server.getShortId(), NamedTextColor.DARK_GRAY)
+                                    .add(server.getCompositeId(), NamedTextColor.DARK_GRAY)
                                     .add(")", NamedTextColor.GRAY)
                                     .sendMessage(source);
                         }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));

@@ -30,10 +30,10 @@ public class PauseCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Paused " + server.getShortId(), NamedTextColor.GRAY)
+                                            .add("Paused " + server.getCompositeId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> Log.requestError("Failed to pause server " + server.getShortId(), failure, source)
+                                failure -> Log.requestError("Failed to pause server " + server.getCompositeId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()

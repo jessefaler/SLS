@@ -3,7 +3,6 @@ package net.slimelabs.vsls.utils;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.platform.ProtocolDetectorService;
-import com.viaversion.viaversion.api.platform.ViaServerProxyPlatform;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -34,9 +33,9 @@ public class ViaVersion {
         if(!isUsingViaVersion()) return; // ViaVersion is not in use on the proxy so return
         ProtocolVersion protocolId = ProtocolVersion.getClosest(server.getVersion()); // Get Mapping
         if(protocolId == null) {
-            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getShortId());
+            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getCompositeId());
         } else {
-            getDetector().setProtocolVersion(server.getShortId(), protocolId.getVersion()); // Register with ViaVersion
+            getDetector().setProtocolVersion(server.getCompositeId(), protocolId.getVersion()); // Register with ViaVersion
         }
     }
 
