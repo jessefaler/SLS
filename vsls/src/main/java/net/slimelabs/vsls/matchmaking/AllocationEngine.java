@@ -47,6 +47,21 @@ public class AllocationEngine {
         this.strategy = strategy;
     }
 
+    /**
+     * If nobody is waiting for matchmaking, stop servers this pool is still provisioning
+     * (boot not finished) so idle starts do not keep running.
+     */
+    public synchronized void cancelProvisioningWhenQueueEmpty() {
+        if (!pool.waiting().isEmpty()) return;
+        for (Server server : new ArrayList<>(pool.getProvisioning())) {
+            ServerStatus s = server.getStatus();
+            if (s == ServerStatus.RUNNING || s == ServerStatus.STOPPING) continue;
+            server.stop().executeAsync(v -> {}, failure ->
+                    Log.warn("Failed to stop unneeded server {} after matchmaking queue emptied: {}",
+                            server.getName(), failure.info()));
+        }
+    }
+
     public synchronized void attemptAllocation() {
         while (!pool.waiting().isEmpty()) {
             Server server = findServerWithCapacity();
@@ -187,6 +202,7 @@ public class AllocationEngine {
             statusHandle.remove();
             cleanupProvisioningAndFlush(server, gameType);
         });
+        cancelProvisioningWhenQueueEmpty();
         return true;
     }
 
@@ -246,6 +262,7 @@ public class AllocationEngine {
                 pool.decrementProvisioningInProgress();
                 flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
             });
+            cancelProvisioningWhenQueueEmpty();
         }, failure -> {
             pool.decrementProvisioningInProgress();
             flushWaitingWithApiError("Failed to create server for blueprint " + blueprint.getName(), failure);

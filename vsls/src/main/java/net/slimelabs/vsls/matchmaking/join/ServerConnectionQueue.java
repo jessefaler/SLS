@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ServerConnectionQueue {
 
     private final Server server;
+    /** If true, this queue called {@link Server#start()} — abort boot if everyone leaves while still starting. */
+    private final boolean startServer;
     private final Runnable onClosed;
     private final ConcurrentLinkedQueue<Player> waiting = new ConcurrentLinkedQueue<>();
     private final Animation loadingIcon = new Animation();
@@ -44,6 +46,7 @@ public class ServerConnectionQueue {
      */
     public ServerConnectionQueue(Server server, Runnable onClosed, boolean startServer) {
         this.server = server;
+        this.startServer = startServer;
         this.onClosed = onClosed;
         statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
@@ -133,6 +136,10 @@ public class ServerConnectionQueue {
             statusHandle.remove();
             deletionHandle.remove();
             onClosed.run();
+            if (startServer && server.getStatus() == ServerStatus.STARTING) {
+                server.stop().executeAsync(v -> {}, failure ->
+                        Log.warn("Failed to stop server {} after queue emptied: {}", server.getName(), failure.info()));
+            }
         }
         return removed;
     }
