@@ -1,0 +1,61 @@
+# Spigot Software configuration
+
+software:
+
+  # Unique identifier for the software
+  id: 'spigot'
+
+  # Human readable name for the software
+  name: 'Spigot'
+
+  # Images that can be used for this software
+  images:
+    "java_25": "ghcr.io/protoxon/images:java_25"
+    "java_21": "ghcr.io/protoxon/images:java_21"
+    "java_17": "ghcr.io/protoxon/images:java_17"
+    "java_16": "ghcr.io/protoxon/images:java_16"
+    "java_11": "ghcr.io/protoxon/images:java_11"
+    "java_8": "ghcr.io/protoxon/images:java_8"
+
+  # Version to image mappings
+  mappings:
+    - java_8:  "<=1.16.5"
+    - java_16: ">=1.17 <=1.17.1"
+    - java_17: ">=1.18 <=1.20.4"
+    - java_21: ">=1.20.5 <=1.21.11"
+    - java_25: ">=1.21.12"
+    - default: java_21
+
+  # The command to start the server  
+  invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -Ddisable.watchdog=true -jar server.jar"  # Start command for the server
+  
+  # The command sent to stop the server gracefully
+  stop-command: "stop"
+
+  # The console output indicating the server is fully online
+  online-signal: ")! For help, type"  # Signal to indicate server is online
+
+  # Installs the server and warms it up
+  install-script:
+    image: "1"
+    entrypoint: bash
+    script: "#!/bin/bash\n# Spigot Installation Script\nPROJECT=spigot\n\n# Set defaults if not provided\n: \"${SERVER_JARFILE:=server.jar}\"\n\nif [ -n \"${DL_PATH}\" ]; then\n    echo -e \"Using supplied download url: ${DL_PATH}\"\n    DOWNLOAD_URL=`eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g')`\n    cd /home/container\n    echo -e \"Running curl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\"\n    if [ -f ${SERVER_JARFILE} ]; then\n        mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\n    fi\n    curl -f -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\n    if [ $? -ne 0 ]; then\n        echo \"ERROR: Failed to download server jar. Aborting.\"\n        exit 1\n    fi\nelse\n    cd /home/container\n    : \"${VERSION:=1.20.1}\"\n    echo -e \"Building Spigot for Minecraft version ${VERSION}...\"\n    curl -L -f -o BuildTools.jar https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar\n    if [ $? -ne 0 ]; then\n        echo \"ERROR: Failed to download BuildTools. Aborting.\"\n        exit 1\n    fi\n    BUILD_MEM=1024\n    if [ -n \"${SERVER_MEMORY}\" ] && [ \"${SERVER_MEMORY}\" -gt \"${BUILD_MEM}\" ] 2>/dev/null; then\n        BUILD_MEM=${SERVER_MEMORY}\n    fi\n    echo -e \"Running BuildTools with ${BUILD_MEM}M memory...\"\n    java -Xms${BUILD_MEM}M -XX:MaxRAMPercentage=80.0 -jar BuildTools.jar --rev ${VERSION}\n    if [ $? -ne 0 ]; then\n        echo \"ERROR: BuildTools failed. Aborting.\"\n        exit 1\n    fi\n    if [ -f ${SERVER_JARFILE} ]; then\n        mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\n    fi\n    mv spigot-${VERSION}.jar ${SERVER_JARFILE}\n    rm -f BuildTools.jar\n    rm -rf build\nfi\n\nif [ ! -f ${SERVER_JARFILE} ]; then\n    echo \"ERROR: Server jar not found after download/build. Aborting.\"\n    exit 1\nfi\n\n# Write the default server properties file\ncat > server.properties <<EOF\nserver-port=25565\nserver-ip=\nmax-players=50\nmotd=SLS\nallow-nether=false\nonline-mode=false\nenable-command-block=true\nspawn-protection=0\nview-distance=12\nEOF\n\n# Write the default bukkit config file\ncat > bukkit.yml <<EOF\nsettings:\n  allow-end: false\nEOF\n\n# Write the default spigot config file\ncat > spigot.yml <<EOF\nsettings:\n  bungeecord: true\nEOF\n\nprintf \"\\033[1m\\033[33mcontainer@sls~ \\033[0mjava -version\\n\"\njava -version\n\necho \"eula=true\" > eula.txt\n\nFIFO=\"server.pipe\"\nmkfifo $FIFO\n\necho \"Starting server for warmup...\"\njava -Xms128M -XX:MaxRAMPercentage=80.0 -Dterminal.jline=false -Dterminal.ansi=true \\\n    -jar ${SERVER_JARFILE} -nogui < $FIFO > server-output.log 2>&1 &\nSERVER_PID=$!\n\n# Check server actually started\nsleep 2\nif ! kill -0 $SERVER_PID 2>/dev/null; then\n    echo \"ERROR: Server process failed to start. Aborting.\"\n    cat server-output.log\n    exit 1\nfi\n\n# Keep write end of pipe open so server doesn't block on stdin\nexec 3>$FIFO\n\nSTART_TIME=$(date +%s)\nTIMEOUT=600\nSUCCESS=false\n\necho \"Waiting for server to reach 'Preparing level'...\"\n\ntail -F server-output.log 2>/dev/null | while read -r line; do\n    echo \"[SERVER] $line\"\ndone &\nTAIL_PID=$!\n\nwhile true; do\n    if [ -f server-output.log ] && grep -q \"Preparing level\" server-output.log; then\n        echo \"Server reached 'Preparing level'. Killing process...\"\n        kill -9 $SERVER_PID 2>/dev/null || true\n        SUCCESS=true\n        break\n    fi\n\n    if ! kill -0 $SERVER_PID 2>/dev/null; then\n        echo \"ERROR: Server process died unexpectedly. Aborting.\"\n        cat server-output.log\n        exit 1\n    fi\n\n    NOW=$(date +%s)\n    ELAPSED=$((NOW - START_TIME))\n    if [ \"$ELAPSED\" -ge \"$TIMEOUT\" ]; then\n        echo \"ERROR: Timeout reached waiting for server. Aborting.\"\n        kill -9 $SERVER_PID 2>/dev/null\n        cat server-output.log\n        exit 1\n    fi\n\n    sleep 2\ndone\n\nwait $SERVER_PID 2>/dev/null || true\nexec 3>&-\nkill $TAIL_PID 2>/dev/null || true\nrm -f $FIFO\nrm -f server-output.log\nrm -rf world world_nether world_the_end logs\n\nif [ \"$SUCCESS\" = true ]; then\n    echo \"Warmup complete.\"\n    exit 0\nelse\n    echo \"ERROR: Warmup did not complete successfully.\"\n    exit 1\nfi"
+  
+  # Default limits  
+  limits:
+    memory_limit: 4096
+    swap: 0
+    io_weight: 500
+    cpu_limit: 0
+    disk_space: 8192
+    threads: ""
+    oom_disabled: true
+  
+  # Config patch to set the server ip and port  
+  configs:
+    server.properties:
+      parser: properties
+      find:
+        server-ip: "0.0.0.0"
+        server-port: "{{server.build.default.port}}"
+        query.port: "{{server.build.default.port}}"

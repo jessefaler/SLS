@@ -1,0 +1,61 @@
+# Paper software configuration
+
+software:
+
+  # Unique identifier for the software
+  id: 'paper'
+
+  # Human readable name for the software
+  name: 'Paper'
+
+  # Images that can be used for this software
+  images:
+    "java_25": "ghcr.io/protoxon/images:java_25"
+    "java_21": "ghcr.io/protoxon/images:java_21"
+    "java_17": "ghcr.io/protoxon/images:java_17"
+    "java_16": "ghcr.io/protoxon/images:java_16"
+    "java_11": "ghcr.io/protoxon/images:java_11"
+    "java_8": "ghcr.io/protoxon/images:java_8"
+
+  # Version to image mappings
+  mappings:
+    - java_8:  "<=1.16.5"
+    - java_16: ">=1.17 <=1.17.1"
+    - java_17: ">=1.18 <=1.20.4"
+    - java_21: ">=1.20.5 <=1.21.11"
+    - java_25: ">=1.21.12"
+    - default: java_21
+
+  # The command to start the server
+  invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -XX:+PerfDisableSharedMem -XX:+ParallelRefProcEnabled -jar server.jar"  # Start command for the server
+  
+  # The command sent to stop the server gracefully
+  stop-command: "stop"
+
+  # The console output indicating the server is fully online
+  online-signal: ")! For help, type"
+
+  # Installs the server and warms it up
+  install-script:
+    entrypoint: bash
+    script: "#!/bin/bash\n# Paper Installation Script\nPROJECT=paper\n\n# Set defaults if not provided\n: \"${SERVER_JARFILE:=server.jar}\"\n\nif [ -n \"${DL_PATH}\" ]; then\n    echo -e \"Using supplied download url: ${DL_PATH}\"\n    DOWNLOAD_URL=`eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g')`\nelse\n    VER_EXISTS=`curl -s https://api.papermc.io/v2/projects/${PROJECT} | jq -r --arg VERSION $VERSION '.versions[] | contains($VERSION)' | grep -m1 true`\n    LATEST_VERSION=`curl -s https://api.papermc.io/v2/projects/${PROJECT} | jq -r '.versions' | jq -r '.[-1]'`\n\n    if [ \"${VER_EXISTS}\" == \"true\" ]; then\n        echo -e \"Version is valid. Using version ${VERSION}\"\n    else\n        echo -e \"Specified version not found. Defaulting to the latest ${PROJECT} version\"\n        VERSION=${LATEST_VERSION}\n    fi\n\n    BUILD_EXISTS=`curl -s https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION} | jq -r --arg BUILD ${BUILD_NUMBER} '.builds[] | tostring | contains($BUILD)' | grep -m1 true`\n    LATEST_BUILD=`curl -s https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION} | jq -r '.builds' | jq -r '.[-1]'`\n\n    if [ \"${BUILD_EXISTS}\" == \"true\" ]; then\n        echo -e \"Build is valid for version ${VERSION}. Using build ${BUILD_NUMBER}\"\n    else\n        echo -e \"Using the latest ${PROJECT} build for version ${VERSION}\"\n        BUILD_NUMBER=${LATEST_BUILD}\n    fi\n\n    JAR_NAME=${PROJECT}-${VERSION}-${BUILD_NUMBER}.jar\n    echo \"Version being downloaded\"\n    echo -e \"MC Version: ${VERSION}\"\n    echo -e \"Build: ${BUILD_NUMBER}\"\n    echo -e \"JAR Name of Build: ${JAR_NAME}\"\n    DOWNLOAD_URL=https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}/builds/${BUILD_NUMBER}/downloads/${JAR_NAME}\nfi\n\ncd /home/container\n\necho -e \"Running curl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\"\nif [ -f ${SERVER_JARFILE} ]; then\n    mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\nfi\n\ncurl -f -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\nif [ $? -ne 0 ]; then\n    echo \"ERROR: Failed to download server jar. Aborting.\"\n    exit 1\nfi\n\nif [ ! -f ${SERVER_JARFILE} ]; then\n    echo \"ERROR: Server jar not found after download. Aborting.\"\n    exit 1\nfi\n\n# Wite the default server properties file\ncat > server.properties <<EOF\nserver-port=25565\nserver-ip=\nmax-players=50\nmotd=SLS\nallow-nether=false\nonline-mode=false\nenable-command-block=true\nspawn-protection=0\nview-distance=12\nEOF\n\n# Wite the default bukkit config file\ncat > bukkit.yml <<EOF\nsettings:\n  allow-end: false\nEOF\n\n# Wite the default spigot config file\ncat > spigot.yml <<EOF\nsettings:\n  bungeecord: true\nEOF\n\nprintf \"\\033[1m\\033[33mcontainer@sls~ \\033[0mjava -version\\n\"\njava -version\n\necho \"eula=true\" > eula.txt\n\nFIFO=\"server.pipe\"\nmkfifo $FIFO\n\necho \"Starting server for warmup...\"\njava -Xms128M -XX:MaxRAMPercentage=80.0 -Dterminal.jline=false -Dterminal.ansi=true \\\n    -jar ${SERVER_JARFILE} < $FIFO > server-output.log 2>&1 &\nSERVER_PID=$!\n\n# Check server actually started\nsleep 2\nif ! kill -0 $SERVER_PID 2>/dev/null; then\n    echo \"ERROR: Server process failed to start. Aborting.\"\n    cat server-output.log\n    exit 1\nfi\n\n# Keep write end of pipe open so server doesn't block on stdin\nexec 3>$FIFO\n\nSTART_TIME=$(date +%s)\nTIMEOUT=600\nSUCCESS=false\n\necho \"Waiting for server to reach 'Preparing level'...\"\n\ntail -F server-output.log 2>/dev/null | while read -r line; do\n    echo \"[SERVER] $line\"\ndone &\nTAIL_PID=$!\n\nwhile true; do\n    if [ -f server-output.log ] && grep -q \"Preparing level\" server-output.log; then\n        echo \"Server reached 'Preparing level'. Killing process...\"\n        kill -9 $SERVER_PID 2>/dev/null || true\n        SUCCESS=true\n        break\n    fi\n\n    # Check if server died unexpectedly\n    if ! kill -0 $SERVER_PID 2>/dev/null; then\n        echo \"ERROR: Server process died unexpectedly. Aborting.\"\n        cat server-output.log\n        exit 1\n    fi\n\n    NOW=$(date +%s)\n    ELAPSED=$((NOW - START_TIME))\n    if [ \"$ELAPSED\" -ge \"$TIMEOUT\" ]; then\n        echo \"ERROR: Timeout reached waiting for server. Aborting.\"\n        kill -9 $SERVER_PID 2>/dev/null\n        cat server-output.log\n        exit 1\n    fi\n\n    sleep 2\ndone\n\n# Wait for process to exit after kill\nwait $SERVER_PID 2>/dev/null || true\n\n# Cleanup\nexec 3>&-\nkill $TAIL_PID 2>/dev/null || true\nrm -f $FIFO\nrm -f server-output.log\n\n# Clean up server-generated files not needed in the image\nrm -rf world world_nether world_the_end logs\n\nif [ \"$SUCCESS\" = true ]; then\n    echo \"Warmup complete.\"\n    exit 0\nelse\n    echo \"ERROR: Warmup did not complete successfully.\"\n    exit 1\nfi"
+    skip_scripts: false
+
+  # Default limits  
+  limits:
+    memory_limit: 4096
+    swap: 0
+    io_weight: 500
+    cpu_limit: 0
+    disk_space: 8192
+    threads: ""
+    oom_disabled: true
+
+  # Config patch to set the server ip and port  
+  configs:
+    server.properties:
+      parser: properties
+      find:
+        server-ip: "0.0.0.0"
+        server-port: "{{server.build.default.port}}"
+        query.port: "{{server.build.default.port}}"
