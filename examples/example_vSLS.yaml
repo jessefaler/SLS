@@ -1,0 +1,34 @@
+
+blueprint:
+  id: "slsmp1"
+  name: "SLSMP1"
+  type: "archive"
+
+server:
+  software: "paper"
+  version: "1.21.1"
+  
+state:
+  volumes:
+    - name: "world" 
+      source: "worlds/experimental/spider_garden"
+      target: "/world"
+      mode: cow
+
+annotations:
+
+  # The vSLS plugin (https://github.com/jessefaler/SLS/tree/main/vsls) allows you to configure matchmaking and set commands to run when a player joins the server.
+
+  vsls:
+    on-join:
+
+      # says hello to the player when they join, using their name in the message
+      - run: "say hello {PLAYER_NAME}"
+      
+      # Join sound
+      - run: "playsound minecraft:block.note_block.bell ambient {PLAYER_NAME} ~ ~ ~ 1000 0"
+
+    matchmaking:
+      # Controls the number of players per instance. Setting this to 1 will create a new instance for every player that joins, allowing them to have their own separate world and progress.
+      # Omit to allow unlimited players
+      maxPlayers: 1
