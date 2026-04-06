@@ -1,12 +1,14 @@
 package net.slimelabs.vsls.server.lifecycle;
 
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.server.ServerProvider;
@@ -44,6 +46,7 @@ public class LifecycleManager {
                     for (Server server : provider.getAll()) {
                         if(server.getStatus() == ServerStatus.RUNNING) {
                             if (server.getPlayerCount() == 0) {
+                                if (!shouldStopWhenEmpty(server)) continue;
                                 server.getStats().executeAsync(stats -> {
                                     if (stats.getUptime() > Duration.ofMinutes(1).toMillis()
                                             && server.getPlayerCount() == 0
@@ -106,6 +109,7 @@ public class LifecycleManager {
                         Server server = provider.resolve(id);
                         if (server != null) {
                             if(server.getStatus() == ServerStatus.RUNNING) {
+                                if (!shouldStopWhenEmpty(server)) return;
                                 shutdown(server);
                             }
                         }
@@ -113,6 +117,11 @@ public class LifecycleManager {
                 })
                 .delay(SLS.config.lifecycle.stop_delay, TimeUnit.SECONDS)
                 .schedule();
+    }
+
+    private boolean shouldStopWhenEmpty(Server server) {
+        Blueprint blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
+        return !VslsAnnotations.dontStopWhenEmpty(blueprint);
     }
 
     /**

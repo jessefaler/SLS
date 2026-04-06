@@ -20,6 +20,12 @@ annotations:
   # The vSLS plugin (https://github.com/jessefaler/SLS/tree/main/vsls) allows you to configure matchmaking and set commands to run when a player joins the server.
 
   vsls:
+    # Tells vSLS to keep the server running even when no players are online.
+    dont-stop-when-empty: true
+
+    # Limits the number of concurrent instances of this blueprint to 1.
+    max-instances: 1
+
     on-join:
 
       # says hello to the player when they join, using their name in the message

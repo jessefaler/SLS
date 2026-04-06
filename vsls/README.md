@@ -38,11 +38,21 @@ Optional block used when registering this blueprint for matchmaking:
 
 - **`maxPlayers`** — Maximum players per provisioned instance. For example, `1` starts a separate instance per player so each gets their own world/progress. Must be greater than zero for this block to apply; if you omit the entire `matchmaking` section, vSLS uses defaults (game type falls back to the blueprint id and a high default capacity).
 
+### `dont-stop-when-empty`
+
+If set to `true`, vSLS will **not** stop the server when it becomes empty (lifecycle manager). Defaults to `false`.
+
+### `max-instances`
+
+Controls how many instances of a single blueprint may exist at a time. If set, matchmaking will not create more than this many servers for that blueprint. Defaults to unlimited.
+
 ### Example
 
 ```yaml
 annotations:
   vsls:
+    dont-stop-when-empty: true
+    max-instances: 1
     on-join:
       - run: 'say hello {PLAYER_NAME}'
       - run: 'playsound minecraft:block.note_block.bell ambient {PLAYER_NAME} ~ ~ ~ 1000 0'
