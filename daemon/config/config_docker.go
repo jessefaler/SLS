@@ -23,7 +23,7 @@ type dockerNetworkInterfaces struct {
 type DockerNetworkConfiguration struct {
 	// The interface that should be used to create the network. Must not conflict
 	// with any other interfaces in use by Docker or on the system.
-	Interface string `default:"172.32.0.1" json:"interface" yaml:"interface"`
+	Interface string `json:"interface" yaml:"interface" default:"172.60.0.1"`
 
 	// The DNS settings for containers.
 	Dns []string `default:"[\"1.1.1.1\", \"1.0.0.1\"]"`
@@ -32,12 +32,12 @@ type DockerNetworkConfiguration struct {
 	// be created. If it is not found, a new network will be created using the interface
 	// defined.
 	Name       string                  `default:"sls"`
-	ISPN       bool                    `default:"false" yaml:"ispn"`
+	ISPN       bool                    `yaml:"ispn" default:"false"`
 	Driver     string                  `default:"bridge"`
-	Mode       string                  `default:"sls_nw" yaml:"network_mode"`
-	IsInternal bool                    `default:"false" yaml:"is_internal"`
-	EnableICC  bool                    `default:"true" yaml:"enable_icc"`
-	NetworkMTU int64                   `default:"1500" yaml:"network_mtu"`
+	Mode       string                  `yaml:"network_mode" default:"sls"`
+	IsInternal bool                    `yaml:"is_internal" default:"false"`
+	EnableICC  bool                    `yaml:"enable_icc" default:"true"`
+	NetworkMTU int64                   `yaml:"network_mtu" default:"1500"`
 	Interfaces dockerNetworkInterfaces `yaml:"interfaces"`
 }
 
@@ -49,7 +49,7 @@ type DockerConfiguration struct {
 	Network DockerNetworkConfiguration `json:"network" yaml:"network"`
 
 	// Domainname is the Docker domainname for all containers.
-	Domainname string `default:"" json:"domainname" yaml:"domainname"`
+	Domainname string `json:"domainname" yaml:"domainname" default:""`
 
 	// Registries .
 	Registries map[string]RegistryConfiguration `json:"registries" yaml:"registries"`
@@ -57,28 +57,28 @@ type DockerConfiguration struct {
 	// TmpfsSize specifies the size for the /tmp directory mounted into containers. Please be
 	// aware that Docker utilizes the host's system memory for this value, and that we do not
 	// keep track of the space used there, so avoid allocating too much to a server.
-	TmpfsSize uint `default:"100" json:"tmpfs_size" yaml:"tmpfs_size"`
+	TmpfsSize uint `json:"tmpfs_size" yaml:"tmpfs_size" default:"100"`
 
 	// ContainerPidLimit sets the total number of processes that can be active in a container
 	// at any given moment. This is a security concern in shared-hosting environments where a
 	// malicious process could create enough processes to cause the host node to run out of
 	// available pids and crash.
-	ContainerPidLimit int64 `default:"512" json:"container_pid_limit" yaml:"container_pid_limit"`
+	ContainerPidLimit int64 `json:"container_pid_limit" yaml:"container_pid_limit" default:"512"`
 
 	// InstallerLimits defines the limits on the installer containers that prevents a server's
 	// installation process from unintentionally consuming more resources than expected. This
 	// is used in conjunction with the server's defined limits. Whichever value is higher will
 	// take precedence in the installer containers.
 	InstallerLimits struct {
-		Memory int64 `default:"3072" json:"memory" yaml:"memory"`
-		Cpu    int64 `default:"200" json:"cpu" yaml:"cpu"`
+		Memory int64 `json:"memory" yaml:"memory" default:"4096"`
+		Cpu    int64 `json:"cpu" yaml:"cpu" default:"200"`
 	} `json:"installer_limits" yaml:"installer_limits"`
 
 	// Overhead controls the memory overhead given to all containers to circumvent certain
 	// software such as the JVM not staying below the maximum memory limit.
 	Overhead Overhead `json:"overhead" yaml:"overhead"`
 
-	UsePerformantInspect bool `default:"true" json:"use_performant_inspect" yaml:"use_performant_inspect"`
+	UsePerformantInspect bool `json:"use_performant_inspect" yaml:"use_performant_inspect" default:"true"`
 
 	// Sets the user namespace mode for the container when user namespace remapping option is
 	// enabled.
@@ -86,21 +86,21 @@ type DockerConfiguration struct {
 	// If the value is blank, the daemon's user namespace remapping configuration is used,
 	// if the value is "host", then the sls containers are started with user namespace
 	// remapping disabled
-	UsernsMode string `default:"" json:"userns_mode" yaml:"userns_mode"`
+	UsernsMode string `json:"userns_mode" yaml:"userns_mode" default:""`
 
 	LogConfig struct {
-		Type   string            `default:"local" json:"type" yaml:"type"`
-		Config map[string]string `default:"{\"max-size\":\"5m\",\"max-file\":\"1\",\"compress\":\"false\",\"mode\":\"non-blocking\"}" json:"config" yaml:"config"`
+		Type   string            `json:"type" yaml:"type" default:"local"`
+		Config map[string]string `json:"config" yaml:"config" default:"{\"max-size\":\"5m\",\"max-file\":\"1\",\"compress\":\"false\",\"mode\":\"non-blocking\"}"`
 	} `json:"log_config" yaml:"log_config"`
 
 	// ImagePullPolicy controls when images are pulled before a container is created.
 	// Always: pull every time. IfNotPresent: pull only if missing locally. Never: require a local image.
 	// Schedule: like IfNotPresent on start plus periodic pulls (default policy when omitted).
-	ImagePullPolicy ImagePullPolicy `json:"image_pull_policy" yaml:"image_pull_policy"`
+	ImagePullPolicy ImagePullPolicy `json:"image_pull_policy" yaml:"image_pull_policy" default:"Schedule"`
 
 	// ImagePullSchedule is a five-field cron expression used when ImagePullPolicy is Schedule.
 	// If Schedule is selected and this is empty, it defaults to 0 1 1 * * (see DefaultImagePullSchedule).
-	ImagePullSchedule string `json:"image_pull_schedule" yaml:"image_pull_schedule"`
+	ImagePullSchedule string `json:"image_pull_schedule" yaml:"image_pull_schedule" default:"0 1 1 * *"`
 }
 
 func (c DockerConfiguration) ContainerLogConfig() container.LogConfig {
@@ -138,10 +138,10 @@ func (c RegistryConfiguration) Base64() (string, error) {
 // software such as the JVM not staying below the maximum memory limit.
 type Overhead struct {
 	// Override controls if the overhead limits should be overridden by the values in the config file.
-	Override bool `default:"false" json:"override" yaml:"override"`
+	Override bool `json:"override" yaml:"override" default:"false"`
 
 	// DefaultMultiplier sets the default multiplier for if no Multipliers are able to be applied.
-	DefaultMultiplier float64 `default:"1.05" json:"default_multiplier" yaml:"default_multiplier"`
+	DefaultMultiplier float64 `json:"default_multiplier" yaml:"default_multiplier" default:"1.05"`
 
 	// Multipliers allows overriding DefaultMultiplier depending on the amount of memory
 	// configured for a server.

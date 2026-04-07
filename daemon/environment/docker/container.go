@@ -155,7 +155,7 @@ func (e *Environment) Create() error {
 	a := e.Configuration.Allocations()
 	evs := e.Configuration.EnvironmentVariables()
 	for i, v := range evs {
-		// Convert 127.0.0.1 to the sls0 network interface if the environment is Docker
+		// Convert 127.0.0.1 to the sls network interface if the environment is Docker
 		// so that the server operates as expected.
 		if v == "SERVER_IP=127.0.0.1" {
 			evs[i] = "SERVER_IP=" + cfg.Docker.Network.Interface

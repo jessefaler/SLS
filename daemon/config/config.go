@@ -2,7 +2,6 @@ package config
 
 import (
 	"crypto/tls"
-	_ "embed"
 	"fmt"
 	log2 "log"
 	"os"
@@ -18,15 +17,13 @@ import (
 	"emperror.dev/errors"
 	"github.com/acobaugh/osrelease"
 	"github.com/apex/log"
+	"github.com/creasty/defaults"
 	"github.com/google/uuid"
 	"github.com/mitchellh/colorstring"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
 	"protoxon.com/sls/daemon/system"
 )
-
-//go:embed config.yml
-var defaultConfig []byte
 
 var Path = "/etc/sls/daemon/config.yml"
 
@@ -44,9 +41,9 @@ type Configuration struct {
 	// if the debug flag is passed through the command line arguments.
 	Debug bool `yaml:"debug"`
 
-	Location string `yaml:"location"`
+	Location string `yaml:"location" default:"main"`
 
-	Name string `default:"SLS" yaml:"name"`
+	Name string `yaml:"name" default:"SLS"`
 
 	System SystemConfiguration `yaml:"system"`
 
@@ -57,7 +54,7 @@ type Configuration struct {
 	Allocations []Allocation `json:"allocations" yaml:"allocations"`
 
 	// Defines messages throttling configurations for server processes.
-	Throttles ConsoleThrottles
+	Throttles ConsoleThrottles `json:"throttles" yaml:"throttles"`
 
 	// The remote api where the master is running that this daemon should connect too
 	// to collect data and send events.
@@ -76,30 +73,9 @@ type Configuration struct {
 	AllowCORSPrivateNetwork bool `json:"allow_cors_private_network" yaml:"allow_cors_private_network"`
 }
 
-type Backups struct {
-	// WriteLimit imposes a Disk I/O write limit on backups to the disk, this affects all
-	// backup drivers as the archiver must first write the file to the disk in order to
-	// upload it to any external storage provider.
-	//
-	// If the value is less than 1, the write speed is unlimited,
-	// if the value is greater than 0, the write speed is the value in MiB/s.
-	//
-	// Defaults to 0 (unlimited)
-	WriteLimit int `default:"0" yaml:"write_limit"`
-
-	// CompressionLevel determines how much backups created by the daemon should be compressed.
-	//
-	// "none" -> no compression will be applied
-	// "best_speed" -> uses gzip level 1 for fast speed
-	// "best_compression" -> uses gzip level 9 for minimal disk space useage
-	//
-	// Defaults to "best_speed" (level 1)
-	CompressionLevel string `default:"best_speed" yaml:"compression_level"`
-}
-
 type RemoteApi struct {
-	Url   string `json:"-" yaml:"url"`
-	Token string `json:"-" yaml:"token"`
+	Url   string `json:"-" yaml:"url" default:"https://protocube.sls.net:5620"`
+	Token string `json:"-" yaml:"token" default:"API_KEY"`
 }
 
 type ConsoleThrottles struct {
@@ -117,27 +93,27 @@ type ConsoleThrottles struct {
 }
 
 type Allocation struct {
-	Address         string `yaml:"address"`
-	Alias           string `yaml:"alias"`
+	Address         string `yaml:"address" default:"0.0.0.0"`
+	Alias           string `yaml:"alias" default:"172.18.0.1"`
 	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
-	Ports           string `yaml:"ports"`
+	Ports           string `yaml:"ports" default:"40000-40100"`
 }
 
 // ApiConfiguration defines the configuration for the API server
 type ApiConfiguration struct {
-	Url string `json:"-" yaml:"url"`
+	Url string `json:"-" yaml:"url" default:"https://daemon.sls.net:5585"`
 
-	// The interface that the messages proto should bind to.
-	Host string `default:"0.0.0.0" yaml:"host"`
+	// The interface that the daemon should bind to.
+	Host string `yaml:"host" default:"0.0.0.0"`
 
-	// The port that the messages proto should bind to.
-	Port int `default:"8080" yaml:"port"`
+	// The port that the daemon should bind to.
+	Port int `yaml:"port" default:"5585"`
 
 	// TSL configuration for the daemon.
 	Tls struct {
-		Enabled         bool   `default:"true" yaml:"enabled"`
-		CertificateFile string `json:"cert" yaml:"cert"`
-		KeyFile         string `json:"key" yaml:"key"`
+		Enabled         bool   `yaml:"enabled" default:"true"`
+		CertificateFile string `json:"cert" yaml:"cert" default:"/etc/ssl/certs/sls.crt"`
+		KeyFile         string `json:"key" yaml:"key" default:"/etc/ssl/private/sls.key"`
 	}
 }
 
@@ -147,23 +123,23 @@ func (sc *SystemConfiguration) GetStatesPath() string {
 }
 
 type SystemConfiguration struct {
-	RootDirectory string `default:"/var/lib/sls" yaml:"root_directory"`
+	RootDirectory string `yaml:"root_directory" default:"/var/lib/sls"`
 
-	LogDirectory string `default:"/var/log/sls" yaml:"log_directory"`
+	LogDirectory string `yaml:"log_directory" default:"/var/log/sls"`
 
 	// AllowedMounts enumerates host paths that can be exposed to containers as additional
 	// bind mounts. Custom mounts supplied by servers must live within one of these paths.
-	AllowedMounts []string `yaml:"allowed_mounts"`
+	AllowedMounts []string `yaml:"allowed_mounts" default:"[]"`
 
 	// TmpDirectory specifies where temporary files for daemons installation processes
 	// should be created. This supports environments running docker-in-docker.
-	TmpDirectory string `default:"/tmp/sls/daemon" json:"-" yaml:"tmp_directory"`
+	TmpDirectory string `json:"-" yaml:"tmp_directory" default:"/tmp/sls/daemon"`
 
 	Timezone string `yaml:"timezone"`
 
 	// If set to false the daemon will not attempt to write a log rotate configuration to the disk
 	// when it boots and one is not detected.
-	EnableLogRotate bool `default:"true" yaml:"enable_log_rotate"`
+	EnableLogRotate bool `yaml:"enable_log_rotate" default:"true"`
 
 	// The amount of time in seconds that can elapse before a server's disk space calculation is
 	// considered stale and a re-check should occur. DANGER: setting this value too low can seriously
@@ -173,7 +149,7 @@ type SystemConfiguration struct {
 	// Set to 0 to disable disk checking entirely. This will always return 0 for the disk space used
 	// by a server and should only be set in extreme scenarios where performance is critical and
 	// disk usage is not a concern.
-	DiskCheckInterval int64 `default:"150" yaml:"disk_check_interval"`
+	DiskCheckInterval int64 `yaml:"disk_check_interval" default:"150"`
 
 	// Definitions for the user that gets created to ensure that we can quickly access
 	// this information without constantly having to do a system lookup.
@@ -192,21 +168,21 @@ type SystemConfiguration struct {
 			ContainerGID int `yaml:"container_gid" default:"0"`
 		} `yaml:"rootless"`
 
-		Uid int `default:"988" yaml:"uid"`
-		Gid int `default:"988" yaml:"gid"`
+		Uid int `yaml:"uid" default:"988"`
+		Gid int `yaml:"gid" default:"988"`
 	} `yaml:"user"`
 
-	OpenatMode string `default:"auto" yaml:"openat_mode"`
+	OpenatMode string `yaml:"openat_mode" default:"auto"`
 
 	// The user that should own all of the server files, and be used for containers.
-	Username string `default:"sls" yaml:"username"`
+	Username string `yaml:"username" default:"sls"`
 
 	// Directory where the server data is stored at.
-	Data string `default:"/var/lib/sls/data" json:"-" yaml:"data"`
+	Data string `json:"-" yaml:"data" default:"/var/lib/sls/data"`
 	// Directory where state volumes are stored
-	Volumes string `default:"/var/lib/sls/volumes" json:"-" yaml:"volumes"`
+	Volumes string `json:"-" yaml:"volumes" default:"/var/lib/sls/volumes"`
 	// Directory where installed servers are stored
-	Servers string `default:"/var/lib/sls/servers" json:"-" yaml:"servers"`
+	Servers string `json:"-" yaml:"servers" default:"/var/lib/sls/servers"`
 }
 
 // ConfigureDirectories ensures that all the system directories exist on the
@@ -463,7 +439,7 @@ type RemoteQueryConfiguration struct {
 	// are taking longer than 30 seconds to complete it is likely a performance issue that
 	// should be resolved on Protocube, and not something that should be resolved by upping this
 	// number.
-	Timeout int `default:"30" yaml:"timeout"`
+	Timeout int `yaml:"timeout" default:"30"`
 
 	// The number of servers to load in a single request to protocube API when booting the
 	// Daemon instance. A single request is initially made to Protocube to get this number
@@ -474,7 +450,7 @@ type RemoteQueryConfiguration struct {
 	// memory limits on your Protocube instance. In the grand scheme of things 4 requests for
 	// 50 servers is likely just as quick as two for 100 or one for 400, and will certainly
 	// be less likely to cause performance issues on Protocube.
-	BootServersPerPage int `default:"50" yaml:"boot_servers_per_page"`
+	BootServersPerPage int `yaml:"boot_servers_per_page" default:"50"`
 }
 
 // LoadConfigFromFile reads the configuration from the provided file and stores it in the
@@ -488,6 +464,12 @@ func loadConfigFromFile(path string) error {
 
 	// Decode the contents of the yml into the config struct
 	if err := yaml.Unmarshal(bytes, &config); err != nil {
+		return err
+	}
+
+	// Always apply struct defaults after decoding so missing fields get filled in.
+	// This means removing a field from the YAML will cause the default to be used.
+	if err := defaults.Set(&config); err != nil {
 		return err
 	}
 
@@ -526,7 +508,7 @@ func writeDefaultConfig(path string) error {
 	}
 
 	var c Configuration
-	if err := yaml.Unmarshal(defaultConfig, &c); err != nil {
+	if err := defaults.Set(&c); err != nil {
 		return err
 	}
 	c.Uuid = uuid.New().String()
