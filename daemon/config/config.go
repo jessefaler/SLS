@@ -94,7 +94,7 @@ type ConsoleThrottles struct {
 
 type Allocation struct {
 	Address         string `yaml:"address" default:"0.0.0.0"`
-	Alias           string `yaml:"alias" default:"172.18.0.1"`
+	Alias           string `yaml:"alias" default:"127.0.0.1"`
 	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
 	Ports           string `yaml:"ports" default:"40000-40100"`
 }
@@ -431,6 +431,24 @@ func InitConfig() error {
 	return nil
 }
 
+func applyDefaults(c *Configuration) error {
+	if err := defaults.Set(c); err != nil {
+		return err
+	}
+
+	// Historically, the default config shipped with a single allocation entry.
+	// creasty/defaults can fill defaults for Allocation fields, but it will not
+	// create slice elements automatically.
+	if len(c.Allocations) == 0 {
+		c.Allocations = []Allocation{{}}
+		if err := defaults.Set(&c.Allocations[0]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // RemoteQueryConfiguration defines the configuration settings for remote requests
 // from the daemon1 to the Protocube.
 type RemoteQueryConfiguration struct {
@@ -467,9 +485,9 @@ func loadConfigFromFile(path string) error {
 		return err
 	}
 
-	// Always apply struct defaults after decoding so missing fields get filled in.
+	// Always apply defaults after decoding so missing fields get filled in.
 	// This means removing a field from the YAML will cause the default to be used.
-	if err := defaults.Set(&config); err != nil {
+	if err := applyDefaults(&config); err != nil {
 		return err
 	}
 
@@ -508,7 +526,7 @@ func writeDefaultConfig(path string) error {
 	}
 
 	var c Configuration
-	if err := defaults.Set(&c); err != nil {
+	if err := applyDefaults(&c); err != nil {
 		return err
 	}
 	c.Uuid = uuid.New().String()
