@@ -5,6 +5,7 @@
 ## Table of Contents
 
 - [Info Command](#info-command)
+- [List Command](#list-command)
 - [Create Command](#create-command)
 - [Start Command](#start-command)
 - [Join Command](#join-command)
@@ -37,11 +38,6 @@
 ```
 
 **Details:**
-- `/sls info` - Lists all active servers with their current player counts and status. Server status is color-coded:
-  - Green: Running
-  - Yellow: Starting
-  - Red: Stopping
-  - Dark Red: Offline
 - `/sls info <server>` - Displays detailed information about the specified server, including:
   - Player count (with hoverable list of player names)
   - Server status
@@ -56,25 +52,61 @@
 
 ---
 
+## List Command
+
+**Permission:** None
+
+**Description:** Prints a formatted list of all servers known to vSLS. Each line shows the server display name, current status (indicated by name color), and player count. Hovering over the server name shows its composite ID; hovering over the player count shows the list of player names on that server.
+
+**Usage:**
+```
+/sls list
+```
+
+---
+
 ## Create Command
 
 **Permission:** `sls.command.admin`
 
-**Description:** Creates a new server from a blueprint. This command only creates the server; it does not start it. Use the `start` command to start a created server.
+**Description:** Creates a new server from a blueprint and starts it. You can append optional override flags after the blueprint ID to set the target node, resource limits, software/image, and config patches.
 
 **Usage:**
 ```
 /sls create <blueprint_type> <blueprint_id>
+/sls create <blueprint_type> <blueprint_id> <flags...>
 ```
 
 **Arguments:**
-- `blueprint_type` - The type of blueprint (e.g., "survival", "creative", "lobby")
+- `blueprint_type` - The type of blueprint (e.g., "minigame", "adventure", "pvp")
 - `blueprint_id` - The specific blueprint ID to use for server creation
+- `flags...` (optional) - Space-separated `key=value` overrides. Each flag uses the form `--name=value` (see table below). Invalid flags produce an error; invalid numeric values for resource flags are rejected with a specific message.
+
+**Override flags:**
+
+| Flag | Value | Effect |
+|------|--------|--------|
+| `--node=` | Node ID | Create the server on this node. You may type a short ID; it is resolved against the API’s node list. |
+| `--save=` | `true` or `false` | Enable or disable saving for the server. |
+| `--cpu=` | Integer | CPU limit (percentage of CPU this instance may use). |
+| `--memory=` | Integer | Memory limit in **mebibytes** (MiB). |
+| `--swap=` | Integer | Extra swap space for the container. |
+| `--io_weight=` | Integer | Relative weight for I/O in the container. |
+| `--disk_space=` | Integer | Disk allowance in **megabytes** (MB). |
+| `--threads=` | String | Which CPU threads the Docker instance may use. |
+| `--oom_disabled=` | `true` or `false` | If `true`, disables the OOM killer for this container. |
+| `--software=` | String | Software id to run the server with. |
+| `--version=` | String | Software version to use. |
+| `--image=` | String | Container image to use. |
+| `--seed=` | String | Patches `server.properties`: sets `level-seed`. |
+| `--view-distance=` | String | Patches `server.properties`: sets `view-distance`. |
+| `--enable-command-block=` | String | Patches `server.properties`: sets `enable-command-block` (e.g. `true` / `false`). |
 
 **Details:**
-- The command provides tab completion for both blueprint types and IDs
-- Upon successful creation, the command displays the created server's ID
-- If creation fails, an error message is displayed with the reason
+- The command provides tab completion for blueprint types and IDs. After the blueprint ID, tab completion can suggest flags; for `--node=` it can suggest node IDs, and for `--save=`, `--oom_disabled=`, and `--enable-command-block=` it can suggest `true` or `false`.
+- Multiple `server.properties` flags (`--seed`, `--view-distance`, `--enable-command-block`) are merged into a single config patch.
+- Upon successful creation, the command displays the created server's composite ID.
+- If creation fails, an error message is displayed with the reason.
 
 ---
 
@@ -168,9 +200,9 @@ The command displays the following system information:
 **Details:**
 - The command automatically strips leading slashes (`/`) if present
 - The command attempts to capture output by checking server logs with increasing delays:
-  - 100ms delay → reads 8 log lines
-  - 800ms delay → reads 12 log lines
-  - 3000ms delay → reads 25 log lines
+  - 100ms delay - reads 8 log lines
+  - 800ms delay - reads 12 log lines
+  - 3000ms delay - reads 25 log lines
 - Output is formatted and displayed, with error messages highlighted in red
 - If no output is found after all attempts, a "No output found" message is displayed
 - Supports both legacy server format (`>command`) and newer format (`command`)
@@ -193,16 +225,16 @@ The command displays the following system information:
 
 **Details:**
 - Displays the blueprint's complete configuration in a formatted, readable structure
-- Fields are organized in a logical order: metadata, world, server, saving, annotations
+- Fields are organized in a logical order: metadata, server, volumes, annotations
 - Top-level keys are displayed in gold, nested keys in dark grey, and values in red
 - The output includes all blueprint configuration details such as:
   - Metadata (id, name, type)
-  - World configuration
-  - Server software and version
+  - Server runtime configuration
   - Resource limits
-  - Saving settings
-  - Configuration files
-  - Content settings
+  - Config patches
+  - Volumes
+  - Annotations
+  - And more
 
 ---
 
