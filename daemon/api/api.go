@@ -37,6 +37,11 @@ func (api *Api) Run() {
 	cfg := config.Get().Api
 	address := cfg.Host + ":" + strconv.Itoa(cfg.Port)
 
+	tlsOn := true
+	if cfg.Tls.Enabled != nil {
+		tlsOn = *cfg.Tls.Enabled
+	}
+
 	// create a single listener for HTTP
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
@@ -44,7 +49,7 @@ func (api *Api) Run() {
 	}
 
 	// Wrap listener in TLS if enabled
-	if cfg.Tls.Enabled {
+	if tlsOn {
 		tlsCfg := config.GetTLSConfig()
 		lis = tls.NewListener(lis, tlsCfg)
 	}
@@ -60,7 +65,7 @@ func (api *Api) Run() {
 
 	log.Info("Congestion control algorithm: " + system.DefaultTCPCC())
 	red := color.New(color.FgHiRed).SprintFunc()
-	if !cfg.Tls.Enabled {
+	if !tlsOn {
 		log.Warn("TLS disabled")
 	}
 	log.Info("Listening on " + red(address))

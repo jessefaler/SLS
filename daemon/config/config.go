@@ -96,7 +96,7 @@ type Allocation struct {
 	Address         string `yaml:"address" default:"0.0.0.0"`
 	Alias           string `yaml:"alias" default:"127.0.0.1"`
 	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
-	Ports           string `yaml:"ports" default:"40000-40100"`
+	Ports           string `yaml:"ports" default:"40000-45000"`
 }
 
 // ApiConfiguration defines the configuration for the API server
@@ -111,7 +111,7 @@ type ApiConfiguration struct {
 
 	// TSL configuration for the daemon.
 	Tls struct {
-		Enabled         bool   `yaml:"enabled" default:"true"`
+		Enabled         *bool  `yaml:"enabled" default:"true"`
 		CertificateFile string `json:"cert" yaml:"cert" default:"/etc/ssl/certs/sls.crt"`
 		KeyFile         string `json:"key" yaml:"key" default:"/etc/ssl/private/sls.key"`
 	}
@@ -436,9 +436,9 @@ func applyDefaults(c *Configuration) error {
 		return err
 	}
 
-	// Historically, the default config shipped with a single allocation entry.
-	// creasty/defaults can fill defaults for Allocation fields, but it will not
-	// create slice elements automatically.
+	// If no allocations are defined, create a default one
+	// we must manually set the defaults for the allocation struct
+	// as creasty/defaults does not support this out of the box for slices
 	if len(c.Allocations) == 0 {
 		c.Allocations = []Allocation{{}}
 		if err := defaults.Set(&c.Allocations[0]); err != nil {
