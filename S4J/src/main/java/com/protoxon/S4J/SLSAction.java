@@ -46,7 +46,7 @@ import java.util.function.Predicate;
 public interface SLSAction<T> {
 
     /**
-     * The current Pterodactyl instance
+     * The current S4J instance
      *
      * @return The corresponding API instance
      */
@@ -122,7 +122,7 @@ public interface SLSAction<T> {
      * <p><b>This method is asynchronous</b>
      *
      * @param success
-     *        The success callback that will be called at a convenient time for P4J. (can be null)
+     *        The success callback that will be called at a convenient time for S4J. (can be null)
      *
      * @see #executeAsync(Consumer, Consumer)
      */
@@ -135,7 +135,7 @@ public interface SLSAction<T> {
      * <p><b>This method is asynchronous</b>
      *
      * @param success
-     *        The success callback that will be called at a convenient time for P4J. (can be null to use default)
+     *        The success callback that will be called at a convenient time for S4J. (can be null to use default)
      *
      * @param failure
      *        The failure callback that will be called if the Request encounters an exception at its execution point. (can be null to use default)
@@ -175,7 +175,7 @@ public interface SLSAction<T> {
      * Similar to {@link #timeout(long, TimeUnit)}, but schedules a deadline when request has to be completed.
      * <br>If the deadline is reached, the request will fail with a {@link java.util.concurrent.TimeoutException TimeoutException}.
      *
-     * <p>This does not mean that the request will immediately timeout when the deadline is reached. P4J will check the deadline
+     * <p>This does not mean that the request will immediately timeout when the deadline is reached. S4J will check the deadline
      * right before executing the request, and it will only timeout if the deadline has passed.
      *
      * <h2>Example</h2>
@@ -353,20 +353,6 @@ public interface SLSAction<T> {
      * <p>This does not modify the instance but returns a new SLSAction which will apply
      * the map function on failed execution.
      *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public void deleteServer(ApplicationServer as, PteroClient client) {
-     *        client.retrieveServerByIdentifier(as.getIdentifier())
-     *       .flatMap(s ->
-     *           s.sendCommand("say Deleting server in 5 seconds...")
-     *           .delay(5, TimeUnit.SECONDS)
-     *           .flatMap(__ -> s.kill())
-     *       ).flatMap(__ -> as.getController().delete(false))
-     *       .onErrorFlatMap(__ -> as.getController().delete(true))
-     *       .executeAsync();
-     * }
-     * }</pre>
-     *
      * @param  map
      *         The mapping function which provides the fallback action to use
      *
@@ -384,20 +370,6 @@ public interface SLSAction<T> {
      *
      * <p>This does not modify the instance but returns a new SLSAction which will apply
      * the map function on failed execution.
-     *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public void deleteServer(ApplicationServer as, PteroClient client, boolean handleDeletionFailure) {
-     *        client.retrieveServerByIdentifier(as.getIdentifier())
-     *       .flatMap(s ->
-     *           s.sendCommand("say Deleting server in 5 seconds...")
-     *           .delay(5, TimeUnit.SECONDS)
-     *           .flatMap(__ -> s.kill())
-     *       ).flatMap(__ -> as.getController().delete(false))
-     *       .onErrorFlatMap((x) -> handleDeletionFailure, __ -> as.getController().delete(true))
-     *       .executeAsync();
-     * }
-     * }</pre>
      *
      * @param  condition
      *         A condition that must return true to apply this fallback
@@ -421,21 +393,6 @@ public interface SLSAction<T> {
      *
      * <p>This does not modify the instance but returns a new SLSAction which will delay its result by the provided delay.
      *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public SLSAction<Void> selfDestruct(ClientServer server) {
-     *        server.sendCommand("say Stopping server in 30 seconds...")
-     *        .delay(Duration.ofSeconds(15))
-     *        .flatMap(__ -> server.sendCommand("Stopping server in 15 seconds...")
-     *        .delay(Duration.ofSeconds(5))
-     *        .flatMap(__ -> server.sendCommand("Stopping server in 10 seconds...")
-     *        .delay(Duration.ofSeconds(5))
-     *        .flatMap(__ -> server.sendCommand("Stopping server in 5 seconds...")
-     *        .delay(Duration.ofSeconds(5))
-     *        .flatMap(__ server.stop());
-     * }
-     * }</pre>
-     *
      * @param  duration
      *         The delay
      *
@@ -449,15 +406,6 @@ public interface SLSAction<T> {
      * Intermediate operator that returns a modified SLSAction.
      *
      * <p>This does not modify the instance but returns a new SLSAction which will delay its result by the provided delay.
-     *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public SLSAction<Void> selfDestruct(ClientServer server) {
-     *        server.sendCommand("say Stopping server in 5 seconds...")
-     *        .delay(Duration.ofSeconds(5), scheduler)
-     *        .flatMap(__ -> server.stop());
-     * }
-     * }</pre>
      *
      * @param  duration
      *         The delay
@@ -476,15 +424,6 @@ public interface SLSAction<T> {
      *
      * <p>This does not modify the instance but returns a new SLSAction which will delay its result by the provided delay.
      *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public SLSAction<Void> selfDestruct(ClientServer server) {
-     *        server.sendCommand("say Stopping server in 5 seconds...")
-     *        .delay(5, TimeUnit.SECONDS)
-     *        .flatMap(__ -> server.stop());
-     * }
-     * }</pre>
-     *
      * @param  delay
      *         The delay value
      * @param  unit
@@ -500,15 +439,6 @@ public interface SLSAction<T> {
      * Intermediate operator that returns a modified SLSAction.
      *
      * <p>This does not modify the instance but returns a new SLSAction which will delay its result by the provided delay.
-     *
-     * <h2>Example</h2>
-     * <pre>{@code
-     * public SLSAction<Void> selfDestruct(ClientServer server) {
-     *        server.sendCommand("say Stopping server in 5 seconds...")
-     *        .delay(5, TimeUnit.SECONDS, scheduler)
-     *        .flatMap(__ -> server.stop());
-     * }
-     * }</pre>
      *
      * @param  delay
      *         The delay value

@@ -19,15 +19,14 @@ import (
 )
 
 func (r *Router) getAllBlueprints(c *gin.Context) {
-	// Parse page & limit
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
 
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 {
-		limit = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	// If only meta requested, paginate meta list
@@ -39,8 +38,8 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	}
 
 	total := len(items)
-	start := (page - 1) * limit
-	end := start + limit
+	start := (page - 1) * perPage
+	end := start + perPage
 	if start > total {
 		start = total
 	}
@@ -51,15 +50,15 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	paged := items[start:end]
 
 	totalPages := 0
-	if limit > 0 && total > 0 {
-		totalPages = (total + limit - 1) / limit
+	if perPage > 0 && total > 0 {
+		totalPages = (total + perPage - 1) / perPage
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"meta": gin.H{
 			"pagination": gin.H{
 				"total":        total,
-				"per_page":     limit,
+				"per_page":     perPage,
 				"current_page": page,
 				"total_pages":  totalPages,
 			},

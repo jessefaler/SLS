@@ -32,39 +32,6 @@ import java.util.stream.StreamSupport;
  *     entities that have already been retrieved.</li>
  * </ul>
  *
- * <p><b>Examples</b>
- * <pre><code>
- *  /**
- *   * Retrieves servers until the specified limit is reached. The servers will be limited after being filtered by the owner.
- *   * If the owner doesn't have enough servers, this will iterate through all the servers. It is recommended to add an additional end condition.
- *   *&#47;
- *   public static {@literal List<ApplicationServer>} getServersByOwner(PteroApplication application, ApplicationUser user, int limit) {
- *     <u>PaginationAction<ApplicationServer></u> action = application.<u>retrieveServers</u>();
- *     Stream{@literal <ApplicationServer>} serverStream = action.stream()
- *             .limit(limit * 2) // this keeps things civilized
- *             .filter(server -> server.getOwnerIdLong() == user.getIdLong())
- *             .limit(limit); // limit on filtered stream
- *     return serverStream.collect(Collectors.toList());
- *   }
- * </code></pre>
- *
- * <pre><code>
- * /**
- *  * Iterates ClientServers in an async stream and stops once the limit has been reached.
- *  *&#47;
- *   public static void onEachServerAsync(PteroClient client, {@literal Consumer<ClientServer>} consumer, int limit) {
- *     if (limit < 1)
- *         return;
- *     <u>PaginationAction<ClientServer></u> action = client.<u>retrieveServers</u>();
- *     AtomicInteger counter = new AtomicInteger(limit);
- *     action.forEachAsync(server -> {
- *         consumer.accept(server);
- *         // if false the iteration is terminated; else it continues
- *         return counter.decrementAndGet() == 0;
- *     });
- *   }
- * </code></pre>
- *
  * @param  <T>
  *         The type of entity to paginate
  */
@@ -156,7 +123,7 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	T getFirst();
 
 	/**
-	 * Sets the limit that should be used in the next PteroAction completion
+	 * Sets the limit that should be used in the next SLSAction completion
 	 * call.
 	 *
 	 * <p>The specified limit may not be below the {@link #getMinLimit() Minimum Limit}
@@ -539,7 +506,7 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	 * Returns a completed List of entitites.
 	 *
 	 * <p>To retrieve new entities after reaching the end of the current cache, this method will
-	 * request a List of new entities through internal calls of {@link com.protoxon.S4J.SLSAction#executeAsync() PteroAction.executeAsync()}.
+	 * request a List of new entities through internal calls of {@link com.protoxon.S4J.SLSAction#executeAsync() SLSAction.executeAsync()}.
 	 * <p><b>It is recommended to use {@link #forEachAsync(Procedure)} instead</b>, but for the sake of, use the highest possible limit for this task. (see {@link #limit(int)})
 	 *
 	 * @return {@link com.protoxon.S4J.SLSAction SLSAction} - Type {@link List List} of {@link T &lt;T&gt;}
@@ -554,7 +521,7 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	 * as needed.
 	 *
 	 * <p>To retrieve new entities after reaching the end of the current cache, this iterator will
-	 * request a List of new entities through a call of {@link com.protoxon.S4J.SLSAction#execute() PteroAction.execute()}.
+	 * request a List of new entities through a call of {@link com.protoxon.S4J.SLSAction#execute() SLSAction.execute()}.
 	 * <br><b>It is recommended to use the highest possible limit for this task. (see {@link #limit(int)})</b>
 	 */
 	class PaginationIterator<E> implements Iterator<E> {

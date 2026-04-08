@@ -165,8 +165,7 @@ public class BlueprintRegistry {
     public SLSAction<Void> reload() {
         // Mark as not loaded during reload so callbacks can be registered again
         isLoaded = false;
-        
-        return api.getBlueprints().limit(70)
+        return api.getBlueprints().limit(100).all()
                 .map(loadedBlueprints -> {
                     setBlueprints(loadedBlueprints);
                     Log.info("Reloaded blueprint registry. Loaded {} blueprints", loadedBlueprints.size());
@@ -196,8 +195,7 @@ public class BlueprintRegistry {
      * @param registry the registry instance to populate
      */
     private static void loadBlueprints(BlueprintRegistry registry) {
-        // Fetches 70 blueprints per page
-        registry.api.getBlueprints().limit(70).executeAsync(blueprints -> {
+        registry.api.getBlueprints().limit(100).all().executeAsync(blueprints -> {
             registry.setBlueprints(blueprints);
             Log.info("Initialized blueprint registry. Loaded {} blueprints", blueprints.size());
         }, failure -> {

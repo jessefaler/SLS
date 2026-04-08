@@ -39,7 +39,7 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	 * {@link #limit(int)}
 	 *
 	 * @param api
-	 *        The current P4J instance
+	 *        The current S4J instance
 	 */
 	public PaginationActionImpl(S4J api, Route.CompiledRoute route) {
 		super(api, route);
