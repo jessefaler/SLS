@@ -78,7 +78,10 @@ func load(path string) (*Software, error) {
 		return nil, err
 	}
 
-	// Access the Software struct inside the config struct
+	if err := maybeRefreshSoftwareFromURL(path, &data, &cfg); err != nil {
+		log.WithField("file", path).WithError(err).Warn("software remote update failed")
+	}
+
 	return &cfg.Software, nil
 }
 
@@ -120,6 +123,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		InstallScript *InstallationScript   `yaml:"install-script"`
 		Limits        *environment.Limits   `yaml:"limits,omitempty"`
 		Configs       map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
+		Update        *SoftwareUpdate       `yaml:"update,omitempty"`
 	}
 	if err := unmarshal(&tmp); err != nil {
 		return err
@@ -155,6 +159,7 @@ func (s *Software) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	s.OnlineSignal = tmp.OnlineSignal
 	s.Limits = tmp.Limits
 	s.Configs = tmp.Configs
+	s.Update = tmp.Update
 
 	// If install-script is provided, validate it
 	if tmp.InstallScript != nil {

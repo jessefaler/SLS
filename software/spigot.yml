@@ -8,6 +8,11 @@ software:
   # Human readable name for the software
   name: 'Spigot'
 
+  # Checks the URL for updates and applies changes if needed
+  update:
+    enabled: true
+    url: https://github.com/jessefaler/SLS/blob/main/software/spigot.yml
+
   # Images that can be used for this software
   images:
     "java_25": "ghcr.io/protoxon/images:java_25"

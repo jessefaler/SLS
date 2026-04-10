@@ -175,8 +175,24 @@ func writeDefaultConfig(path string) error {
 		return err
 	}
 
-	// Write embedded default config
-	return os.WriteFile(path, defaultConfig, 0o644)
+	if err := os.WriteFile(path, defaultConfig, 0o644); err != nil {
+		return err
+	}
+
+	var embedded Configuration
+	if err := yaml.Unmarshal(defaultConfig, &embedded); err != nil {
+		return err
+	}
+	softwareDir := filepath.Clean(embedded.System.Software)
+	if softwareDir == "" || softwareDir == "." {
+		return nil
+	}
+	if err := os.MkdirAll(softwareDir, 0o700); err != nil {
+		return err
+	}
+	// Only runs when the main config was just created (see InitConfig).
+	syncDefaultSoftwareYAMLs(softwareDir)
+	return nil
 }
 
 // Get returns the global configuration instance.
