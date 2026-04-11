@@ -2,23 +2,28 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	apexlog "github.com/apex/log"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/internal/message"
-	"protoxon.com/sls/protocube/log"
+	protolog "protoxon.com/sls/protocube/log"
 	"protoxon.com/sls/protocube/system"
 )
 
 var (
-	debug = false
+	debug            = false
+	disableTelemetry = false
 )
 
 func init() {
 	// Configure command-line flags
 	rootCommand.PersistentFlags().StringVar(&config.Path, "config", config.Path, "set the location for the configuration file")
 	rootCommand.PersistentFlags().BoolVar(&debug, "debug", false, "pass in order to run sls in debug mode")
+	rootCommand.PersistentFlags().BoolVar(&disableTelemetry, "disable-telemetry", false, "disable outbound telemetry (overrides config and SLS_PROTOCUBE_TELEMETRY_ENABLED)")
 
 	rootCommand.AddCommand(versionCommand)
 }
@@ -32,7 +37,34 @@ func initEnvironment(cmd *cobra.Command) {
 		config.Get().Debug = debug
 	}
 
-	log.InitLogging()
+	protolog.InitLogging()
+}
+
+// ResolveTelemetryEnabled returns whether telemetry should run.
+// Precedence: --disable-telemetry > SLS_PROTOCUBE_TELEMETRY_ENABLED (true or false) > config telemetry_enabled (default true).
+func ResolveTelemetryEnabled(cmd *cobra.Command) bool {
+	if cmd.Flags().Changed("disable-telemetry") {
+		return !disableTelemetry
+	}
+	if v, ok := os.LookupEnv("SLS_PROTOCUBE_TELEMETRY_ENABLED"); ok {
+		if b, ok := parseTelemetryEnvBool(v); ok {
+			return b
+		}
+		apexlog.WithField("value", v).Warn("invalid SLS_PROTOCUBE_TELEMETRY_ENABLED; falling back to config")
+	}
+	return config.Get().IsTelemetryEnabled()
+}
+
+func parseTelemetryEnvBool(s string) (bool, bool) {
+	s = strings.TrimSpace(s)
+	switch {
+	case strings.EqualFold(s, "true"):
+		return true, true
+	case strings.EqualFold(s, "false"):
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 var rootCommand = &cobra.Command{

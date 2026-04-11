@@ -4,6 +4,8 @@ app_name: "SLS"
 
 debug: false
 
+telemetry_enabled: true
+
 system:
   root_directory: "/var/lib/sls"
   log_directory: "/var/log/sls/protocube"

@@ -11,7 +11,7 @@ type Software struct {
 	Invocation    string              `yaml:"invocation"`
 	OnlineSignal  string              `yaml:"online-signal"`
 	InstallScript InstallationScript  `yaml:"install-script"`
-	// Optional default resource limits for servers using this software; blueprint server.limits override per field.
+	// Optional: default resource limits for servers using this software
 	Limits  *environment.Limits   `yaml:"limits,omitempty" json:"limits,omitempty"`
 	Configs map[string]ConfigFile `yaml:"configs,omitempty" json:"configs,omitempty"`
 	// Optional: fetch newer YAML from URL when enabled (see SoftwareUpdate).
