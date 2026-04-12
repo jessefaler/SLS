@@ -15,6 +15,7 @@
 - [Debug Command](#debug-command)
 - [Delete Command](#delete-command)
 - [Logs Command](#logs-command)
+- [Node Command](#node-command)
 - [Reload Command](#reload-command)
 - [Stop Command](#stop-command)
 - [Kill Command](#kill-command)
@@ -303,6 +304,34 @@ The command displays the following system information:
 - If a line count is specified, only that many recent log lines are shown
 - Log lines are displayed in grey text for readability
 - The command validates that the line count is a valid number
+
+---
+
+## Node Command
+
+**Permission:** `sls.command.admin`
+
+**Description:** Inspects a daemon node and optionally reads or changes its drained flag. Drained nodes are excluded from provisioning: when drained is `true`, the load balancer does not start new servers on that node.
+
+**Usage:**
+```
+/sls node <id>
+/sls node <id> drained
+/sls node <id> drained <true | false>
+```
+
+**Arguments:**
+- `id` - Node identifier. You may use a short ID; it is resolved against the API’s node list (tab completion suggests shortened IDs).
+- `drained` - Literal keyword. With no further argument, prints whether the node is currently drained (`true` or `false`).
+- `true` or `false` (optional, after `drained`) - Updates the node’s drained state on the API.
+
+**Details:**
+- `/sls node <id>` prints detailed information for the node, including:
+  - Node metadata: name, location, URL, current drained flag, daemon version
+  - **System:** architecture, CPU threads, memory, kernel version, operating system and OS type
+  - **Docker:** engine version; when available, cgroup driver/version, container counts (total, running, paused, stopped), storage driver/filesystem, and runc version. If Docker details are missing, the command indicates that they are unavailable.
+- `/sls node <id> drained` displays only the drained state.
+- `/sls node <id> drained <true | false>` sets the drained state and confirms the value that was sent.
 
 ---
 
