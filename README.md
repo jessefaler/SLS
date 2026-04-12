@@ -1,166 +1,89 @@
 # ![SLS Standalone Logo](https://cdn.modrinth.com/data/cached_images/7115a8404f7d6a94fd7aab586d6c4de1e9b3846c.png)
 
-**SLS** is a **declarative orchestration system for ephemeral game servers**, designed especially for server networks.
-Everything in SLS is reproducible, isolated, and fully defined through Blueprints.
+**SLS** is a system for managing networks of **ephemeral game servers**, designed for games like **Minecraft, Hytale, Garry?s Mod, and Rust**. It lets you **spin up and tear down servers quickly**, with each server **fully isolated and reproducible**.
 
-SLS runs every game server inside its own **Docker container**, keeping environments clean, consistent and secure.
+For full documentation and examples view **[SLS Documentation](https://protoxon.github.io/sls-docs/)**.
 
-SLS is **free and open-source** software licensed under **AGPL-3.0**.
+---
 
-### **Protocube**
+Servers are defined using [**Blueprints**](https://protoxon.github.io/sls-docs/guide/blueprints/introduction.html), where you can specify everything from:
 
-Protocube is the core controller for SLS, responsible for managing all server instances across the system. It provides a REST API for creating, managing, and monitoring servers.
+* Server version and resource limits
+* Volumes mounts
+* Config patches
+* Custom configuration
 
-**Docs:**
-- [API Docs](#) _(Coming Soon)_
-- [Plugin Docs](#) _(Coming Soon)_
-- [Setup](#) _(Coming Soon)_
+From a single [Blueprint](https://protoxon.github.io/sls-docs/guide/blueprints/introduction.html), you can create **as many server instances as needed**.
 
-### **Daemon**
+## Key Components
 
-The server control plane for SLS. Each Daemon is responsible for provisioning, controlling and monitoring servers inside isolated Docker containers, exactly as defined by their Blueprints.
+* [**Protocube**](https://protoxon.github.io/sls-docs/guide/installing-protocube.html): The **core controller** of SLS. Tracks all servers, provides an API for management, and routes requests to backend nodes.
+* [**Daemon**](https://protoxon.github.io/sls-docs/guide/installing-daemon.html) (nodes): The **server control plane**. Runs on each physical machine, connects to Protocube, and manages servers inside Docker containers.
+  ### Extra:
+* [**S4J**](https://protoxon.github.io/sls-docs/reference/api/): A **Java API wrapper** for the SLS API.
 
-### **S4J**
+* [**vSLS**](https://protoxon.github.io/sls-docs/guide/vsls/): vSLS is a [Velocity](https://docs.papermc.io/velocity/) plugin that lets you manage SLS servers in game.
+---
 
-A Java wrapper for the Protocube API, providing a clean interface for plugins and external tools.
+> SLS is ideal for networks that need **fast, consistent, and isolated server environments**. Whether you're running **minigames**, **private worlds**, or **large server networks**, SLS gives you **full control** over how servers are **created, configured, and managed**.
 
-## Blueprints
+## Features
 
-Blueprints are **declarative specifications** describing *exactly* how a game server should run:
-its software, world, version, limits, configuration patches, and bundled content.
+* **Isolated & Reproducible Environments**
+  Every server runs in its own Docker container and is created exactly as defined in its [Blueprint](https://protoxon.github.io/sls-docs/guide/blueprints/introduction.html) ensuring consistency across every instance.
 
-Below is a full example Blueprint.
+* **Zero-Copy Instancing (COW)**
+  Avoid repeated file copying and reinstallations. SLS uses copy-on-write mounts to efficiently create new servers with minimal overhead.
+
+* **Horizontal Scaling**
+  Easily scale your network by adding more nodes. SLS automatically utilizes available resources across your infrastructure.
+
+* **Real-Time Status & Events**
+  Track server lifecycle states (starting, online, stopping) and subscribe to an event stream for real-time updates.
+
+* **Built-in Load Distribution**
+  Servers are automatically distributed across nodes to balance load and optimize resource usage.
+
+* **Custom Software Support**
+  Define and run your own server types using flexible [software configurations](https://protoxon.github.io/sls-docs/guide/software-configurations/introduction.html).
+
+* **HTTP API Control**
+  Fully manage servers programmatically through a simple and powerful [HTTP API](https://protoxon.github.io/sls-docs/reference/api/).
+
+## Demo
+
+A live demo **Minecraft** network is available if you want to try SLS in action.
+
+* **Server address:** `demo.protoxon.com`
+
+This demo showcases how servers can be dynamically created and managed in a real environment.
+
+The demo utilizes the [**vSLS**](https://protoxon.github.io/sls-docs/guide/vsls/) plugin.
+
+## More Information
+
+For full documentation, examples, view **[SLS Documentation](https://protoxon.github.io/sls-docs/)**.
+
+## Example Blueprint
+
+> **Note:** This is a simplified example Blueprint. It does not include all available sections. For full details, see: [Blueprint Docs](https://protoxon.github.io/sls-docs/guide/blueprints/introduction.html)
 
 ```yaml
-# Blueprint metadata
 blueprint:
-  id: "blueprint"                # Unique slug ID
-  name: "Blueprint Name"         # Human-readable name
-  type: "game"                   # Arbitrary grouping tag
+  id: "slsmp1"
+  name: "SLSMP1"
+  type: "survival"
 
-# Traits are reusable configuration layers applied to this blueprint.
-# Traits are merged in order from top to bottom.
-# If multiple traits define the same field, the last trait listed wins.
-# Values defined directly in this blueprint always override trait values.
-traits:
-  - LightWeight
-  - CFGPatch
-  - PluginAnnotations
-
-# Server runtime configuration
-# If the software includes an installation script the servers base files
-# will be installed once per version at /servers/<software>/<version>
-# (or a custom path if specified).
 server:
-  software: "platform"
-  version: "1.0.0"
-  image: "ghcr.io/protoxon/images:java_21"
-
-  # optional override
-  # path: "custom/path"
-
-  # Resource limits applied to the container
-  limits:
-    # The total amount of memory in mebibytes that this server is allowed to
-    # use on the host system.
-    memory_limit: 4096
-    # The amount of additional swap space to be provided to a container instance.
-    swap: 1024
-    # The relative weight for IO operations in a container. This is relative to other
-    # containers on the system and should be a value between 10 and 1000.
-    io_weight: 500
-    # The percentage of CPU that this instance is allowed to consume relative to
-    # the host. A value of 200% represents complete utilization of two cores. This
-    # should be a value between 1 and THREAD_COUNT * 100.
-    cpu_limit: 200
-    # The amount of disk space in megabytes that a server is allowed to use.
-    disk_space: 5120
-    # Sets which CPU threads can be used by the docker instance.
-    threads: ""
-    # Terminates the server if it breaches the memory limits.
-    # Enabling OOM killer may cause server processes to exit unexpectedly.
-    oom_disabled: false
-
-  # Configuration patches applied at startup
-  configs:
-    server.properties:
-      parser: properties
-      find:
-        motd: "Blueprint Server"
-
-# Declarative server state
+  software: "paper"
+  version: "1.21.11"
+  
 state:
-
-  # Volumes are managed storage units.
-  # All volume sources are resolved relative to the sls
-  # configured volumes directory (e.g. /sls/volumes).
-  #
-  # Volumes cannot escape this directory and are never arbitrary host paths.
   volumes:
-    # Server world state
-    - name: "world"
-      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
-      target: "/world"           # Mount point inside the container
-      mode: cow                  # cow | ro | rw (default: cow)
-
-    # Read-only plugins or assets
-    - name: "plugins"
-      source: "plugins"
-      target: "/plugins"
-      mode: ro
-
-    # Example persistent data volume
-    # (useful for databases, player data, etc.)
-    - name: "data"
-      source: "shared/data"
-      target: "/data"
-      mode: rw
-
-  # Explicit host mounts
-  # These mount arbitrary host paths directly into the container.
-  # They must be explicitly allowed in the daemon configuration.
-  # ro = read-only, rw = read-write (default)
-  mounts:
-    - /host/path:/home/container:ro
-
-  # Copy files into server filesystem at creation
-  # - Files inside the SLS folder can always be copied
-  # - Files outside the SLS folder require the source path to be listed in the daemon's allowed_mounts
-  # Destinations are always relative to the server filesystem
-  copy:
-    - sls/files/config.yml:plugins/config.yml
-
-  # Lifecycle hooks executed at specific events
-  hooks:
-    start:
-      - echo "Server starting"
-    running:
-      - echo "Server started successfully"
-    stopping:
-      - echo "Server stopping server"
-
-  # Environment variables for the server
-  env:
-    VAR: "var"
-    ENABLE_FEATURE_X: "true"
-
-# Whether servers created from this blueprint persist after shutdown.
-# If false, the server instance and all non-persistent volume state
-# are destroyed when the server stops.
-save: false
-
-# Arbitrary metadata for external systems
-annotations:
-  maintainer: "Maintainer"
-  tags: ["game", "example"]
+    - name: "world" 
+      source: "worlds/survival/SLSMP1"
+      target: "/world"
+      mode: cow
 ```
-
-## Development Status
-
-> [!WARNING]
-> This version of ```SLS``` is in **active development** and is not yet ready for use.
-
-## Daemon Banner
-<img width="734" height="257" alt="Screenshot From 2026-02-02 17-57-48" src="https://github.com/user-attachments/assets/b9a0bdaa-378b-477d-9bd9-58a09672092b" />
 
 
