@@ -6,7 +6,7 @@
 
     <groupId>io.github.protoxon</groupId>
     <artifactId>S4J</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 
     <name>S4J</name>
     <description>Java client for the (SLS) HTTP API.</description>
@@ -95,6 +95,15 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.10.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>ossrh</publishingServerId>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -103,10 +112,6 @@
             <id>ossrh</id>
             <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
-        </repository>
     </distributionManagement>
 
     <dependencies>

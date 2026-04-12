@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apex/log"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/node"
 	"protoxon.com/sls/protocube/server"
@@ -40,9 +39,7 @@ func Start(ctx context.Context, sm *server.Manager, nm *node.Manager, interval t
 		send := func() {
 			cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
-			if err := sendOnce(cctx, sm, nm); err != nil {
-				log.WithError(err).Warn("telemetry: send failed")
-			}
+			_ = sendOnce(cctx, sm, nm)
 		}
 
 		send()
@@ -94,9 +91,5 @@ func sendOnce(ctx context.Context, sm *server.Manager, nm *node.Manager) error {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.WithField("status", resp.StatusCode).Warn("telemetry: non-success HTTP status")
-	}
 	return nil
 }
