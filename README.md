@@ -1,6 +1,6 @@
 # ![SLS Standalone Logo](https://cdn.modrinth.com/data/cached_images/7115a8404f7d6a94fd7aab586d6c4de1e9b3846c.png)
 
-**SLS** is a system for managing networks of **ephemeral game servers**, designed for games like **Minecraft, Hytale, Garry?s Mod, and Rust**. It lets you **spin up and tear down servers quickly**, with each server **fully isolated and reproducible**.
+**SLS** is a system for managing networks of **ephemeral game servers**, designed for games like **Minecraft, Hytale, Garry's Mod, and Rust**. It lets you **spin up and tear down servers quickly**, with each server **fully isolated and reproducible**.
 
 For full documentation and examples view **[SLS Documentation](https://protoxon.github.io/sls-docs/)**.
 
