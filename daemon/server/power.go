@@ -148,7 +148,7 @@ func (s *Server) HandlePowerAction(action PowerAction, waitSeconds ...int) error
 	case PowerActionRestart:
 		// We're specifically waiting for the process to be stopped here, otherwise the lock is
 		// released too soon, and you can rack up all sorts of issues.
-		if err := s.Environment.WaitForStop(s.Context(), time.Minute*2, true); err != nil {
+		if err := s.Environment.WaitForStop(s.Context(), time.Minute*1, true); err != nil {
 			// Even timeout errors should be bubbled back up the stack. If the process didn't stop
 			// nicely, but the terminate argument was passed then the server is stopped without an
 			// error being returned.
