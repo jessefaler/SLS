@@ -9,10 +9,11 @@ require (
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/apex/log v1.9.0
 	github.com/beevik/etree v1.6.0
-	github.com/buger/jsonparser v1.1.1
+	github.com/buger/jsonparser v1.1.2
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/platforms v0.2.1
+	github.com/creasty/defaults v1.8.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/fatih/color v1.18.0
@@ -53,7 +54,6 @@ require (
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/creasty/defaults v1.8.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
