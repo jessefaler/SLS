@@ -4,6 +4,7 @@
 
 For full documentation and examples view **[SLS Documentation](https://protoxon.github.io/sls-docs/)**.
 
+Discord: [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/BrH8GtyGSh)
 ---
 
 Servers are defined using [**Blueprints**](https://protoxon.github.io/sls-docs/guide/blueprints/introduction.html), where you can specify everything from:
