@@ -19,6 +19,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	ignore "github.com/sabhiram/go-gitignore"
 	"protoxon.com/sls/daemon/config"
+	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/internal/ufs"
 )
 
@@ -728,6 +729,45 @@ func (fs *Filesystem) Destroy() error {
 	if len(errs) > 0 {
 		return errors.Combine(errs...)
 	}
+	return nil
+}
+
+// SetBindMountPermissions ensures RW bind mount sources are writable by the daemon user.
+// it only sets group to the daemon GID and adds group rwx recursively
+func SetBindMountPermissions(mounts []environment.Mount) error {
+	for _, m := range mounts {
+		// Skip the default /home/container mount (overlay already handles it).
+		if m.Default {
+			continue
+		}
+		// Skip read-only mounts.
+		if m.ReadOnly {
+			continue
+		}
+		// Skip empty sources.
+		if m.Source == "" {
+			continue
+		}
+
+		// Bind mounts require the source to exist if it doesn't, log and skip.
+		if _, err := os.Stat(m.Source); err != nil {
+			if os.IsNotExist(err) {
+				log.WithField("mount_source", m.Source).WithField("mount_target", m.Target).Error("bind mount source does not exist")
+				continue
+			} else {
+				return errors.Wrapf(err, "failed to stat bind mount source %s", m.Source)
+			}
+		}
+
+		// Make the path writable by the daemon group without changing owner.
+		if err := ChgrpRecursiveUnsafe(m.Source); err != nil {
+			return errors.Wrapf(err, "failed to set bind mount group %s", m.Source)
+		}
+		if err := ChmodAddGroupRWXRecursiveUnsafe(m.Source); err != nil {
+			return errors.Wrapf(err, "failed to set bind mount mode %s", m.Source)
+		}
+	}
+
 	return nil
 }
 

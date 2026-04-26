@@ -25,6 +25,8 @@ type OverlayVolume struct {
 // NewOverlayVolume creates a new overlay volume at the path
 // root is the directory where the overlay's will store their work and upper directories
 // root = internal/overlay/<server_id>
+// serverVolume is the servers volume in the daemons data directory
+// serverPath is the path to the base server files
 func NewOverlayVolume(root string, serverVolume string, serverPath string) (*OverlayVolume, error) {
 	return &OverlayVolume{
 		Root:         root,
@@ -197,6 +199,15 @@ func (ov *OverlayVolume) SetPermissions() error {
 
 		// Perform a non-recursive chown on all directories from the volume root to the merged folder
 		// A recursive chown would propagate ownership to all files, causing them to be copied up unnecessarily.
+		//
+		// This is done to ensure that the target path of the mount is writable by the sever process,
+		// if the target path does not initially exist the path is created when Mount() is called
+		// to ensure all folders along that path are writable by the server process we chown every parent folder from the
+		// volumes root (ov.serverVolume) to the target directory (o.Merged)
+		//
+		// For example if ov.serverVolume is at '/var/lib/sls/data/zmunzoazwhhf' and the blueprint mounts some folder to '/world/datapacks'
+		// o.Merged would be '/var/lib/sls/data/zmunzoazwhhf/world/datapacks'
+		// walkTo will return the path to 'world' and 'datapacks' and each of those individual folders will be chowned
 		parents, err := walkTo(o.Merged, ov.serverVolume)
 		if err != nil {
 			return errors.Wrap(err, "invalid overlay path")

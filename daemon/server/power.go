@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/environment/docker"
+	"protoxon.com/sls/daemon/server/filesystem"
 )
 
 type PowerAction string
@@ -344,6 +345,11 @@ func (s *Server) onBeforeStart() error {
 	// Copy files into the server filesystem from state configuration (source:destination)
 	if err := s.PerformCopy(); err != nil {
 		s.Log().WithError(err).Warn("failed to perform state copy entries")
+	}
+
+	// Ensure RW bind mounts are writable by the container user.
+	if err := filesystem.SetBindMountPermissions(s.Mounts()); err != nil {
+		return errors.Wrap(err, "failed to set bind mount permissions")
 	}
 
 	// Update the configuration files defined for the server before beginning the boot process.
