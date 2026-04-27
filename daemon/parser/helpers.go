@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"encoding/json"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,22 +40,6 @@ var serverMatchRegex = regexp.MustCompile(`{{\s?server\.([\w.-]+)\s?}}`)
 // noinspection RegExpRedundantEscape
 var xmlValueMatchRegex = regexp.MustCompile(`^\[([\w]+)='(.*)'\]$`)
 
-// Gets the value of a key based on the value type defined.
-func (cfr *ConfigurationFileReplacement) getKeyValue(value string) interface{} {
-	if cfr.ReplaceWith.Type() == jsonparser.Boolean {
-		v, _ := strconv.ParseBool(value)
-		return v
-	}
-
-	// Try to parse into an int, if this fails just ignore the error and continue
-	// through, returning the string.
-	if v, err := strconv.Atoi(value); err == nil {
-		return v
-	}
-
-	return value
-}
-
 // Iterate over an unstructured JSON/YAML/etc. interface and set all of the required
 // key/value pairs for the configuration file.
 //
@@ -73,7 +58,7 @@ func (f *ConfigurationFile) IterateOverJson(data []byte) (*gabs.Container, error
 	}
 
 	for _, v := range f.Replace {
-		value, err := f.LookupConfigurationValue(v)
+		value, err := f.LookupConfigurationValueAny(v)
 		if err != nil {
 			return nil, err
 		}
@@ -184,13 +169,20 @@ func setValueAtPath(c *gabs.Container, path string, value interface{}) error {
 
 // Sets the value at a specific pathway, but checks if we were looking for a specific
 // value or not before doing it.
-func (cfr *ConfigurationFileReplacement) SetAtPathway(c *gabs.Container, path string, value string) error {
+func (cfr *ConfigurationFileReplacement) SetAtPathway(c *gabs.Container, path string, value interface{}) error {
 	if cfr.IfValue == "" {
-		return setValueAtPath(c, path, cfr.getKeyValue(value))
+		return setValueAtPath(c, path, value)
 	}
 
 	// Check if we are replacing instead of overwriting.
 	if strings.HasPrefix(cfr.IfValue, "regex:") {
+		valueStr, ok := value.(string)
+		if !ok {
+			log.WithFields(log.Fields{"path": path, "if_value": cfr.IfValue}).
+				Warn("configuration replacement uses regex if_value but replacement value is not a string; skipping")
+			return nil
+		}
+
 		// Doing a regex replacement requires an existing value.
 		// TODO: Do we try passing an empty string to the regex?
 		if c.ExistsP(path) {
@@ -206,7 +198,7 @@ func (cfr *ConfigurationFileReplacement) SetAtPathway(c *gabs.Container, path st
 
 		v := strings.Trim(c.Path(path).String(), "\"")
 		if r.Match([]byte(v)) {
-			return setValueAtPath(c, path, r.ReplaceAllString(v, value))
+			return setValueAtPath(c, path, r.ReplaceAllString(v, valueStr))
 		}
 		return nil
 	}
@@ -215,7 +207,7 @@ func (cfr *ConfigurationFileReplacement) SetAtPathway(c *gabs.Container, path st
 		return nil
 	}
 
-	return setValueAtPath(c, path, cfr.getKeyValue(value))
+	return setValueAtPath(c, path, value)
 }
 
 // Looks up a configuration value on the Daemon given a dot-notated syntax.
@@ -236,6 +228,22 @@ func (f *ConfigurationFile) LookupConfigurationValue(cfr ConfigurationFileReplac
 	}
 
 	return s, nil
+}
+
+// LookupConfigurationValueAny returns the replacement as a native Go type for JSON/YAML patching.
+//
+// - For strings, it resolves {{config.*}} / {{server.*}} placeholders (same behavior as LookupConfigurationValue).
+// - For non-strings (number/bool/null/array/object), it unmarshals the raw JSON bytes into an interface{}.
+func (f *ConfigurationFile) LookupConfigurationValueAny(cfr ConfigurationFileReplacement) (interface{}, error) {
+	if cfr.ReplaceWith.Type() == jsonparser.String {
+		return f.LookupConfigurationValue(cfr)
+	}
+
+	var v interface{}
+	if err := json.Unmarshal(cfr.ReplaceWith.Value(), &v); err != nil {
+		return nil, errors.Wrap(err, "parser: failed to unmarshal replacement JSON value")
+	}
+	return v, nil
 }
 
 func (f *ConfigurationFile) lookupPlaceholderJSON(
