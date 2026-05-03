@@ -40,10 +40,11 @@ func NewCachedStore(ttl time.Duration) *CachedStore {
 	}
 }
 
-// Create: store in DB and cache
+// Create saves the API key to the Database and in memory cache
+// This is called internally by CoreForge when a new api key is created
 func (c *CachedStore) Create(ctx context.Context, key *apikey.APIKey, keyHash string) error {
 	if err := StoreKey(key, keyHash); err != nil {
-		return errors.Wrap(err, "failed to store API key in DB")
+		return errors.Wrap(err, "failed to store API key in the database")
 	}
 
 	// store in the cache
@@ -58,7 +59,6 @@ func (c *CachedStore) Create(ctx context.Context, key *apikey.APIKey, keyHash st
 	return nil
 }
 
-// Get by Prefix
 func (c *CachedStore) GetByPrefix(ctx context.Context, prefix string) (*apikey.APIKey, string, error) {
 	// check cache first
 	c.mu.RLock()
@@ -86,7 +86,6 @@ func (c *CachedStore) GetByPrefix(ctx context.Context, prefix string) (*apikey.A
 	return key, hash, nil
 }
 
-// Get by ID
 func (c *CachedStore) GetByID(ctx context.Context, id uuid.UUID) (*apikey.APIKey, error) {
 	// check cache
 	c.mu.RLock()
@@ -99,7 +98,7 @@ func (c *CachedStore) GetByID(ctx context.Context, id uuid.UUID) (*apikey.APIKey
 	c.mu.RUnlock()
 
 	// fallback to DB
-	key, _, err := GetByID(id)
+	key, hash, err := GetByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +107,7 @@ func (c *CachedStore) GetByID(ctx context.Context, id uuid.UUID) (*apikey.APIKey
 	c.mu.Lock()
 	c.cache[key.Prefix] = &cachedEntry{
 		key:     key,
-		hash:    "", // hash can be included if needed
+		hash:    hash,
 		expires: time.Now().Add(c.ttl),
 	}
 	c.mu.Unlock()

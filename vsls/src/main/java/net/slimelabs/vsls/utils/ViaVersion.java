@@ -22,7 +22,7 @@ public class ViaVersion {
      * <p>
      * If a server is not registered immediately, players joining with a different
      * Minecraft version may receive an "Outdated server" error. This happens because
-     * Velocity only pings servers at intervals (by default once every 60 seconds),
+     * ViaVersion only pings servers at intervals (by default once every 60 seconds),
      * and ViaVersion does not know the server's protocol version until that ping occurs.
      * <p>
      * If the ViaVersion plugin is not present on the proxy this will do nothing and return

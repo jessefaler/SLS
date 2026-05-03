@@ -33,6 +33,6 @@ dependency-reduced-pom.xml
 # Compiled binaries
 slimepacks/slimepacks.so
 *.so
-daemon/sls
+daemon/daemon
 protocube/protocube
 

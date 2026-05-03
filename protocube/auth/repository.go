@@ -46,7 +46,6 @@ func StoreKey(key *apikey.APIKey, keyHash string) error {
 	return nil
 }
 
-// Get by prefix
 func GetByPrefix(prefix string) (*apikey.APIKey, string, error) {
 	var sk models.StoredKey
 	if err := database.Instance().Where("prefix = ?", prefix).First(&sk).Error; err != nil {
@@ -58,7 +57,6 @@ func GetByPrefix(prefix string) (*apikey.APIKey, string, error) {
 	return sk.ToAPIKey(), sk.Hash, nil
 }
 
-// Get by ID
 func GetByID(id uuid.UUID) (*apikey.APIKey, string, error) {
 	var sk models.StoredKey
 	if err := database.Instance().Where("id = ?", id).First(&sk).Error; err != nil {
@@ -70,7 +68,7 @@ func GetByID(id uuid.UUID) (*apikey.APIKey, string, error) {
 	return sk.ToAPIKey(), sk.Hash, nil
 }
 
-// List all keys by OwnerID
+// Lists all keys by OwnerID
 func ListByOwner(ownerID uuid.UUID) ([]*apikey.APIKey, error) {
 	var keys []models.StoredKey
 	if err := database.Instance().Where("owner_id = ?", ownerID).Find(&keys).Error; err != nil {
