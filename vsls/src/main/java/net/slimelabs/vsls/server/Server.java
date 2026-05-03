@@ -36,19 +36,24 @@ public class Server {
     private volatile ServerStatus status = ServerStatus.UNKNOWN;
     // Server events
     private final ServerEvents events = new ServerEvents();
-    // Server data
+    // Arbitrary server data
     private final ServerData serverData = new ServerData();
 
-    public Server(String name, ClientServer client, Runnable unregister) {
+    public Server(String name, String idPrefix, ClientServer client, Runnable unregister) {
         this.name = name;
         this.client = client;
         this.id = client.getId();
         this.shortId = id.length() >= 6 ? id.substring(0, 6) : id;
-        this.compositeId = getBlueprintId() + "." + shortId;
+        this.compositeId = idPrefix + "." + shortId;
         this.unregister = unregister;
         new JoinActions(this);
     }
 
+    /**
+     * Returns the servers data object which is used to get or
+     * store arbitrary key value data on a server instance
+     * @return ServerData
+     */
     public ServerData getServerData() {
         return serverData;
     }

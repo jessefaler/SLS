@@ -70,12 +70,13 @@ public class ServerManager implements ServerProvider {
         if (blueprint != null) {
             server = new Server(
                     blueprint.getName(),
+                    clientServer.getBlueprintId(),
                     clientServer,
                     () -> unRegister(clientServer.getId())
             );
         } else {
             // Blueprint not found, register it with the clientServers provided blueprint id
-            server = new Server(clientServer.getBlueprintId(), clientServer, () -> unRegister(clientServer.getId()));
+            server = new Server(clientServer.getBlueprintId(), clientServer.getBlueprintId(), clientServer, () -> unRegister(clientServer.getId()));
             Log.warn("Blueprint not found for server {} with blueprint id: {}", clientServer.getId(), clientServer.getBlueprintId());
         }
         register(server);
@@ -130,14 +131,15 @@ public class ServerManager implements ServerProvider {
      * Initiates the creation of a new server
      *
      * @param action the server creation action
+     * @param name the name of the server
+     * @param idPrefix the prefix to use for the composite id
      * @return an SLSAction that, when executed, creates the server and registers it
      */
-    public SLSAction<Server> createServer(ServerCreationAction action) {
+    public SLSAction<Server> createServer(ServerCreationAction action, String name, String idPrefix) {
         // Map the ClientServer to a vSLS Server, and register it
         return action.map(clientServer -> {
             Blueprint blueprint = SLS.blueprints.getBlueprint(action.getBlueprintId());
-            String name = Objects.requireNonNullElse(blueprint != null ? blueprint.getName() : null, action.getBlueprintId());
-            Server server = new Server(name, clientServer, () -> unRegister(clientServer.getId()));
+            Server server = new Server(name, idPrefix, clientServer, () -> unRegister(clientServer.getId()));
             // Set the version from the creation action or from the blueprint if not set
             server.setVersion(!Objects.equals(action.getVersion(), "")
                     ? action.getVersion()
@@ -145,6 +147,25 @@ public class ServerManager implements ServerProvider {
             register(server);
             return server;
         });
+    }
+
+    /**
+     * Initiates the creation of a new server
+     * <p>
+     * Uses the blueprint's name as the server name and the blueprint's ID
+     * as the composite id prefix, then delegates to
+     * createServer(ServerCreationAction action, String name, String idPrefix).
+     *
+     * @param action the server creation action
+     * @return an SLSAction that, when executed, creates the server and registers it
+     */
+    public SLSAction<Server> createServer(ServerCreationAction action) {
+        Blueprint blueprint = SLS.blueprints.getBlueprint(action.getBlueprintId());
+        String name = Objects.requireNonNullElse(
+                blueprint != null ? blueprint.getName() : null,
+                action.getBlueprintId());
+        String idPrefix = blueprint != null ? blueprint.getId() : action.getBlueprintId();
+        return createServer(action, name, idPrefix);
     }
 
     /**

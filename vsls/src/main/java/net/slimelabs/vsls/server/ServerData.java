@@ -3,6 +3,9 @@ package net.slimelabs.vsls.server;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * ServerData is used to store arbitrary key value data on a server instance
+ */
 public class ServerData {
     private final Map<String, Object> data = new ConcurrentHashMap<>();
 
