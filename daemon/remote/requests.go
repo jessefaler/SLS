@@ -189,17 +189,11 @@ func isUnregistered(resp *Response) bool {
 		// After reading, reset the Body so it can be read again if needed
 		resp.Body = io.NopCloser(bytes.NewReader(body))
 
-		// Parse JSON
-		var data map[string]interface{}
-		if err := json.Unmarshal(body, &data); err != nil {
+		var apiErr httperror.Error
+		if err := json.Unmarshal(body, &apiErr); err != nil {
 			return false
 		}
-
-		// Legacy {"error":"Unregistered"} or structured {"detail":"Unregistered",...}
-		if e, ok := data["error"].(string); ok && e == "Unregistered" {
-			return true
-		}
-		if d, ok := data["detail"].(string); ok && d == "Unregistered" {
+		if apiErr.Detail == "Unregistered" {
 			return true
 		}
 	}
@@ -352,24 +346,6 @@ func (r *Response) Error() error {
 		}
 		if e.Status == "" {
 			e.Status = http.StatusText(r.StatusCode)
-		}
-	} else {
-		var errs RequestErrors
-		if json.Unmarshal(b, &errs) == nil && len(errs.Errors) > 0 {
-			first := errs.Errors[0]
-			e.Code = first.Code
-			e.Status = first.Status
-			e.Detail = first.Detail
-			e.Hint = first.Hint
-		} else {
-			var simpleError struct {
-				Error string `json:"error"`
-			}
-			if json.Unmarshal(b, &simpleError) == nil && simpleError.Error != "" {
-				e.Code = strconv.Itoa(r.StatusCode)
-				e.Status = http.StatusText(r.StatusCode)
-				e.Detail = simpleError.Error
-			}
 		}
 	}
 

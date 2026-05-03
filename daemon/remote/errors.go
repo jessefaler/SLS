@@ -7,11 +7,6 @@ import (
 	"emperror.dev/errors"
 )
 
-// RequestErrors is a legacy wire format from older APIs (errors array).
-type RequestErrors struct {
-	Errors []RequestError `json:"errors"`
-}
-
 // RequestError is returned when a remote HTTP API responds with an error body.
 type RequestError struct {
 	response *http.Response

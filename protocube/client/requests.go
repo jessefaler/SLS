@@ -332,24 +332,6 @@ func (r *Response) Error() error {
 		if e.Status == "" {
 			e.Status = http.StatusText(r.StatusCode)
 		}
-	} else {
-		var errs RequestErrors
-		if json.Unmarshal(b, &errs) == nil && len(errs.Errors) > 0 {
-			first := errs.Errors[0]
-			e.Code = first.Code
-			e.Status = first.Status
-			e.Detail = first.Detail
-			e.Hint = first.Hint
-		} else {
-			var simpleError struct {
-				Error string `json:"error"`
-			}
-			if json.Unmarshal(b, &simpleError) == nil && simpleError.Error != "" {
-				e.Code = strconv.Itoa(r.StatusCode)
-				e.Status = http.StatusText(r.StatusCode)
-				e.Detail = simpleError.Error
-			}
-		}
 	}
 
 	e.response = r.Response

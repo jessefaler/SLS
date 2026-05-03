@@ -1,11 +1,13 @@
 package router
 
 import (
+	"net/http"
 	"path/filepath"
 
 	"protoxon.com/sls/slimepacks/slimepack"
 
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 )
 
 func getSlimePacks(c *gin.Context, manager slimepack.Manager) {
@@ -28,7 +30,7 @@ func getSlimePack(c *gin.Context) {
 	// Path to the generated resource pack zip
 	filePath, err := pack.GetVersion(version)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "Could not resolve the requested pack version.")
 		return
 	}
 

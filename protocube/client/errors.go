@@ -12,11 +12,6 @@ import (
 
 var ErrNodeUnavailable = errors.New("node unavailable")
 
-// RequestErrors is a legacy wire format from older APIs (errors array).
-type RequestErrors struct {
-	Errors []RequestError `json:"errors"`
-}
-
 // RequestError is returned when a remote HTTP API responds with an error body.
 type RequestError struct {
 	response *http.Response
@@ -68,7 +63,7 @@ func (re *RequestError) StatusCode() int {
 }
 
 // HandleError sends an appropriate HTTP response for errors returned by a node request.
-// It first checks for structured RequestErrors, then maps context.DeadlineExceeded to 504,
+// It first checks for a structured RequestError, then maps context.DeadlineExceeded to 504,
 // context.Canceled to 408, and falls back to 502 Bad Gateway for all other errors.
 func HandleError(c *gin.Context, err error) {
 	if re := AsRequestError(err); re != nil {
