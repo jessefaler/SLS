@@ -36,6 +36,8 @@ public class Server {
     private volatile ServerStatus status = ServerStatus.UNKNOWN;
     // Server events
     private final ServerEvents events = new ServerEvents();
+    // Server data
+    private final ServerData serverData = new ServerData();
 
     public Server(String name, ClientServer client, Runnable unregister) {
         this.name = name;
@@ -45,6 +47,10 @@ public class Server {
         this.compositeId = getBlueprintId() + "." + shortId;
         this.unregister = unregister;
         new JoinActions(this);
+    }
+
+    public ServerData getServerData() {
+        return serverData;
     }
 
     /**
