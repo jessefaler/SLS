@@ -6,15 +6,18 @@ import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.actions.JoinActions;
 import net.slimelabs.vsls.server.events.ServerEvents;
+import net.slimelabs.vsls.utils.ViaVersion;
 import net.slimelabs.vsls.utils.loader.Animation;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,9 +25,9 @@ import java.util.stream.Collectors;
 public class Server {
 
     private final String id;
-    private final String compositeId;
     private final String shortId;
-    private final String name;
+    private String name;
+    private String compositeId;
 
     // The servers api client
     private final ClientServer client;
@@ -335,6 +338,33 @@ public class Server {
         return SLS.proxy.getServer(getCompositeId())
                 .map(rs -> new ArrayList<>(rs.getPlayersConnected()))
                 .orElseGet(ArrayList::new);
+    }
+
+    /**
+     * Sets the composite id prefix for the server
+     * and reregisters the server in Velocity and ViaVersion
+     * @param prefix the prefix to use
+     */
+    public void setCompositeIdPrefix(String prefix) {
+        // Reregister the server with the new composite id
+        SLS.proxy.getServer(getCompositeId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
+        ViaVersion.unregister(getId());
+        this.compositeId = prefix + "." + shortId;
+        InetSocketAddress address = new InetSocketAddress(
+                getAllocation().getAlias().isEmpty() ? getAllocation().getIp() : getAllocation().getAlias(),
+                getAllocation().getPort()
+        );
+        ServerInfo serverInfo = new ServerInfo(getCompositeId(), address);
+        SLS.proxy.registerServer(serverInfo);
+        ViaVersion.register(this);
+    }
+
+    /**
+     * Sets the servers name
+     * @param name the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
     }
 
 }
