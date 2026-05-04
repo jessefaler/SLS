@@ -39,6 +39,16 @@ public class DirectServerJoiner {
         }
 
         final Server s = server;
+        ServerConnectionQueue existingForTarget = queues.get(s.getId());
+        if (existingForTarget != null && existingForTarget.isQueued(player)) {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .addMiniMessage("<gradient:#9d70ff:#00ffff>You are already in queue for " + s.getName() + "</gradient>")
+                    .sendMessage(player);
+            return;
+        }
+        dequeue(player);
+
         ServerConnectionQueue queue = queues.computeIfAbsent(
                 s.getId(),
                 id -> new ServerConnectionQueue(s, () -> queues.remove(s.getId()), true)
@@ -56,6 +66,16 @@ public class DirectServerJoiner {
             return;
         }
         final Server s = server;
+        ServerConnectionQueue existingForTarget = queues.get(s.getId());
+        if (existingForTarget != null && existingForTarget.isQueued(player)) {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .addMiniMessage("<gradient:#9d70ff:#00ffff>You are already in queue for " + s.getName() + "</gradient>")
+                    .sendMessage(player);
+            return;
+        }
+        dequeue(player);
+
         ServerConnectionQueue queue = queues.computeIfAbsent(
                 s.getId(),
                 id -> new ServerConnectionQueue(s, () -> queues.remove(s.getId()), false)
