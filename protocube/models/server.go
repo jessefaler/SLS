@@ -103,6 +103,8 @@ type ServerOverrides struct {
 	Version *string `json:"version,omitempty"`
 	// Image overrides the blueprint's server.image (container image).
 	Image *string `json:"image,omitempty"`
+	// Env adds or overrides keys in blueprint state.env for the container environment.
+	Env map[string]string `json:"env,omitempty"`
 }
 
 type CreateServerResponse struct {

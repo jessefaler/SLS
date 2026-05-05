@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -275,13 +276,20 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		image = selectedImage
 	}
 
+	var effectiveState *blueprint.State
+	if s.Overrides != nil && len(s.Overrides.Env) > 0 {
+		effectiveState = mergeBlueprintState(bp.State, s.Overrides.Env)
+	} else {
+		effectiveState = bp.State
+	}
+
 	nodeReq := models.ServerConfigurationResponse{
 		Id:                   s.Id(),
 		ProcessConfiguration: pc,
 		Image:                image,
 		Invocation:           sw.Invocation,
 		Limits:               limits,
-		State:                bp.State,
+		State:                effectiveState,
 		ServerFolder:         serverFolder,
 		Allocations:          s.Allocations,
 		Save:                 save,
@@ -291,6 +299,26 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		SkipInstallScript:    sw.InstallScript.SkipScripts,
 	}
 	return &nodeReq, nil
+}
+
+// mergeBlueprintState returns a new State with blueprint env merged with envOverride (override wins on key collision).
+func mergeBlueprintState(bpState *blueprint.State, envOverride map[string]string) *blueprint.State {
+	out := &blueprint.State{}
+	if bpState != nil {
+		out.Volumes = bpState.Volumes
+		out.Mounts = bpState.Mounts
+		out.Copy = bpState.Copy
+		if len(bpState.Env) > 0 {
+			out.Env = maps.Clone(bpState.Env)
+		}
+	}
+	for k, v := range envOverride {
+		if out.Env == nil {
+			out.Env = make(map[string]string, len(envOverride))
+		}
+		out.Env[k] = v
+	}
+	return out
 }
 
 // Loads in all servers stored in the database

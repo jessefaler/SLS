@@ -97,7 +97,8 @@ public class CreateCommand {
             Map.entry("--image=", "Sets the software to use when running this server"),
             Map.entry("--seed=", "Patches the server.properties config with a custom seed"),
             Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance"),
-            Map.entry("--enable-command-block=", "Patches the server.properties config to set enable command blocks")
+            Map.entry("--enable-command-block=", "Patches the server.properties config to set enable command blocks"),
+            Map.entry("--env=", "Container env KEY=value (repeatable; overrides blueprint state.env)")
     );
 
     private static RequiredArgumentBuilder<CommandSource, String> overrides() {
@@ -250,6 +251,19 @@ public class CreateCommand {
                             case "--oom_disabled=":
                                 creation.setOomDisabled(Boolean.valueOf(value));
                                 break;
+                            case "--env=": {
+                                int eq = value.indexOf('=');
+                                if (eq <= 0) {
+                                    ProtoMessage.chat()
+                                            .add("--env= requires KEY=value", NamedTextColor.RED)
+                                            .sendMessage(source);
+                                    return 0;
+                                }
+                                String envKey = value.substring(0, eq);
+                                String envVal = value.substring(eq + 1);
+                                creation.putEnv(envKey, envVal);
+                                break;
+                            }
                             default:
                                 ProtoMessage.chat()
                                         .add("Unknown flag: ", NamedTextColor.RED)
