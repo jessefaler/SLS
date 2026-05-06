@@ -18,10 +18,13 @@ import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class ServerManager implements ServerProvider {
 
@@ -29,6 +32,8 @@ public class ServerManager implements ServerProvider {
     private final ServerEventRouter router;
     private final SLSClient api;
     private final GlobalEvents events = new GlobalEvents();
+    private volatile boolean isLoaded = false;
+    private final List<Consumer<ServerManager>> loadCallbacks = new CopyOnWriteArrayList<>();
 
     public ServerManager(SLSClient api, EventRouter router) {
         this.api = api;
@@ -66,6 +71,7 @@ public class ServerManager implements ServerProvider {
                     registry.loadServer(clientServer);
                 }
                 Log.info("Initialized server registry. Loaded {} servers", servers.size());
+                registry.markLoaded();
             });
         }, failure -> {
             Log.warn("Failed to load servers: {}. Retrying in 30 seconds...", failure.info());
@@ -244,6 +250,56 @@ public class ServerManager implements ServerProvider {
             ViaVersion.unregister(id);
         }
     }
+
+    /**
+     * Checks if the server manager has completed its initial load.
+     *
+     * @return true if the manager has loaded servers at least once, false otherwise
+     */
+    public boolean isLoaded() {
+        return isLoaded;
+    }
+
+    /**
+     * Registers a callback to be executed when the server manager is loaded.
+     * If the manager is already loaded, the callback will be executed immediately.
+     * If the manager is not yet loaded, the callback will be executed once loading completes.
+     *
+     * @param callback the callback to execute when the manager is loaded, receives this ServerManager instance
+     */
+    public void whenLoaded(Consumer<ServerManager> callback) {
+        if (isLoaded) {
+            try {
+                callback.accept(this);
+            } catch (Exception e) {
+                Log.error("Error executing server manager load callback", e);
+            }
+        } else {
+            loadCallbacks.add(callback);
+            // Double check in case we loaded while adding.
+            if (isLoaded) {
+                loadCallbacks.remove(callback);
+                try {
+                    callback.accept(this);
+                } catch (Exception e) {
+                    Log.error("Error executing server manager load callback", e);
+                }
+            }
+        }
+    }
+
+    private void markLoaded() {
+        isLoaded = true;
+        for (Consumer<ServerManager> callback : loadCallbacks) {
+            try {
+                callback.accept(this);
+            } catch (Exception e) {
+                Log.error("Error executing server manager load callback", e);
+            }
+        }
+        loadCallbacks.clear();
+    }
+
 
 }
 

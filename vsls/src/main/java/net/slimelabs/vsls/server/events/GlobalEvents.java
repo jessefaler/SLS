@@ -8,7 +8,7 @@ import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.server.Server;
 
 /**
- * Aggregate event hub for all servers.
+ * Event Listeners for events emitted by all servers
  * <p>
  * Fired by {@link ServerEventRouter} while dispatching the incoming event stream.
  */
