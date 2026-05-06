@@ -11,6 +11,7 @@ import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
 import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.events.ServerEventRouter;
+import net.slimelabs.vsls.server.events.GlobalEvents;
 import net.slimelabs.vsls.server.lifecycle.LifecycleManager;
 import net.slimelabs.vsls.utils.VersionFetcher;
 import net.slimelabs.vsls.utils.ViaVersion;
@@ -27,11 +28,12 @@ public class ServerManager implements ServerProvider {
     ConcurrentHashMap<String, Server> servers = new ConcurrentHashMap<>();
     private final ServerEventRouter router;
     private final SLSClient api;
+    private final GlobalEvents events = new GlobalEvents();
 
     public ServerManager(SLSClient api, EventRouter router) {
         this.api = api;
         // Initialize the event router
-        this.router = new ServerEventRouter(router, this);
+        this.router = new ServerEventRouter(router, this, events);
         // Load servers from the api
         loadServers(this, api);
         // Start the lifecycle manager, if enabled
@@ -39,6 +41,15 @@ public class ServerManager implements ServerProvider {
             LifecycleManager lifecycleManager = new LifecycleManager(this);
             lifecycleManager.start();
         }
+    }
+
+    /**
+     * Returns the global event listeners
+     * <p>
+     * Allow listing for events emitted by all servers
+     */
+    public GlobalEvents getEvents() {
+        return events;
     }
 
     /**
