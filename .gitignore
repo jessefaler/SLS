@@ -34,5 +34,6 @@ dependency-reduced-pom.xml
 slimepacks/slimepacks.so
 *.so
 daemon/daemon
+daemon/sls
 protocube/protocube
 

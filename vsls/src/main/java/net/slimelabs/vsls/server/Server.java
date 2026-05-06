@@ -41,6 +41,8 @@ public class Server {
     private final ServerEvents events = new ServerEvents();
     // Arbitrary server data
     private final ServerData serverData = new ServerData();
+    // Lifecycle management, if false the LifecycleManager will not manage this instance
+    private volatile boolean lifecycleEnabled = true;
 
     public Server(String name, String idPrefix, ClientServer client, Runnable unregister) {
         this.name = name;
@@ -68,6 +70,14 @@ public class Server {
      */
     public ServerStatus getStatus() {
         return status;
+    }
+
+    public void setLifecycleEnabled(boolean value) {
+        lifecycleEnabled = value;
+    }
+
+    public boolean isLifecycleEnabled() {
+        return lifecycleEnabled;
     }
 
     /**

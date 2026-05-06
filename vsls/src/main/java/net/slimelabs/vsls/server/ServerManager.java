@@ -7,6 +7,7 @@ import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
 import net.slimelabs.vsls.events.EventRouter;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.events.ServerEventRouter;
@@ -87,6 +88,8 @@ public class ServerManager implements ServerProvider {
                 );
         // Fetch the servers status and update it locally
         clientServer.getStatus().executeAsync(server::setStatus);
+        // Set weather to manage the servers lifecycle
+        server.setLifecycleEnabled(!VslsAnnotations.dontStopWhenEmpty(blueprint));
         return server;
     }
 
@@ -144,6 +147,8 @@ public class ServerManager implements ServerProvider {
             server.setVersion(!Objects.equals(action.getVersion(), "")
                     ? action.getVersion()
                     : (blueprint != null ? blueprint.getServerVersion() : "null"));
+            // Set weather to manage the servers lifecycle
+            server.setLifecycleEnabled(!VslsAnnotations.dontStopWhenEmpty(blueprint));
             register(server);
             return server;
         });

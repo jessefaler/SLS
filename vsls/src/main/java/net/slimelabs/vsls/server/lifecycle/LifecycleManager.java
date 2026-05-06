@@ -40,13 +40,16 @@ public class LifecycleManager {
     public void start() {
         SLS.proxy.getEventManager().register(SLS.plugin, this);
 
-        // Run a check on all servers every 5 minutes
+        // Run a scheduled check on all servers
         SLS.proxy.getScheduler()
                 .buildTask(SLS.plugin, () -> {
                     for (Server server : provider.getAll()) {
                         if(server.getStatus() == ServerStatus.RUNNING) {
                             if (server.getPlayerCount() == 0) {
-                                if (!shouldStopWhenEmpty(server)) continue;
+                                if(!server.isLifecycleEnabled()) {
+                                    // Skip if lifecycle is disabled
+                                    continue;
+                                }
                                 server.getStats().executeAsync(stats -> {
                                     if (stats.getUptime() > Duration.ofMinutes(1).toMillis()
                                             && server.getPlayerCount() == 0
@@ -74,10 +77,10 @@ public class LifecycleManager {
         if (task != null) {
             task.cancel();
             shuttingDown.remove(id);
-            Log.info("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
+            Log.debug("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
         }
 
-        // PreviousServer is the server the player is coming from (null if they just joined the proxy)
+        // Previous Server is the server the player is coming from (null if they just joined the proxy)
         // Check if it is empty if so shut it down assuming it is an SLS managed server
         RegisteredServer previous = event.getPreviousServer();
         if (previous != null) {
@@ -108,8 +111,11 @@ public class LifecycleManager {
                     if (playerCount == 0) {
                         Server server = provider.resolve(id);
                         if (server != null) {
+                            if(!server.isLifecycleEnabled()) {
+                                // Skip if lifecycle is disabled
+                                return;
+                            }
                             if(server.getStatus() == ServerStatus.RUNNING) {
-                                if (!shouldStopWhenEmpty(server)) return;
                                 shutdown(server);
                             }
                         }
@@ -117,11 +123,6 @@ public class LifecycleManager {
                 })
                 .delay(SLS.config.lifecycle.stop_delay, TimeUnit.SECONDS)
                 .schedule();
-    }
-
-    private boolean shouldStopWhenEmpty(Server server) {
-        Blueprint blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
-        return !VslsAnnotations.dontStopWhenEmpty(blueprint);
     }
 
     /**
@@ -135,7 +136,7 @@ public class LifecycleManager {
             return;
         }
 
-        Log.info("Lifecycle Manager: Shutting down empty server " + id);
+        Log.debug("Lifecycle Manager: Shutting down empty server " + id);
         server.sendCommand("say [SLS] Server is empty. Shutting down...");
 
         // Stop immediately
