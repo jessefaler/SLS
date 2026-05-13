@@ -1,6 +1,8 @@
 services:
   protocube:
-    image: ghcr.io/jessefaler/sls/protocube:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: SLS
     restart: always
     ports:
