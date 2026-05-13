@@ -3,6 +3,7 @@ package models
 import (
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/environment"
+	"protoxon.com/sls/protocube/software"
 	"protoxon.com/sls/protocube/system"
 )
 
@@ -22,12 +23,14 @@ type ServerData struct {
 }
 
 type ServerStore struct {
-	Id          string                  `gorm:"primaryKey"`
-	NodeName    string                  `gorm:"index"`
-	NodeId      string                  `gorm:"index"`
-	BlueprintId string                  `gorm:"index"`
-	Allocation  environment.Allocations `gorm:"serializer:json"`
-	Overrides   *ServerOverrides        `gorm:"serializer:json"`
+	Id            string                       `gorm:"primaryKey"`
+	NodeName      string                       `gorm:"index"`
+	NodeId        string                       `gorm:"index"`
+	BlueprintId   string                       `gorm:"index"`
+	Allocation    environment.Allocations      `gorm:"serializer:json"`
+	Overrides     *ServerOverrides             `gorm:"serializer:json"`
+	Configuration *ServerConfigurationResponse `gorm:"serializer:json"`
+	InstallScript *software.InstallationScript `gorm:"serializer:json"`
 }
 
 type StatusResponse struct {

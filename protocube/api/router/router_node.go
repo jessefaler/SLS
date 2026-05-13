@@ -201,15 +201,18 @@ func toggleNodeDrained(c *gin.Context) {
 
 func (r *Router) getServerConfiguration(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	bp := r.BlueprintRegistry.Get(s.BlueprintId())
-	if bp == nil {
-		httperror.JSON(c, http.StatusNotFound, "blueprint_id="+s.BlueprintId(), "Referenced blueprint does not exist.")
-		return
-	}
-	configuration, err := server.GetServerConfiguration(s, bp, r.SoftwareRegistry)
+	configuration, err := server.GetServerConfiguration(s)
 	if err != nil {
-		httperror.JSON(c, http.StatusNotFound, err.Error(), "Could not build server configuration.")
-		return
+		bp := r.BlueprintRegistry.Get(s.BlueprintId())
+		if bp == nil {
+			httperror.JSON(c, http.StatusNotFound, "blueprint_id="+s.BlueprintId(), "Server configuration snapshot is missing and the referenced blueprint does not exist.")
+			return
+		}
+		configuration, err = server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry)
+		if err != nil {
+			httperror.JSON(c, http.StatusNotFound, err.Error(), "Could not build server configuration.")
+			return
+		}
 	}
 	c.JSON(http.StatusOK, configuration)
 }
@@ -238,20 +241,23 @@ func (r *Router) getAllServerConfigurations(c *gin.Context) {
 	// Build configurations for all servers
 	configurations := make([]*models.ServerConfigurationResponse, 0, len(servers))
 	for _, s := range servers {
-		bp := r.BlueprintRegistry.Get(s.BlueprintId())
-		if bp == nil {
-			// Skip servers with missing blueprints, log but don't fail the request
-			log.WithField("server", s.Id()).WithField("blueprint_id", s.BlueprintId()).
-				Warn("skipping server configuration: referenced blueprint does not exist")
-			continue
-		}
-
-		configuration, err := server.GetServerConfiguration(s, bp, r.SoftwareRegistry)
+		configuration, err := server.GetServerConfiguration(s)
 		if err != nil {
-			// Skip servers with configuration errors, log but don't fail the request
-			log.WithField("server", s.Id()).WithError(err).
-				Warn("skipping server configuration: failed to generate configuration")
-			continue
+			bp := r.BlueprintRegistry.Get(s.BlueprintId())
+			if bp == nil {
+				// Skip legacy servers with no snapshot and missing blueprints.
+				log.WithField("server", s.Id()).WithField("blueprint_id", s.BlueprintId()).
+					Warn("skipping server configuration: snapshot is missing and referenced blueprint does not exist")
+				continue
+			}
+
+			configuration, err = server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry)
+			if err != nil {
+				// Skip servers with configuration errors, log but don't fail the request
+				log.WithField("server", s.Id()).WithError(err).
+					Warn("skipping server configuration: failed to generate configuration")
+				continue
+			}
 		}
 
 		configurations = append(configurations, configuration)

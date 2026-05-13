@@ -168,20 +168,24 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 	// Add the server to the manager
 	m.Add(s)
 
-	// Write the server to the database
-	if err := repository.StoreServer(&models.ServerStore{
-		Id:          serverId,
-		NodeName:    node.Name(),
-		NodeId:      node.Id(),
-		BlueprintId: bp.Meta.ID,
-		Allocation:  alloc,
-		Overrides:   overrides,
-	}); err != nil {
+	cfg, installScript, err := BuildServerSnapshot(s, bp, swr)
+	if err != nil {
 		return nil, err
 	}
+	s.Configuration = cfg
+	s.InstallScript = installScript
 
-	cfg, err := GetServerConfiguration(s, bp, swr)
-	if err != nil {
+	// Write the server to the database
+	if err := repository.StoreServer(&models.ServerStore{
+		Id:            serverId,
+		NodeName:      node.Name(),
+		NodeId:        node.Id(),
+		BlueprintId:   bp.Meta.ID,
+		Allocation:    alloc,
+		Overrides:     overrides,
+		Configuration: cfg,
+		InstallScript: installScript,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -196,7 +200,18 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 	return s, nil
 }
 
-func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, error) {
+func GetServerConfiguration(s *Server) (*models.ServerConfigurationResponse, error) {
+	if s.Configuration == nil {
+		return nil, errors.New("server configuration snapshot is missing")
+	}
+
+	cfg := *s.Configuration
+	cfg.Id = s.Id()
+	cfg.Allocations = s.Allocations
+	return &cfg, nil
+}
+
+func BuildServerSnapshot(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, *software.InstallationScript, error) {
 	effectiveSoftware := bp.Server.Software
 	effectiveVersion := bp.Server.Version
 	if s.Overrides != nil {
@@ -210,12 +225,12 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 
 	sw := swr.Get(effectiveSoftware)
 	if sw == nil {
-		return nil, errors.Errorf("software not found: %s", effectiveSoftware)
+		return nil, nil, errors.Errorf("software not found: %s", effectiveSoftware)
 	}
 
 	matcher, err := models.NewOutputLineMatcher(sw.OnlineSignal)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create output line matcher for the start configuration: %s", sw.OnlineSignal)
+		return nil, nil, errors.Wrapf(err, "failed to create output line matcher for the start configuration: %s", sw.OnlineSignal)
 	}
 
 	// Convert software, blueprint, and optional request override patches
@@ -271,7 +286,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 	if image == "" {
 		selectedImage, err := sw.ImageForVersion(effectiveVersion)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to select image for version %s", effectiveVersion)
+			return nil, nil, errors.Wrapf(err, "failed to select image for version %s", effectiveVersion)
 		}
 		image = selectedImage
 	}
@@ -294,11 +309,39 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		Allocations:          s.Allocations,
 		Save:                 save,
 		SoftwareId:           sw.Id,
-		SoftwareVersion:      bp.Server.Version,
+		SoftwareVersion:      effectiveVersion,
 		HasInstallScript:     sw.InstallScript.Script != "",
 		SkipInstallScript:    sw.InstallScript.SkipScripts,
 	}
-	return &nodeReq, nil
+	installScript := sw.InstallScript
+	return &nodeReq, &installScript, nil
+}
+
+func EnsureServerSnapshot(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, error) {
+	cfg, err := GetServerConfiguration(s)
+	if err == nil && s.InstallScript != nil {
+		return cfg, nil
+	}
+
+	if bp == nil {
+		if err == nil {
+			return cfg, nil
+		}
+		return nil, err
+	}
+
+	cfg, installScript, err := BuildServerSnapshot(s, bp, swr)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Configuration = cfg
+	s.InstallScript = installScript
+	if err := repository.StoreServerSnapshot(s.Id(), cfg, installScript); err != nil {
+		log.WithError(err).WithField("server", s.Id()).Warn("failed to persist server snapshot")
+	}
+
+	return GetServerConfiguration(s)
 }
 
 // mergeBlueprintState returns a new State with blueprint env merged with envOverride (override wins on key collision).
@@ -375,14 +418,16 @@ func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *n
 
 	// Instantiate the server
 	server := &Server{
-		id:           data.Id,
-		nodeName:     data.NodeName,
-		nodeId:       data.NodeId,
-		blueprintId:  data.BlueprintId,
-		Overrides:    data.Overrides,
-		sc:           serverClient,
-		GlobalEvents: m.Events,
-		Allocations:  data.Allocation,
+		id:            data.Id,
+		nodeName:      data.NodeName,
+		nodeId:        data.NodeId,
+		blueprintId:   data.BlueprintId,
+		Overrides:     data.Overrides,
+		Configuration: data.Configuration,
+		InstallScript: data.InstallScript,
+		sc:            serverClient,
+		GlobalEvents:  m.Events,
+		Allocations:   data.Allocation,
 		Remove: func() {
 			m.Remove(data.Id)
 		},
@@ -397,4 +442,3 @@ func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *n
 	m.Add(server)
 	return server, nil
 }
-

@@ -11,6 +11,7 @@ import (
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/server/repository"
+	"protoxon.com/sls/protocube/software"
 	"protoxon.com/sls/protocube/system"
 )
 
@@ -34,6 +35,12 @@ type Server struct {
 
 	// The crash handler for this server instance.
 	crasher CrashHandler
+
+	// Configuration is the immutable runtime snapshot sent to the node.
+	Configuration *models.ServerConfigurationResponse
+
+	// InstallScript is copied from the selected software at creation time.
+	InstallScript *software.InstallationScript
 
 	// sc is the dedicated client used to interact with server-specific API endpoints.
 	// A server client can only access its own endpoints and control itself.
