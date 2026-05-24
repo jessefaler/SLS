@@ -5,7 +5,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import com.velocitypowered.api.proxy.ServerConnection;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -16,7 +15,6 @@ import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.Objects;
-import java.util.Optional;
 
 public class KillCommand {
 
@@ -35,16 +33,10 @@ public class KillCommand {
                                 success -> {
                                     ProtoMessage.chat()
                                             .add(MessagePreset.SLS)
-                                            .add("Killed " + server.getShortId(), NamedTextColor.GRAY)
+                                            .add("Killed " + server.getCompositeId(), NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to kill server " + server.getShortId(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to kill server " + server.getShortId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to kill server " + server.getCompositeId(), failure, source)
                         );
                     } else {
                         ProtoMessage.chat()
@@ -78,7 +70,7 @@ public class KillCommand {
                         SLS.servers.getAll().forEach(server ->
                                 server.kill().executeAsync(
                                         success -> {},
-                                        failure -> Log.warn("Failed to kill server " + server.getId())
+                                        failure -> Log.requestError("Failed to kill server " + server.getCompositeId(), failure, source)
                                 )
                         );
                         ProtoMessage.chat()
@@ -97,13 +89,7 @@ public class KillCommand {
                                             .add("Killed " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to kill server " + id, NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to kill server " + server.getId() + " reason: " + failure.getMessage());
-                                }
+                                failure -> Log.requestError("Failed to kill server " + id, failure, source)
                         );
                     } else {
                         // No such server exists
@@ -149,7 +135,7 @@ public class KillCommand {
                                 server.kill().executeAsync(
                                         success -> {},
                                         failure -> {
-                                            Log.warn("Failed to kill server " + server.getId() + " reason: " + failure.getMessage());
+                                            Log.requestError("Failed to kill server " + server.getCompositeId(), failure, source);
                                             SLS.servers.unRegister(server.getId());
                                         }
                                 )
@@ -170,11 +156,7 @@ public class KillCommand {
                                             .sendMessage(source);
                                 },
                                 failure -> {
-                                    ProtoMessage.chat()
-                                            .add(MessagePreset.SLS)
-                                            .add("Failed to kill server " + id + " Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                            .sendMessage(source);
-                                    Log.warn("Failed to kill server " + server.getId() + " reason: " + failure.getMessage());
+                                    Log.requestError("Failed to kill server " + id, failure, source);
                                     SLS.servers.unRegister(server.getId());
                                 }
                         );

@@ -7,9 +7,6 @@ import (
 	"emperror.dev/errors"
 )
 
-// Basic token verification
-// todo improve token verification
-
 var (
 	token   string
 	isSet   bool = false

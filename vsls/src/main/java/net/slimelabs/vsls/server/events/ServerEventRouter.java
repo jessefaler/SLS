@@ -24,9 +24,11 @@ import net.slimelabs.vsls.utils.message.ProtoMessage;
 public class ServerEventRouter {
 
     private final ServerProvider provider;
+    private final GlobalEvents globalEvents;
 
-    public ServerEventRouter(EventRouter router, ServerProvider provider) {
+    public ServerEventRouter(EventRouter router, ServerProvider provider, GlobalEvents managerEvents) {
         this.provider = provider;
+        this.globalEvents = managerEvents;
 
         router.on(StatusUpdateEvent.class, this::handleServerEvent);
         router.on(ServerCrashEvent.class, this::handleServerEvent);
@@ -34,6 +36,7 @@ public class ServerEventRouter {
     }
 
     private void dispatchEvent(Server server, ServerEvent event) {
+        if (globalEvents != null) globalEvents.fireEvent(server, event);
         switch (event) {
             case StatusUpdateEvent  statusEvent  -> handleStatusUpdate(server, statusEvent);
             case ServerCrashEvent   crashEvent   -> handleCrash(server, crashEvent);
@@ -52,22 +55,32 @@ public class ServerEventRouter {
     private void handleStatusUpdate(Server server, StatusUpdateEvent event) {
         ServerStatus status = event.getStatus();
         server.setStatus(status);
+        if (globalEvents != null) {
+            globalEvents.fireStatus(server, status);
+        }
         server.getEvents().fireStatus(status);
-        logStatusChange(status, server.getShortId());
+        logStatusChange(status, server.getCompositeId());
     }
 
     private void handleCrash(Server server, ServerCrashEvent event) {
+        if (globalEvents != null) {
+            globalEvents.fireCrash(server, event);
+        }
         server.getEvents().fireCrash(event);
         Log.warn("Server {} crashed: Reason={}, ExitCode={}, Timestamp={}",
-                server.getShortId(), event.getReason(), event.getExitCode(),
+                server.getCompositeId(), event.getReason(), event.getExitCode(),
                 TimeUtils.formatTimestamp(event.getTimestamp()));
     }
 
     private void handleDeletion(Server server, ServerDeletedEvent event) {
+        if (globalEvents != null) {
+            globalEvents.fireStatus(server, ServerStatus.OFFLINE);
+            globalEvents.fireDeletion(server, event);
+        }
         server.getEvents().fireStatus(ServerStatus.OFFLINE);
         server.getEvents().fireDeletion(event);
         server.unregister();
-        Log.info("Server {} was deleted", server.getShortId());
+        Log.info("Server {} was deleted", server.getCompositeId());
     }
 
     // Logs a status change to the debug log level

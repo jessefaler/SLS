@@ -2,9 +2,12 @@ package net.slimelabs.vsls.matchmaking;
 
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.events.Event;
 import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
 import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
@@ -35,6 +38,8 @@ public class AllocationEngine {
     private final Map<String, Integer> pendingAssignments = new ConcurrentHashMap<>();
     /** Player UUID -> server ID: players we've sent connect() to but not yet confirmed on server (so we can decrement pending on connect/disconnect). */
     private final Map<UUID, String> assignedInFlight = new ConcurrentHashMap<>();
+    /** Blueprint ID -> number of createServer() calls currently in flight for that blueprint. */
+    private final Map<String, Integer> provisioningInProgressByBlueprint = new ConcurrentHashMap<>();
 
     public AllocationEngine(
             MatchmakingPool pool,
@@ -43,6 +48,21 @@ public class AllocationEngine {
         this.pool = pool;
         this.blueprintRegistry = blueprintRegistry;
         this.strategy = strategy;
+    }
+
+    /**
+     * If nobody is waiting for matchmaking, stop servers this pool is still provisioning
+     * (boot not finished) so idle starts do not keep running.
+     */
+    public synchronized void cancelProvisioningWhenQueueEmpty() {
+        if (!pool.waiting().isEmpty()) return;
+        for (Server server : new ArrayList<>(pool.getProvisioning())) {
+            ServerStatus s = server.getStatus();
+            if (s == ServerStatus.RUNNING || s == ServerStatus.STOPPING) continue;
+            server.stop().executeAsync(v -> {}, failure ->
+                    Log.warn("Failed to stop unneeded server {} after matchmaking queue emptied: {}",
+                            server.getName(), failure.info()));
+        }
     }
 
     public synchronized void attemptAllocation() {
@@ -69,10 +89,72 @@ public class AllocationEngine {
                         provisionNewServer();
                     }
                 }
+                if (!pool.waiting().isEmpty()
+                        && findServerWithCapacity() == null
+                        && findStoppedServerForGameType() == null
+                        && !canProvisionAnyBlueprint()
+                        && !hasProvisioningInFlight()) {
+                    flushWaitingAtCapacity();
+                }
                 return;
             }
             assignPlayers(server);
         }
+    }
+
+    private boolean hasProvisioningInFlight() {
+        return pool.getProvisioningInProgressCount() > 0 || !pool.getProvisioning().isEmpty();
+    }
+
+    /** True if at least one blueprint for this game type can still have a new instance created. */
+    private boolean canProvisionAnyBlueprint() {
+        GameType gameType = pool.getGameType();
+        List<Blueprint> blueprints = gameType.getBlueprints();
+        if (blueprints == null || blueprints.isEmpty()) return false;
+        for (Blueprint bp : blueprints) {
+            if (canProvisionBlueprint(bp)) return true;
+        }
+        return false;
+    }
+
+    private boolean canProvisionBlueprint(Blueprint blueprint) {
+        if (blueprint == null) return false;
+        String blueprintId = blueprint.getId();
+        int maxInstances = VslsAnnotations.maxInstances(blueprint);
+        if (maxInstances == Integer.MAX_VALUE) return true;
+        int existing = countExistingInstances(blueprintId);
+        int inFlight = provisioningInProgressByBlueprint.getOrDefault(blueprintId, 0);
+        return existing + inFlight < maxInstances;
+    }
+
+    /**
+     * Prefers the strategy’s pick when it can still be provisioned; otherwise the first blueprint
+     * in the game type that is under its max-instances cap.
+     */
+    private Blueprint selectBlueprintForProvisioning(GameType gameType) {
+        Blueprint preferred = strategy.select(gameType);
+        if (preferred != null && canProvisionBlueprint(preferred)) {
+            return preferred;
+        }
+        List<Blueprint> blueprints = gameType.getBlueprints();
+        if (blueprints == null) return null;
+        for (Blueprint bp : blueprints) {
+            if (canProvisionBlueprint(bp)) return bp;
+        }
+        return null;
+    }
+
+    private void flushWaitingAtCapacity() {
+        QueuedPlayer q;
+        while ((q = pool.waiting().poll()) != null) {
+            pool.stopLoading(q.player());
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .add("This game is at maximum capacity. Try again later.", NamedTextColor.RED)
+                    .sendMessage(q.player());
+            ChatPackets.enableActionBarPackets(q.player().getUniqueId());
+        }
+        cancelProvisioningWhenQueueEmpty();
     }
 
     private Server findServerWithCapacity() {
@@ -158,7 +240,7 @@ public class AllocationEngine {
         server.start().executeAsync(v -> {}, failure -> {
             pool.removeProvisioning(server);
             if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
-            flushWaitingWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
+            flushWaitingWithApiError("Failed to start server " + server.getName(), failure);
         });
         Event.Handle statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
@@ -171,7 +253,7 @@ public class AllocationEngine {
             if (status == ServerStatus.STOPPING) {
                 handle.remove();
                 if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
-                cleanupProvisioningAndMaybeFlush(server, gameType);
+                cleanupProvisioningAndFlush(server, gameType);
             }
         }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
             if (pool.getProvisioning().contains(server)) {
@@ -183,32 +265,32 @@ public class AllocationEngine {
         deletionHandleRef[0] = server.getEvents().onDeletion((deletion, handle) -> {
             handle.remove();
             statusHandle.remove();
-            cleanupProvisioningAndMaybeFlush(server, gameType);
+            cleanupProvisioningAndFlush(server, gameType);
         });
+        cancelProvisioningWhenQueueEmpty();
         return true;
     }
 
-    private void cleanupProvisioningAndMaybeFlush(Server server, GameType gameType) {
+    private void cleanupProvisioningAndFlush(Server server, GameType gameType) {
         pool.removeProvisioning(server);
         pool.removeRunning(server);
         pendingAssignments.remove(server.getId());
-        if (!pool.hasProvisioningInProgress()
-                && pool.getProvisioning().isEmpty()
-                && pool.getRunning().isEmpty()) {
-            flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-        }
+        flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
     }
 
     private void provisionNewServer() {
         GameType gameType = pool.getGameType();
-        Blueprint blueprint = strategy.select(gameType);
+        Blueprint blueprint = selectBlueprintForProvisioning(gameType);
         if (blueprint == null) return;
+
+        String blueprintId = blueprint.getId();
 
         // Mark that we are provisioning a server before the async call returns
         pool.incrementProvisioningInProgress();
+        provisioningInProgressByBlueprint.merge(blueprintId, 1, Integer::sum);
 
         var creation = SLS.api.createServer();
-        creation.setBlueprintId(blueprint.getId());
+        creation.setBlueprintId(blueprintId);
 
         SLS.servers.createServer(creation).executeAsync(server -> {
             pool.addProvisioning(server);
@@ -220,6 +302,7 @@ public class AllocationEngine {
                     pool.removeProvisioning(server);
                     pool.addRunning(server);
                     pool.decrementProvisioningInProgress();
+                    decrementBlueprintProvisioningInProgress(blueprintId);
                     attemptAllocation();
                 }
                 if (status == ServerStatus.STOPPING) {
@@ -229,17 +312,15 @@ public class AllocationEngine {
                     pool.removeRunning(server);
                     pendingAssignments.remove(server.getId());
                     pool.decrementProvisioningInProgress();
-                    if (!pool.hasProvisioningInProgress()
-                            && pool.getProvisioning().isEmpty()
-                            && pool.getRunning().isEmpty()) {
-                        flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-                    }
+                    decrementBlueprintProvisioningInProgress(blueprintId);
+                    flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
                 }
             }).timeout(SLS.config.queue.timeout, TimeUnit.SECONDS, () -> {
                 if (pool.getProvisioning().contains(server)) {
                     if (deletionHandleRef[0] != null) deletionHandleRef[0].remove();
                     pool.removeProvisioning(server);
                     pool.decrementProvisioningInProgress();
+                    decrementBlueprintProvisioningInProgress(blueprintId);
                     flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Queue timed out.");
                 }
             });
@@ -250,16 +331,27 @@ public class AllocationEngine {
                 pool.removeRunning(server);
                 pendingAssignments.remove(server.getId());
                 pool.decrementProvisioningInProgress();
-                if (!pool.hasProvisioningInProgress()
-                        && pool.getProvisioning().isEmpty()
-                        && pool.getRunning().isEmpty()) {
-                    flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". No servers could be started.");
-                }
+                decrementBlueprintProvisioningInProgress(blueprintId);
+                flushWaitingWithError("Failed to join " + gameType.getDisplayName() + ". Server failed to start.");
             });
+            cancelProvisioningWhenQueueEmpty();
         }, failure -> {
             pool.decrementProvisioningInProgress();
-            flushWaitingWithError("Failed to start server: " + failure.getMessage());
+            decrementBlueprintProvisioningInProgress(blueprintId);
+            flushWaitingWithApiError("Failed to create server for blueprint " + blueprint.getName(), failure);
         });
+    }
+
+    private int countExistingInstances(String blueprintId) {
+        int count = 0;
+        for (Server server : SLS.servers.getAll()) {
+            if (blueprintId.equals(server.getBlueprintId())) count++;
+        }
+        return count;
+    }
+
+    private void decrementBlueprintProvisioningInProgress(String blueprintId) {
+        provisioningInProgressByBlueprint.merge(blueprintId, 1, (cur, one) -> cur <= 1 ? 0 : cur - 1);
     }
 
     private void flushWaitingWithError(String message) {
@@ -267,6 +359,15 @@ public class AllocationEngine {
         while ((q = pool.waiting().poll()) != null) {
             pool.stopLoading(q.player());
             ProtoMessage.chat().add(MessagePreset.SLS).add(message, NamedTextColor.RED).sendMessage(q.player());
+            ChatPackets.enableActionBarPackets(q.player().getUniqueId());
+        }
+    }
+
+    private void flushWaitingWithApiError(String message, ApiFailure failure) {
+        QueuedPlayer q;
+        while ((q = pool.waiting().poll()) != null) {
+            pool.stopLoading(q.player());
+            Log.requestError(message, failure, q.player());
             ChatPackets.enableActionBarPackets(q.player().getUniqueId());
         }
     }

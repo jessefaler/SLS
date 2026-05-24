@@ -1,7 +1,11 @@
 package net.slimelabs.vsls.log;
 
+import com.protoxon.S4J.exceptions.ApiFailure;
+import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,5 +261,54 @@ public class Log {
     public enum Target {
         PLAYER,
         CONSOLE;
+    }
+
+    // Log request error to user
+    public static void requestError(String message, ApiFailure failure, CommandSource source) {
+        String hint = failure.hint();
+        boolean hasHint = hint != null && !hint.isBlank();
+
+        String executor = "console";
+        if (source instanceof Player player) {
+            executor = player.getUsername();
+        }
+
+        // Log to debug players
+        String extra =
+                "<yellow>Request Error:</yellow>\n" +
+                        "<dark_gray>  - Executor:</dark_gray> <red>" + executor + "</red>\n" +
+                        "<dark_gray>  - Code:</dark_gray> <red>" + failure.code() + "</red>\n" +
+                        "<dark_gray>  - Status:</dark_gray> <red>" + failure.status() + "</red>\n" +
+                        "<dark_gray>  - Detail:</dark_gray> <red>" + failure.detail() + "</red>" +
+                        (hasHint
+                                ? "\n<dark_gray>  - Hint:</dark_gray> <red>" + hint + "</red>"
+                                : "") + "\n";
+
+        Log.target(Log.Target.PLAYER).sendMessage(
+                ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .addMiniMessage(extra)
+        );
+
+        String hover =
+                "<dark_gray>Code:</dark_gray> <red>" + failure.code() + "</red>\n" +
+                        "<dark_gray>Status:</dark_gray> <red>" + failure.status() + "</red>\n" +
+                        "<dark_gray>Detail:</dark_gray> <red>" + failure.detail() + "</red>" +
+                        (hasHint
+                                ? "\n<dark_gray>Hint:</dark_gray> <red>" + hint + "</red>"
+                                : "");
+
+        boolean canSeeDetails = source.hasPermission("sls.command.admin");
+
+        String content = canSeeDetails
+                ? "<hover:show_text:'" + hover + "'>" +
+                "<red>" + message + ": " + failure.info() + "</red>" +
+                "</hover>"
+                : "<red>" + message + ": " + failure.info() + "</red>";
+
+        ProtoMessage.chat()
+                .add(MessagePreset.SLS)
+                .addMiniMessage(content)
+                .sendMessage(source);
     }
 }

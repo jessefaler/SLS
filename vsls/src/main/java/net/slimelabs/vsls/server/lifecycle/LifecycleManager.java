@@ -1,13 +1,14 @@
 package net.slimelabs.vsls.server.lifecycle;
 
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
-import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.server.ServerProvider;
@@ -39,12 +40,16 @@ public class LifecycleManager {
     public void start() {
         SLS.proxy.getEventManager().register(SLS.plugin, this);
 
-        // Run a check on all servers every 5 minutes
+        // Run a scheduled check on all servers
         SLS.proxy.getScheduler()
                 .buildTask(SLS.plugin, () -> {
                     for (Server server : provider.getAll()) {
                         if(server.getStatus() == ServerStatus.RUNNING) {
                             if (server.getPlayerCount() == 0) {
+                                if(!server.isLifecycleEnabled()) {
+                                    // Skip if lifecycle is disabled
+                                    continue;
+                                }
                                 server.getStats().executeAsync(stats -> {
                                     if (stats.getUptime() > Duration.ofMinutes(1).toMillis()
                                             && server.getPlayerCount() == 0
@@ -72,10 +77,10 @@ public class LifecycleManager {
         if (task != null) {
             task.cancel();
             shuttingDown.remove(id);
-            Log.info("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
+            Log.debug("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
         }
 
-        // PreviousServer is the server the player is coming from (null if they just joined the proxy)
+        // Previous Server is the server the player is coming from (null if they just joined the proxy)
         // Check if it is empty if so shut it down assuming it is an SLS managed server
         RegisteredServer previous = event.getPreviousServer();
         if (previous != null) {
@@ -106,6 +111,10 @@ public class LifecycleManager {
                     if (playerCount == 0) {
                         Server server = provider.resolve(id);
                         if (server != null) {
+                            if(!server.isLifecycleEnabled()) {
+                                // Skip if lifecycle is disabled
+                                return;
+                            }
                             if(server.getStatus() == ServerStatus.RUNNING) {
                                 shutdown(server);
                             }
@@ -120,14 +129,14 @@ public class LifecycleManager {
      * Schedule shutdown if not already scheduled
      */
     private void shutdown(Server server) {
-        String id = server.getShortId();
+        String id = server.getCompositeId();
 
         // Prevent duplicate shutdown scheduling
         if (!shuttingDown.add(id)) {
             return;
         }
 
-        Log.info("Lifecycle Manager: Shutting down empty server " + id);
+        Log.debug("Lifecycle Manager: Shutting down empty server " + id);
         server.sendCommand("say [SLS] Server is empty. Shutting down...");
 
         // Stop immediately

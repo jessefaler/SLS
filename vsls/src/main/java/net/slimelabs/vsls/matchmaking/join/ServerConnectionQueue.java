@@ -1,19 +1,26 @@
 package net.slimelabs.vsls.matchmaking.join;
 
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.events.Event;
+import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
+import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.loader.Animation;
+import net.slimelabs.vsls.utils.message.CommandMessageParts;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Queue for a single server: wait until RUNNING then connect all waiting players.
@@ -29,8 +36,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ServerConnectionQueue {
 
     private final Server server;
+    /** If true, this queue called {@link Server#start()} abort boot if everyone leaves while still starting. */
+    private final boolean startServer;
     private final Runnable onClosed;
     private final ConcurrentLinkedQueue<Player> waiting = new ConcurrentLinkedQueue<>();
+    private final Set<java.util.UUID> ignoreBlueprintRules = ConcurrentHashMap.newKeySet();
     private final Animation loadingIcon = new Animation();
     private final AtomicBoolean flushed = new AtomicBoolean(false);
     private final Event.Handle statusHandle;
@@ -42,6 +52,7 @@ public class ServerConnectionQueue {
      */
     public ServerConnectionQueue(Server server, Runnable onClosed, boolean startServer) {
         this.server = server;
+        this.startServer = startServer;
         this.onClosed = onClosed;
         statusHandle = server.getEvents().onStatusChange((status, handle) -> {
             if (status == ServerStatus.RUNNING) {
@@ -64,7 +75,7 @@ public class ServerConnectionQueue {
         if (startServer) {
             server.start().executeAsync(v -> {}, failure -> {
                 removalDeletionHandle();
-                flushWithError("Failed to start server " + server.getName() + ": " + failure.getMessage());
+                flushWithApiError("Failed to start server " + server.getName(), failure);
             });
         }
     }
@@ -78,13 +89,28 @@ public class ServerConnectionQueue {
         statusHandle.remove();
         deletionHandle.remove();
         onClosed.run();
+        int connected = 0;
+        int maxPlayers = getMaxPlayers();
         for (Player p : waiting) {
-            ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(p);
             ChatPackets.enableActionBarPackets(p.getUniqueId());
             loadingIcon.stop(p.getUniqueId());
+            if (!ignoreBlueprintRules.contains(p.getUniqueId()) && maxPlayers > 0 && server.getPlayerCount() + connected >= maxPlayers) {
+                ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .addMiniMessage("<red>Server full:</red> " + CommandMessageParts.server(server)
+                                + " <gray>(max " + maxPlayers + ").</gray>")
+                        .sendMessage(p);
+                ProtoMessage.actionBar()
+                        .add("Server full: " + server.getCompositeId(), NamedTextColor.RED)
+                        .sendMessage(p);
+                continue;
+            }
+            ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(p);
             server.connect(p);
+            connected++;
         }
         waiting.clear();
+        ignoreBlueprintRules.clear();
     }
 
     private void flushWithError(String message) {
@@ -98,10 +124,32 @@ public class ServerConnectionQueue {
             loadingIcon.stop(p.getUniqueId());
         }
         waiting.clear();
+        ignoreBlueprintRules.clear();
+    }
+
+    private void flushWithApiError(String message, ApiFailure failure) {
+        if (!flushed.compareAndSet(false, true)) return;
+        statusHandle.remove();
+        deletionHandle.remove();
+        onClosed.run();
+        for (Player p : waiting) {
+            Log.requestError(message, failure, p);
+            ChatPackets.enableActionBarPackets(p.getUniqueId());
+            loadingIcon.stop(p.getUniqueId());
+        }
+        waiting.clear();
+        ignoreBlueprintRules.clear();
     }
 
     public void enqueue(Player player) {
+        enqueue(player, false);
+    }
+
+    public void enqueue(Player player, boolean ignoreBlueprintRules) {
         waiting.add(player);
+        if (ignoreBlueprintRules) {
+            this.ignoreBlueprintRules.add(player.getUniqueId());
+        }
         loadingIcon.start(player);
         ProtoMessage.chat()
                 .add(MessagePreset.SLS)
@@ -114,15 +162,31 @@ public class ServerConnectionQueue {
         loadingIcon.stop(player.getUniqueId());
         ChatPackets.enableActionBarPackets(player.getUniqueId());
         boolean removed = waiting.remove(player);
+        ignoreBlueprintRules.remove(player.getUniqueId());
         if (removed && waiting.isEmpty()) {
             statusHandle.remove();
             deletionHandle.remove();
             onClosed.run();
+            if (startServer && server.getStatus() == ServerStatus.STARTING) {
+                server.stop().executeAsync(v -> {}, failure ->
+                        Log.warn("Failed to stop server {} after queue emptied: {}", server.getName(), failure.info()));
+            }
         }
         return removed;
     }
 
     public boolean isQueued(Player player) {
         return waiting.contains(player);
+    }
+
+    public int getWaitingCount() {
+        return waiting.size();
+    }
+
+    private int getMaxPlayers() {
+        var blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
+        if (blueprint == null) return 0;
+        MatchmakingMetadata metadata = BlueprintMetadataParser.parse(blueprint);
+        return metadata != null ? metadata.maxPlayers() : 0;
     }
 }

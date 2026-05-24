@@ -3,6 +3,8 @@ package system
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +17,9 @@ import (
 
 // Red color for log formatting
 var Red = color.New(color.FgHiRed).SprintFunc()
+
+// Blue color for log formatting
+var Blue = color.New(color.FgHiBlue).SprintFunc()
 
 var (
 	cr  = []byte(" \r")
@@ -34,6 +39,15 @@ func FirstNotEmpty(v ...string) string {
 		}
 	}
 	return ""
+}
+
+// Generates a simple encoded string
+func GenerateKey() (string, error) {
+	b := make([]byte, 32) // 256 bits
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func MustInt(v string) int {
@@ -70,11 +84,11 @@ func ScanReader(r io.Reader, callback func(line []byte)) error {
 			// Read the line and write it to the buffer.
 			line, isPrefix, err = br.ReadLine()
 
-		// Certain games like Minecraft output absolutely random carriage returns in the output seemingly
-		// in line with that it thinks is the terminal size. Those returns break a lot of output handling,
-		// so we'll just replace them with proper new-lines and then split it later and send each line as
-		// its own event in the response.
-		line = bytes.ReplaceAll(line, cr, crr)
+			// Certain games like Minecraft output absolutely random carriage returns in the output seemingly
+			// in line with that it thinks is the terminal size. Those returns break a lot of output handling,
+			// so we'll just replace them with proper new-lines and then split it later and send each line as
+			// its own event in the response.
+			line = bytes.ReplaceAll(line, cr, crr)
 			ns := buf.Len() + len(line)
 
 			// If the length of the line value and the current value in the buffer will

@@ -3,7 +3,6 @@ package net.slimelabs.vsls.utils;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.viaversion.viaversion.api.Via;
 import com.viaversion.viaversion.api.platform.ProtocolDetectorService;
-import com.viaversion.viaversion.api.platform.ViaServerProxyPlatform;
 import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
@@ -23,7 +22,7 @@ public class ViaVersion {
      * <p>
      * If a server is not registered immediately, players joining with a different
      * Minecraft version may receive an "Outdated server" error. This happens because
-     * Velocity only pings servers at intervals (by default once every 60 seconds),
+     * ViaVersion only pings servers at intervals (by default once every 60 seconds),
      * and ViaVersion does not know the server's protocol version until that ping occurs.
      * <p>
      * If the ViaVersion plugin is not present on the proxy this will do nothing and return
@@ -34,9 +33,9 @@ public class ViaVersion {
         if(!isUsingViaVersion()) return; // ViaVersion is not in use on the proxy so return
         ProtocolVersion protocolId = ProtocolVersion.getClosest(server.getVersion()); // Get Mapping
         if(protocolId == null) {
-            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getShortId());
+            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getCompositeId());
         } else {
-            getDetector().setProtocolVersion(server.getShortId(), protocolId.getVersion()); // Register with ViaVersion
+            getDetector().setProtocolVersion(server.getCompositeId(), protocolId.getVersion()); // Register with ViaVersion
         }
     }
 

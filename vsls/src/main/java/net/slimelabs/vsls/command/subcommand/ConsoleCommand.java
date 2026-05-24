@@ -85,12 +85,7 @@ public class ConsoleCommand {
                                     .sendMessage(source);
                             // Try multiple times with increasing delays and log line counts
                             tryCaptureOutput(server, finalCommand, source, 0);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to send the command to server " + id + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to send command to server " + id, failure, source));
                     } else {
                         // No such server exists
                         ProtoMessage.chat()

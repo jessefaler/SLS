@@ -5,56 +5,95 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
-  # Go modules
+  # Go modules - protocube
   - package-ecosystem: gomod
     directory: /protocube
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Go modules - slimepacks
   - package-ecosystem: gomod
     directory: /slimepacks
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Go modules - daemon
   - package-ecosystem: gomod
     directory: /daemon
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
-  # Maven projects
+  # Maven - S4J
   - package-ecosystem: maven
     directory: /S4J
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Maven - vsls
   - package-ecosystem: maven
     directory: /vsls
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
-  
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # Maven root
   - package-ecosystem: maven
     directory: /
     schedule:
       interval: weekly
+    target-branch: dev
     commit-message:
       prefix: "chore"
       include: "scope"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"

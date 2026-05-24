@@ -44,7 +44,7 @@ func ConfigureDocker(ctx context.Context) error {
 			return err
 		}
 
-		log.Info("creating missing sls0 interface, this could take a few seconds...")
+		log.Info("creating missing sls interface, this could take a few seconds...")
 		if err := createDockerNetwork(ctx, cli); err != nil {
 			return err
 		}

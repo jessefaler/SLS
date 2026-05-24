@@ -15,11 +15,11 @@ import (
 	"protoxon.com/sls/daemon/api/router"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
+	"protoxon.com/sls/daemon/environment/docker"
 	"protoxon.com/sls/daemon/internal/database"
 	"protoxon.com/sls/daemon/internal/message"
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/server"
-	"protoxon.com/sls/daemon/system"
 )
 
 func Execute() {
@@ -32,19 +32,24 @@ func Execute() {
 func run(cmd *cobra.Command, _ []string) {
 	// The config and logger are initialized in command.go
 
-	// Ensure the program is running with sufficient capabilities.
-	// CAP_SYS_ADMIN is required to perform mount operations.
-	admin, err := system.HasCapSysAdmin()
-	if err != nil {
-		log.Fatalf("Failed to check CAP_SYS_ADMIN capability: %v", err)
-	}
-	if !admin {
-		log.Fatal("Insufficient privileges: this program requires the CAP_SYS_ADMIN capability to run.")
-	}
-
 	log.Debug("running in debug mode")
 	log.WithField("config_file", config.Path).Info("loading configuration from file")
 	cfg := config.Get()
+
+	if err := config.EnsureSLSUser(); err != nil {
+		log.WithField("error", err).Fatal("failed to create sls system user")
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"username": config.Get().System.Username,
+		"uid":      config.Get().System.User.Uid,
+		"gid":      config.Get().System.User.Gid,
+	}).Info("configured system user successfully")
+	if err := config.EnableLogRotation(); err != nil {
+		log.WithField("error", err).Fatal("failed to configure log rotation on the system")
+		return
+	}
 
 	// =========================================================
 	// create a client for making requests to the remote api
@@ -69,7 +74,7 @@ func run(cmd *cobra.Command, _ []string) {
 	})
 
 	// Initialize the sqlite database
-	err = database.Initialize()
+	err := database.Initialize()
 	if err != nil {
 		log.WithError(err).Fatal("failed to initialize database")
 	}
@@ -78,6 +83,8 @@ func run(cmd *cobra.Command, _ []string) {
 	if err := environment.ConfigureDocker(cmd.Context()); err != nil {
 		log.WithError(err).Fatal("failed to configure docker environment")
 	}
+
+	docker.StartScheduledImagePulls(cmd.Context())
 
 	// =========================================================
 	// Configure and run the api

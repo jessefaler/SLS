@@ -130,4 +130,14 @@ public interface ServerCreationAction extends SLSAction<ClientServer> {
      */
     ServerCreationAction setImage(String image);
 
+    /**
+     * Adds or replaces a single container environment variable override (merged into blueprint {@code state.env}).
+     * Override keys replace blueprint keys on collision.
+     *
+     * @param key   variable name
+     * @param value variable value
+     * @return this instance for chaining
+     */
+    ServerCreationAction putEnv(String key, String value);
+
 }

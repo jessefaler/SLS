@@ -4,6 +4,7 @@ import com.protoxon.S4J.client.entities.impl.SLSClientImpl;
 import com.protoxon.S4J.entities.Blueprint;
 import org.json.JSONObject;
 
+import java.util.Collections;
 import java.util.Map;
 
 public class BlueprintImpl implements Blueprint {
@@ -53,6 +54,9 @@ public class BlueprintImpl implements Blueprint {
     @Override
     public Map<String, Object> getAnnotations() {
         JSONObject obj = json.optJSONObject("annotations");
+        if (obj == null) {
+            return Collections.emptyMap();
+        }
         return obj.toMap();
     }
 

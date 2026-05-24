@@ -9,6 +9,7 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"protoxon.com/sls/daemon/api/router/httperror"
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/server"
 )
@@ -55,7 +56,7 @@ func CaptureErrors() gin.HandlerFunc {
 			status = c.Writer.Status()
 		}
 		if err.Error() == io.EOF.Error() {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "The data passed in the request was not in a parsable format. Please try again."})
+			httperror.AbortWithJSON(c, http.StatusBadRequest, "empty or unreadable request body", "The data passed in the request was not in a parsable format. Please try again.")
 			return
 		}
 		captured := NewError(err.Err)
@@ -124,7 +125,7 @@ func ServerExists(manager *server.Manager) gin.HandlerFunc {
 			})
 		}
 		if s == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("server_id", s.ID()))
@@ -139,17 +140,13 @@ func RequireAuthorization(verify func(token string) bool) gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Header("WWW-Authenticate", "Bearer")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "The required authorization header was not present in the request.",
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "The required authorization header was not present in the request.")
 			logUnauthorisedAccess("The required authorization header was not present in the request.", c, "")
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header format.",
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "Invalid authorization header format.")
 			logUnauthorisedAccess("Invalid authorization header format", c, "")
 			return
 		}
@@ -158,10 +155,7 @@ func RequireAuthorization(verify func(token string) bool) gin.HandlerFunc {
 
 		valid := verify(tokenStr)
 		if !valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":  "You are not authorized to access this endpoint.",
-				"reason": "invalid token",
-			})
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "invalid token", "You are not authorized to access this endpoint.")
 			logUnauthorisedAccess("Invalid token", c, tokenStr)
 			return
 		}

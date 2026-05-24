@@ -2,25 +2,28 @@ package config
 
 import (
 	"crypto/tls"
-	_ "embed"
 	"fmt"
 	log2 "log"
 	"os"
+	"os/exec"
+	"os/user"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
+	"text/template"
 
 	"emperror.dev/errors"
+	"github.com/acobaugh/osrelease"
 	"github.com/apex/log"
+	"github.com/creasty/defaults"
 	"github.com/google/uuid"
 	"github.com/mitchellh/colorstring"
 	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v3"
+	"protoxon.com/sls/daemon/system"
 )
-
-//go:embed config.yml
-var defaultConfig []byte
 
 var Path = "/etc/sls/daemon/config.yml"
 
@@ -38,9 +41,9 @@ type Configuration struct {
 	// if the debug flag is passed through the command line arguments.
 	Debug bool `yaml:"debug"`
 
-	Location string `yaml:"location"`
+	Location string `yaml:"location" default:"main"`
 
-	Name string `default:"SLS" yaml:"name"`
+	Name string `yaml:"name" default:"SLS"`
 
 	System SystemConfiguration `yaml:"system"`
 
@@ -51,7 +54,7 @@ type Configuration struct {
 	Allocations []Allocation `json:"allocations" yaml:"allocations"`
 
 	// Defines messages throttling configurations for server processes.
-	Throttles ConsoleThrottles
+	Throttles ConsoleThrottles `json:"throttles" yaml:"throttles"`
 
 	// The remote api where the master is running that this daemon should connect too
 	// to collect data and send events.
@@ -70,30 +73,9 @@ type Configuration struct {
 	AllowCORSPrivateNetwork bool `json:"allow_cors_private_network" yaml:"allow_cors_private_network"`
 }
 
-type Backups struct {
-	// WriteLimit imposes a Disk I/O write limit on backups to the disk, this affects all
-	// backup drivers as the archiver must first write the file to the disk in order to
-	// upload it to any external storage provider.
-	//
-	// If the value is less than 1, the write speed is unlimited,
-	// if the value is greater than 0, the write speed is the value in MiB/s.
-	//
-	// Defaults to 0 (unlimited)
-	WriteLimit int `default:"0" yaml:"write_limit"`
-
-	// CompressionLevel determines how much backups created by wings should be compressed.
-	//
-	// "none" -> no compression will be applied
-	// "best_speed" -> uses gzip level 1 for fast speed
-	// "best_compression" -> uses gzip level 9 for minimal disk space useage
-	//
-	// Defaults to "best_speed" (level 1)
-	CompressionLevel string `default:"best_speed" yaml:"compression_level"`
-}
-
 type RemoteApi struct {
-	Url   string `json:"-" yaml:"url"`
-	Token string `json:"-" yaml:"token"`
+	Url   string `json:"-" yaml:"url" default:"https://protocube.sls.net:5620"`
+	Token string `json:"-" yaml:"token" default:"API_KEY"`
 }
 
 type ConsoleThrottles struct {
@@ -111,27 +93,27 @@ type ConsoleThrottles struct {
 }
 
 type Allocation struct {
-	Address         string `yaml:"address"`
-	Alias           string `yaml:"alias"`
+	Address         string `yaml:"address" default:"0.0.0.0"`
+	Alias           string `yaml:"alias" default:"127.0.0.1"`
 	ForceOutgoingIP bool   `yaml:"force_outgoing_ip"`
-	Ports           string `yaml:"ports"`
+	Ports           string `yaml:"ports" default:"40000-45000"`
 }
 
 // ApiConfiguration defines the configuration for the API server
 type ApiConfiguration struct {
-	Url string `json:"-" yaml:"url"`
+	Url string `json:"-" yaml:"url" default:"https://daemon.sls.net:5585"`
 
-	// The interface that the messages proto should bind to.
-	Host string `default:"0.0.0.0" yaml:"host"`
+	// The interface that the daemon should bind to.
+	Host string `yaml:"host" default:"0.0.0.0"`
 
-	// The port that the messages proto should bind to.
-	Port int `default:"8080" yaml:"port"`
+	// The port that the daemon should bind to.
+	Port int `yaml:"port" default:"5585"`
 
 	// TSL configuration for the daemon.
 	Tls struct {
-		Enabled         bool   `default:"true" yaml:"enabled"`
-		CertificateFile string `json:"cert" yaml:"cert"`
-		KeyFile         string `json:"key" yaml:"key"`
+		Enabled         *bool  `yaml:"enabled" default:"true"`
+		CertificateFile string `json:"cert" yaml:"cert" default:"/etc/ssl/certs/sls.crt"`
+		KeyFile         string `json:"key" yaml:"key" default:"/etc/ssl/private/sls.key"`
 	}
 }
 
@@ -141,29 +123,33 @@ func (sc *SystemConfiguration) GetStatesPath() string {
 }
 
 type SystemConfiguration struct {
-	RootDirectory string `default:"/var/lib/sls" yaml:"root_directory"`
+	RootDirectory string `yaml:"root_directory" default:"/var/lib/sls"`
 
-	LogDirectory string `default:"/var/log/sls" yaml:"log_directory"`
+	LogDirectory string `yaml:"log_directory" default:"/var/log/sls"`
 
 	// AllowedMounts enumerates host paths that can be exposed to containers as additional
 	// bind mounts. Custom mounts supplied by servers must live within one of these paths.
-	AllowedMounts []string `yaml:"allowed_mounts"`
+	AllowedMounts []string `yaml:"allowed_mounts" default:"[]"`
 
 	// TmpDirectory specifies where temporary files for daemons installation processes
 	// should be created. This supports environments running docker-in-docker.
-	TmpDirectory string `default:"/tmp/sls/daemon" json:"-" yaml:"tmp_directory"`
+	TmpDirectory string `json:"-" yaml:"tmp_directory" default:"/tmp/sls/daemon"`
 
 	Timezone string `yaml:"timezone"`
 
+	// If set to false the daemon will not attempt to write a log rotate configuration to the disk
+	// when it boots and one is not detected.
+	EnableLogRotate bool `yaml:"enable_log_rotate" default:"true"`
+
 	// The amount of time in seconds that can elapse before a server's disk space calculation is
 	// considered stale and a re-check should occur. DANGER: setting this value too low can seriously
-	// impact system performance and cause massive I/O bottlenecks and high CPU usage for the Wings
+	// impact system performance and cause massive I/O bottlenecks and high CPU usage for the daemon
 	// process.
 	//
 	// Set to 0 to disable disk checking entirely. This will always return 0 for the disk space used
 	// by a server and should only be set in extreme scenarios where performance is critical and
 	// disk usage is not a concern.
-	DiskCheckInterval int64 `default:"150" yaml:"disk_check_interval"`
+	DiskCheckInterval int64 `yaml:"disk_check_interval" default:"150"`
 
 	// Definitions for the user that gets created to ensure that we can quickly access
 	// this information without constantly having to do a system lookup.
@@ -182,18 +168,21 @@ type SystemConfiguration struct {
 			ContainerGID int `yaml:"container_gid" default:"0"`
 		} `yaml:"rootless"`
 
-		Uid int `default:"988" yaml:"uid"`
-		Gid int `default:"988" yaml:"gid"`
+		Uid int `yaml:"uid" default:"988"`
+		Gid int `yaml:"gid" default:"988"`
 	} `yaml:"user"`
 
-	OpenatMode string `default:"auto" yaml:"openat_mode"`
+	OpenatMode string `yaml:"openat_mode" default:"auto"`
+
+	// The user that should own all of the server files, and be used for containers.
+	Username string `yaml:"username" default:"sls"`
 
 	// Directory where the server data is stored at.
-	Data string `default:"/var/lib/sls/data" json:"-" yaml:"data"`
+	Data string `json:"-" yaml:"data" default:"/var/lib/sls/data"`
 	// Directory where state volumes are stored
-	Volumes string `default:"/var/lib/sls/volumes" json:"-" yaml:"volumes"`
+	Volumes string `json:"-" yaml:"volumes" default:"/var/lib/sls/volumes"`
 	// Directory where installed servers are stored
-	Servers string `default:"/var/lib/sls/servers" json:"-" yaml:"servers"`
+	Servers string `json:"-" yaml:"servers" default:"/var/lib/sls/servers"`
 }
 
 // ConfigureDirectories ensures that all the system directories exist on the
@@ -240,6 +229,138 @@ func ConfigureDirectories() error {
 	}
 
 	return nil
+}
+
+// EnsureSLSUser ensures that the SLS core user exists on the
+// system. This user will be the owner of all data in the root data directory
+// and is used as the user within containers. If files are not owned by this
+// user there will be issues with permissions on Docker mount points.
+//
+// This function IS NOT thread safe and should only be called in the main thread
+// when the application is booting.
+func EnsureSLSUser() error {
+	sysName, err := getSystemName()
+	if err != nil {
+		return err
+	}
+
+	// Our way of detecting if sls is running inside of Docker.
+	if sysName == "distroless" {
+		config.System.Username = system.FirstNotEmpty(os.Getenv("SLS_USERNAME"), "sls")
+		config.System.User.Uid = system.MustInt(system.FirstNotEmpty(os.Getenv("SLS_UID"), "988"))
+		config.System.User.Gid = system.MustInt(system.FirstNotEmpty(os.Getenv("SLS_GID"), "988"))
+		return nil
+	}
+
+	if config.System.User.Rootless.Enabled {
+		log.Info("rootless mode is enabled, skipping user creation...")
+		u, err := user.Current()
+		if err != nil {
+			return err
+		}
+		config.System.Username = u.Username
+		config.System.User.Uid = system.MustInt(u.Uid)
+		config.System.User.Gid = system.MustInt(u.Gid)
+		return nil
+	}
+
+	log.WithField("username", config.System.Username).Info("checking for sls system user")
+	u, err := user.Lookup(config.System.Username)
+	// If an error is returned but it isn't the unknown user error just abort
+	// the process entirely. If we did find a user, return it immediately.
+	if err != nil {
+		if _, ok := err.(user.UnknownUserError); !ok {
+			return err
+		}
+	} else {
+		config.System.User.Uid = system.MustInt(u.Uid)
+		config.System.User.Gid = system.MustInt(u.Gid)
+		return nil
+	}
+
+	command := fmt.Sprintf("useradd --system --no-create-home --shell /usr/sbin/nologin %s", config.System.Username)
+	// Alpine Linux is the only OS we currently support that doesn't work with the useradd
+	// command, so in those cases we just modify the command a bit to work as expected.
+	if strings.HasPrefix(sysName, "alpine") {
+		command = fmt.Sprintf("adduser -S -D -H -G %[1]s -s /sbin/nologin %[1]s", config.System.Username)
+		// We have to create the group first on Alpine, so do that here before continuing on
+		// to the user creation process.
+		if _, err := exec.Command("addgroup", "-S", config.System.Username).Output(); err != nil {
+			return err
+		}
+	}
+
+	split := strings.Split(command, " ")
+	if _, err := exec.Command(split[0], split[1:]...).Output(); err != nil {
+		return err
+	}
+	u, err = user.Lookup(config.System.Username)
+	if err != nil {
+		return err
+	}
+	config.System.User.Uid = system.MustInt(u.Uid)
+	config.System.User.Gid = system.MustInt(u.Gid)
+	return nil
+}
+
+// EnableLogRotation writes a logrotate file for sls to the system logrotate
+// configuration directory if one exists and a logrotate file is not found. This
+// allows us to basically automate away the log rotation for most installs, but
+// also enable users to make modifications on their own.
+//
+// This function IS NOT thread-safe.
+func EnableLogRotation() error {
+	if !config.System.EnableLogRotate {
+		log.Info("skipping log rotate configuration, disabled in sls config file")
+		return nil
+	}
+
+	if st, err := os.Stat("/etc/logrotate.d"); err != nil && !os.IsNotExist(err) {
+		return err
+	} else if (err != nil && os.IsNotExist(err)) || !st.IsDir() {
+		return nil
+	}
+	if _, err := os.Stat("/etc/logrotate.d/sls"); err == nil || !os.IsNotExist(err) {
+		return err
+	}
+
+	log.Info("no log rotation configuration found: adding file now")
+	// If we've gotten to this point it means the logrotate directory exists on the system
+	// but there is not a file for sls already. In that case, let us write a new file to
+	// it so files can be rotated easily.
+	f, err := os.Create("/etc/logrotate.d/sls")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	t, err := template.New("logrotate").Parse(`{{.LogDirectory}}/sls.log {
+    size 10M
+    compress
+    delaycompress
+    dateext
+    maxage 7
+    missingok
+    notifempty
+    postrotate
+        /usr/bin/systemctl kill -s HUP sls.service >/dev/null 2>&1 || true
+    endscript
+}`)
+	if err != nil {
+		return err
+	}
+
+	return errors.Wrap(t.Execute(f, config.System), "config: failed to write logrotate to disk")
+}
+
+// Gets the system release name.
+func getSystemName() (string, error) {
+	// use osrelease to get release version and ID
+	release, err := osrelease.Read()
+	if err != nil {
+		return "", err
+	}
+	return release["ID"], nil
 }
 
 var (
@@ -310,6 +431,24 @@ func InitConfig() error {
 	return nil
 }
 
+func applyDefaults(c *Configuration) error {
+	if err := defaults.Set(c); err != nil {
+		return err
+	}
+
+	// If no allocations are defined, create a default one
+	// we must manually set the defaults for the allocation struct
+	// as creasty/defaults does not support this out of the box for slices
+	if len(c.Allocations) == 0 {
+		c.Allocations = []Allocation{{}}
+		if err := defaults.Set(&c.Allocations[0]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // RemoteQueryConfiguration defines the configuration settings for remote requests
 // from the daemon1 to the Protocube.
 type RemoteQueryConfiguration struct {
@@ -318,7 +457,7 @@ type RemoteQueryConfiguration struct {
 	// are taking longer than 30 seconds to complete it is likely a performance issue that
 	// should be resolved on Protocube, and not something that should be resolved by upping this
 	// number.
-	Timeout int `default:"30" yaml:"timeout"`
+	Timeout int `yaml:"timeout" default:"30"`
 
 	// The number of servers to load in a single request to protocube API when booting the
 	// Daemon instance. A single request is initially made to Protocube to get this number
@@ -329,7 +468,7 @@ type RemoteQueryConfiguration struct {
 	// memory limits on your Protocube instance. In the grand scheme of things 4 requests for
 	// 50 servers is likely just as quick as two for 100 or one for 400, and will certainly
 	// be less likely to cause performance issues on Protocube.
-	BootServersPerPage int `default:"50" yaml:"boot_servers_per_page"`
+	BootServersPerPage int `yaml:"boot_servers_per_page" default:"50"`
 }
 
 // LoadConfigFromFile reads the configuration from the provided file and stores it in the
@@ -346,9 +485,19 @@ func loadConfigFromFile(path string) error {
 		return err
 	}
 
+	// Always apply defaults after decoding so missing fields get filled in.
+	// This means removing a field from the YAML will cause the default to be used.
+	if err := applyDefaults(&config); err != nil {
+		return err
+	}
+
 	// Override token values with environment variables if present
 	if envToken := os.Getenv("SLS_TOKEN"); envToken != "" {
 		config.RemoteApi.Token = envToken
+	}
+
+	if err := ValidateImagePullPolicy(&config.Docker); err != nil {
+		return errors.Wrap(err, "config: invalid docker settings")
 	}
 
 	// Store this configuration in the global state.
@@ -377,7 +526,7 @@ func writeDefaultConfig(path string) error {
 	}
 
 	var c Configuration
-	if err := yaml.Unmarshal(defaultConfig, &c); err != nil {
+	if err := applyDefaults(&c); err != nil {
 		return err
 	}
 	c.Uuid = uuid.New().String()

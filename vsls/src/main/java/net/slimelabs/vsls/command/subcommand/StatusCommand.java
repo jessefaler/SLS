@@ -96,11 +96,7 @@ public class StatusCommand {
                                 .add("Remote status: ", NamedTextColor.DARK_AQUA)
                                 .add(serverStatus.getStatus(), NamedTextColor.GRAY)
                                 .sendMessage(source);
-                    }, failure -> {
-                        ProtoMessage.chat()
-                                .add("Failed to fetch status from remote api. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                .sendMessage(source);
-                    });
+                    }, failure -> Log.requestError("Failed to fetch remote status for " + id, failure, source));
                     return 0;
                 });
     }
