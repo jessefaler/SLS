@@ -27,7 +27,7 @@ require (
 	github.com/icza/dyno v0.0.0-20230330125955-09f820a8d9c0
 	github.com/klauspost/compress v1.18.6
 	github.com/klauspost/pgzip v1.2.6
-	github.com/magiconair/properties v1.8.7
+	github.com/magiconair/properties v1.8.10
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mholt/archives v0.1.5
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
