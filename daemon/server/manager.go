@@ -19,6 +19,7 @@ import (
 	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/environment/docker"
+	"protoxon.com/sls/daemon/internal/overlay"
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/remote"
 	"protoxon.com/sls/daemon/server/filesystem"
@@ -107,6 +108,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	}()
 
 	s.save = req.Save
+	s.Config().SkipInstallScripts = req.SkipInstallScript
 	s.Remove = func() {
 		m.Remove(s.id)
 	}
@@ -127,8 +129,22 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	// Get the path of the base server folder
 	serverFolder := filepath.Join(config.Get().System.Servers, req.ServerFolder)
 
+	// If the server does not have an installation script or is configured to skip it check to ensure
+	// that the server folder exists before proceeding that way if it doesn't exist we can send an error back to the user
+	if !req.HasInstallScript || req.SkipInstallScript {
+		if exists, err := overlay.DirExists(serverFolder); err != nil {
+			return nil, errors.Wrapf(err, "failed to check server folder: %s", serverFolder)
+		} else if !exists {
+			return nil, errors.Wrapf(ErrInvalidServerConfig,
+				"server folder does not exist: either add an install script to your software configuration or manually create the server folder. path=%s", serverFolder)
+		}
+	}
+
+	// Create the path to the servers volume
+	volume := filepath.Join(config.Get().System.Data, s.id)
+
 	// create the overlay volume
-	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay2", s.id), serverFolder)
+	ov, err := filesystem.NewOverlayVolume(filepath.Join(config.Get().System.RootDirectory, "internal", "overlay", s.id), volume, serverFolder)
 	if err != nil {
 		return nil, err
 	}
@@ -149,9 +165,6 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 		s.cfg.EnvVars = envVars
 	}
 
-	// Create the path to the servers volume
-	volume := filepath.Join(config.Get().System.Data, s.id)
-
 	// Set volume mounts from the state configuration
 	volumesRoot := filepath.Join(config.Get().System.Volumes)
 	volumeMounts := make([]Mount, 0, len(req.State.Volumes))
@@ -168,6 +181,11 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			}
 			if !filesystem.WithinPath(absResolved, volumesRoot) {
 				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, v.Source, volumesRoot)
+			}
+			if exists, err := overlay.DirExists(absResolved); err != nil {
+				return nil, errors.Wrapf(err, "volume '%s': failed to check source path: %s", v.Name, absResolved)
+			} else if !exists {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': source path does not exist: %s", v.Name, absResolved)
 			}
 			target := filepath.Clean(v.Target)
 			if target == "." {
@@ -214,6 +232,11 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			if !filesystem.WithinPath(absResolved, volumesRoot) {
 				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': invalid source path: %s source path must be under %s", v.Name, resolved, volumesRoot)
 			}
+			if exists, err := overlay.DirExists(absResolved); err != nil {
+				return nil, errors.Wrapf(err, "volume '%s': failed to check source path: %s", v.Name, absResolved)
+			} else if !exists {
+				return nil, errors.Wrapf(ErrInvalidServerConfig, "volume '%s': source path does not exist: %s", v.Name, absResolved)
+			}
 			sources = append(sources, absResolved)
 		}
 
@@ -224,13 +247,14 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 			continue
 		}
 
-		// Otherwise, create a new overlay
+		// create a new overlay
 		name := system.PathId(target)
 		overlayTarget := filepath.Join(volume, strings.TrimPrefix(cleanTarget, "/"))
 		ov.NewOverlay(name, sources, overlayTarget)
 	}
 
-	// Copy files into the server filesystem at start (source:destination entries; applied after overlay mount)
+	// Set files to copy into the server filesystem
+	// These will be copied when the server starts
 	s.cfg.Copy = req.State.Copy
 
 	// create the filesystem
@@ -251,6 +275,7 @@ func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, e
 	envCfg := environment.NewConfiguration(settings, s.GetEnvironmentVariables())
 	meta := docker.Metadata{
 		Image: s.Config().Container.Image,
+		Stop:  req.ProcessConfiguration.Stop,
 	}
 
 	env, err := docker.New(s.id, &meta, envCfg)
@@ -406,29 +431,26 @@ func (m *Manager) LoadServers(ctx context.Context) error {
 
 			s.Log().Info("configuring server environment and restoring to previous state")
 			// Use a timed context here to avoid booting issues where Docker hangs for a
-			// specific container that would cause Wings to be un-bootable until the entire
+			// specific container that would cause the daemon to be un-bootable until the entire
 			// machine is rebooted. It is much better for us to just have a single failed
 			// server instance than an entire offline node.
-			//
-			// @see https://github.com/pterodactyl/panel/issues/2475
-			// @see https://github.com/pterodactyl/panel/issues/3358
 			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 			defer cancel()
 
 			r, err := s.Environment.IsRunning(ctx)
-			// We ignore missing containers because we don't want to actually block booting of wings at this
-			// point. If we didn't do this, and you pruned all the images and then started wings you could
-			// end up waiting a long period of time for all the images to be re-pulled on Wings boot rather
+			// We ignore missing containers because we don't want to actually block booting of the daemon at this
+			// point. If we didn't do this, and you pruned all the images and then started the daemon you could
+			// end up waiting a long period of time for all the images to be re-pulled on the daemon boot rather
 			// than when the server itself is started.
 			if err != nil && !client.IsErrNotFound(err) {
 				s.Log().WithField("error", err).Error("error checking server environment status")
 			}
 
-			// Check if the server was previously running. If so, attempt to start the server now so that Wings
+			// Check if the server was previously running. If so, attempt to start the server now so that the daemon
 			// can pick up where it left off. If the environment does not exist at all, just create it and then allow
 			// the normal flow to execute.
 			//
-			// This does mean that booting wings after a catastrophic machine crash and wiping out the Docker images
+			// This does mean that booting the daemon after a catastrophic machine crash and wiping out the Docker images
 			// as a result will result in a slow boot.
 			if !r && (st == environment.ProcessRunningState || st == environment.ProcessStartingState) {
 				if err := s.HandlePowerAction(PowerActionStart); err != nil {
@@ -436,8 +458,8 @@ func (m *Manager) LoadServers(ctx context.Context) error {
 				}
 			} else if r || (!r && s.IsRunning()) {
 				// If the server is currently running on Docker, mark the process as being in that state.
-				// We never want to stop an instance that is currently running external from Wings since
-				// that is a good way of keeping things running even if Wings gets in a very corrupted state.
+				// We never want to stop an instance that is currently running external from the daemon since
+				// that is a good way of keeping things running even if the daemon gets in a very corrupted state.
 				//
 				// This will also validate that a server process is running if the last tracked state we have
 				// is that it was running, but we see that the container process is not currently running.

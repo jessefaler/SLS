@@ -18,5 +18,5 @@ type Resources struct {
 	NodeManager       *node.Manager
 	LoadBalancer      *balancer.Provider
 	Client            *client.Client
-	VerifyToken       func(token string, keyType auth.KeyType) (bool, error)
+	KeyService        *auth.KeyService
 }

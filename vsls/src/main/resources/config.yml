@@ -9,5 +9,5 @@ queue:
 # Handles automatically stopping empty servers
 lifecycle:
   enabled: true       # Whether to enable server lifecycle management
-  check_interval: 5   # The amount of time in minutes to run a check on all servers
+  check_interval: 2   # The amount of time in minutes to run a check on all servers
   stop_delay: 20      # The amount of time in seconds to wait before stopping an empty server

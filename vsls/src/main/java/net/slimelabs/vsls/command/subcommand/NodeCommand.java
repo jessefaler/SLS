@@ -7,6 +7,7 @@ import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.Id;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -114,23 +115,10 @@ public class NodeCommand {
                                 message.append("<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>");
 
                                 ProtoMessage.chat().addMiniMessage(message.toString()).sendMessage(source);
-                            }, failure -> {
-                                ProtoMessage.chat()
-                                        .add(MessagePreset.SLS)
-                                        .add("Failed to get system information for node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                        .sendMessage(source);
-                            });
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to get node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                            }, failure -> Log.requestError("Failed to get system information for node " + Id.shortId(id, 8), failure, source));
+                        }, failure -> Log.requestError("Failed to get node " + Id.shortId(id, 8), failure, source));
                     }, failure -> {
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                .sendMessage(source);
+                        Log.requestError("Failed to fetch node ids", failure, source);
                         return;
                     });
                     return 0;
@@ -153,17 +141,9 @@ public class NodeCommand {
                                     .add(MessagePreset.SLS)
                                     .add("Drained: ", NamedTextColor.DARK_GRAY).add(String.valueOf(clientNode.getDrained()), NamedTextColor.RED)
                                     .sendMessage(source);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to get node " + Id.shortId(id, 8) + " reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to get node " + Id.shortId(id, 8), failure, source));
                     }, failure -> {
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                .sendMessage(source);
+                        Log.requestError("Failed to fetch node ids", failure, source);
                         return;
                     });
                     return 0;
@@ -189,23 +169,10 @@ public class NodeCommand {
                                         .add(MessagePreset.SLS)
                                         .add("Set drained to: ", NamedTextColor.DARK_GRAY).add(String.valueOf(value), NamedTextColor.RED)
                                         .sendMessage(source);
-                            }, failure -> {
-                                ProtoMessage.chat()
-                                        .add(MessagePreset.SLS)
-                                        .add("Failed to set node " + Id.shortId(id, 8) + " to drained. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                        .sendMessage(source);
-                            });
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add(MessagePreset.SLS)
-                                    .add("Failed to get node " + Id.shortId(id, 8) + " Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                            }, failure -> Log.requestError("Failed to set node " + Id.shortId(id, 8) + " to drained", failure, source));
+                        }, failure -> Log.requestError("Failed to get node " + Id.shortId(id, 8), failure, source));
                     }, failure -> {
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                .sendMessage(source);
+                        Log.requestError("Failed to fetch node ids", failure, source);
                         return;
                     });
                     return 0;

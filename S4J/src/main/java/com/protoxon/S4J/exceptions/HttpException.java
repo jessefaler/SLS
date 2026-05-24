@@ -1,86 +1,14 @@
-/*
- *    Copyright 2021-2022 Matt Malec, and the Pterodactyl4J contributors
- *
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
- *
- *        http://www.apache.org/licenses/LICENSE-2.0
- *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
- */
+
 
 package com.protoxon.S4J.exceptions;
 
-import com.protoxon.S4J.requests.Response;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-public class HttpException extends SLSException {
+/**
+ * Generic HTTP client failure without a structured API body (e.g. connection errors).
+ * <p>When the API returns a JSON error body, failures typically use a more specific {@link ApiError} subtype.
+ */
+public class HttpException extends ApiError {
 
 	public HttpException(String message) {
-		super(message);
-	}
-
-	private static String create(String text, Response response) {
-		if (response.isEmpty()) return text;
-		try {
-			return formatMessage(text, response.getObject());
-		} catch (Exception e) {
-			// If we can't parse the response as JSON, return the original message with raw response
-			try {
-				String rawResponse = response.getRawObject();
-				if (rawResponse != null && !rawResponse.trim().isEmpty()) {
-					return text + "\n\nResponse body: " + rawResponse;
-				}
-			} catch (Exception ignored) {
-				// If we can't even get the raw response, just return the original message
-			}
-			return text;
-		}
-	}
-
-	private static String formatMessage(String text, JSONObject json) {
-		StringBuilder message = new StringBuilder(text + "\n\n");
-		
-		// Handle "errors" array format (existing format)
-		if (json.has("errors") && json.get("errors") instanceof JSONArray) {
-			JSONArray errorsArray = json.getJSONArray("errors");
-			for (int i = 0; i < errorsArray.length(); i++) {
-				Object o = errorsArray.get(i);
-				if (o instanceof JSONObject) {
-					JSONObject obj = (JSONObject) o;
-					if (obj.has("detail")) {
-						message.append("  - ").append(obj.getString("detail")).append("\n");
-					} else {
-						message.append("  - ").append(obj.toString()).append("\n");
-					}
-				} else {
-					message.append("  - ").append(o.toString()).append("\n");
-				}
-			}
-		}
-		// Handle "error" string format (new format)
-		else if (json.has("error")) {
-			message.append("  - ").append(json.getString("error")).append("\n");
-		}
-		// Handle "message" string format (common alternative)
-		else if (json.has("message")) {
-			message.append("  - ").append(json.getString("message")).append("\n");
-		}
-		// Fallback: show raw JSON if no recognized error format
-		else {
-			message.append("  - ").append(json.toString()).append("\n");
-		}
-		
-		return message.toString();
-	}
-
-	public HttpException(String text, Response response) {
-		super(create(text, response));
+		super(message, ApiError.Fields.transport(message));
 	}
 }

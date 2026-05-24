@@ -8,6 +8,7 @@ import (
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/daemon/api/router/httperror"
 	"protoxon.com/sls/daemon/api/router/middleware"
 	"protoxon.com/sls/daemon/models"
 	"protoxon.com/sls/daemon/server"
@@ -18,7 +19,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	// Parse incoming JSON body
 	var req models.ServerConfigurationResponse
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "Invalid request body.")
 		return
 	}
 
@@ -28,16 +29,14 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		log.WithError(err).WithField("server_id", req.Id).Error("failed to create server")
 		if errors.Is(err, os.ErrNotExist) {
 			// A not exists error usually means the blueprints server or world paths don't exist
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "The specified path to the server or world directory does not exist on this daemon instance.",
-			})
+			httperror.JSON(c, http.StatusConflict, err.Error(), "The specified path to the server or world directory does not exist on this daemon instance.")
 			return
 		}
 		if errors.Is(err, server.ErrInvalidServerConfig) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid server configuration.")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 
@@ -73,7 +72,7 @@ func (r *Router) getAllServers(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// Returns information about the system that wings is running on.
+// Returns information about the system that the daemon is running on.
 func getSystemInformation(c *gin.Context) {
 	i, err := system.GetSystemInformation()
 	if err != nil {
@@ -88,9 +87,7 @@ func (r *Router) postSync(c *gin.Context) {
 	err := r.ServerManager.Sync(c.Request.Context())
 	if err != nil {
 		log.WithError(err).Error("failed to sync server configurations")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to sync server configurations",
-		})
+		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "failed to sync server configurations")
 		return
 	}
 	c.Status(http.StatusOK)

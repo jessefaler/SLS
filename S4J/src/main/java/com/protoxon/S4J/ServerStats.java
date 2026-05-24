@@ -11,6 +11,7 @@ public class ServerStats {
     private final long memoryBytes;
     private final long memoryLimitBytes;
     private final double cpuAbsolute;
+    private final double cpuAbsoluteLimit;
     private final NetworkStats network;
     private final long uptime;
     private final long diskBytes;
@@ -31,10 +32,11 @@ public class ServerStats {
      * @param overlayBytes the disk usage of the upper directory in the overlay filesystem, in bytes. This represents the actual disk space this server takes up.
      * @param state the current server status
      */
-    public ServerStats(long memoryBytes, long memoryLimitBytes, double cpuAbsolute, NetworkStats network, long uptime, long diskBytes, long maxDiskBytes, long overlayBytes, ServerStatus state) {
+    public ServerStats(long memoryBytes, long memoryLimitBytes, double cpuAbsolute, double cpuAbsoluteLimit, NetworkStats network, long uptime, long diskBytes, long maxDiskBytes, long overlayBytes, ServerStatus state) {
         this.memoryBytes = memoryBytes;
         this.memoryLimitBytes = memoryLimitBytes;
         this.cpuAbsolute = cpuAbsolute;
+        this.cpuAbsoluteLimit = cpuAbsoluteLimit;
         this.network = network;
         this.uptime = uptime;
         this.diskBytes = diskBytes;
@@ -56,6 +58,7 @@ public class ServerStats {
         long memoryBytes = json.optLong("memory_bytes", 0);
         long memoryLimitBytes = json.optLong("memory_limit_bytes", 0);
         double cpuAbsolute = json.optDouble("cpu_absolute", 0.0);
+        double cpuAbsoluteLimit = json.optDouble("cpu_absolute_limit", 0.0);
         long uptime = json.optLong("uptime", 0);
         long diskBytes = json.optLong("disk_bytes", 0);
         long maxDiskBytes = json.optLong("disk_max", 0);
@@ -70,7 +73,7 @@ public class ServerStats {
             network = new NetworkStats(0, 0);
         }
 
-        return new ServerStats(memoryBytes, memoryLimitBytes, cpuAbsolute, network, uptime, diskBytes, maxDiskBytes, overlayBytes, state);
+        return new ServerStats(memoryBytes, memoryLimitBytes, cpuAbsolute, cpuAbsoluteLimit, network, uptime, diskBytes, maxDiskBytes, overlayBytes, state);
     }
 
     /**
@@ -92,6 +95,13 @@ public class ServerStats {
      */
     public double getCpuAbsolute() {
         return cpuAbsolute;
+    }
+
+    /**
+     * @return the absolute CPU limit in relation to the entire system
+     */
+    public double getCpuAbsoluteLimit() {
+        return cpuAbsoluteLimit;
     }
 
     /**
@@ -205,6 +215,18 @@ public class ServerStats {
      */
     public String getCpuFormatted() {
         return String.format("%.2f", cpuAbsolute) + "%";
+    }
+
+    /**
+     * Formats the CPU limit as a percentage.
+     *
+     * @return a formatted string representing the CPU usage as a percentage
+     */
+    public String getCpuLimitFormatted() {
+        if(cpuAbsoluteLimit == 0) {
+            return "unlimited";
+        }
+        return String.format("%.2f", cpuAbsoluteLimit) + "%";
     }
 
     /**

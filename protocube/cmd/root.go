@@ -2,9 +2,11 @@ package cmd
 
 import (
 	log2 "log"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/spf13/cobra"
@@ -20,6 +22,7 @@ import (
 	"protoxon.com/sls/protocube/plugins"
 	"protoxon.com/sls/protocube/server"
 	"protoxon.com/sls/protocube/software"
+	"protoxon.com/sls/protocube/telemetry"
 )
 
 func Execute() {
@@ -55,11 +58,8 @@ func run(cmd *cobra.Command, _ []string) {
 		serverManager.AttachNodeClientToServers(nodeId, node)
 	})
 
-	// Initialize the token store
-	tokenStore, err := auth.LoadAllTokens()
-	if err != nil {
-		log.WithError(err).Fatal("Failed to load token store.")
-	}
+	// Initialize the api key service
+	keyService := auth.NewKeyService()
 
 	// =========================================================
 	// Initialize the software configurations
@@ -93,7 +93,7 @@ func run(cmd *cobra.Command, _ []string) {
 		SoftwareRegistry:  softwareRegistry,
 		NodeManager:       nodeManager,
 		Client:            remoteClient,
-		VerifyToken:       tokenStore.Verify,
+		KeyService:        keyService,
 	})
 
 	// =========================================================
@@ -108,17 +108,30 @@ func run(cmd *cobra.Command, _ []string) {
 		log.Error("Failed to load plugins")
 	}
 
+	var telemetryStop context.CancelFunc
+	if ResolveTelemetryEnabled(cmd) {
+		var telemetryCtx context.Context
+		telemetryCtx, telemetryStop = context.WithCancel(context.Background())
+		telemetry.Start(telemetryCtx, serverManager, nodeManager, 5*time.Minute)
+	} else {
+		log.Info("Outbound telemetry is disabled.")
+	}
+
 	apiInstance.Run() // Start the API server
-	handleShutdown(apiInstance)
+	handleShutdown(apiInstance, telemetryStop)
 }
 
-func handleShutdown(apiInstance *api.Api) {
+func handleShutdown(apiInstance *api.Api, telemetryStop context.CancelFunc) {
 	// Create a channel to receive OS signals
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	<-sigChan // Wait for termination
 
 	log.Info("Shutting down.")
+
+	if telemetryStop != nil {
+		telemetryStop()
+	}
 
 	// Disable plugins
 	plugins.DisableAll()

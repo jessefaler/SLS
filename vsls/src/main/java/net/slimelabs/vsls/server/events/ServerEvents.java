@@ -6,6 +6,11 @@ import com.protoxon.S4J.client.entities.ServerDeletedEvent;
 import com.protoxon.S4J.client.entities.ServerEvent;
 import net.slimelabs.vsls.events.Event;
 
+/**
+ * Event Listeners for events emitted by a single server instance
+ * <p>
+ * Fired by {@link ServerEventRouter} while dispatching the incoming event stream.
+ */
 public class ServerEvents {
 
     private final Event<EventListener> serverEvent = new Event<>();

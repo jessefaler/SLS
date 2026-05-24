@@ -1,0 +1,63 @@
+
+# This example shows how to patch common config files in the paper minecraft server.
+
+blueprint:
+  id: survival
+  name: Survival World
+  type: survival
+
+server:
+  software: paper
+  version: 1.21.11
+
+  configs:
+
+    # Patch the server.properties file
+    server.properties:
+      parser: properties
+      find:
+        motd: "Survival Server"
+        view-distance: 15
+        white-list: true
+        enforce-whitelist: true
+
+    # Patch the whitelist file
+    whitelist.json:
+      parser: file
+      find:
+        "[]": '[{"uuid":"2170272d-e859-3c50-a1c2-e76a6300c40b","name":"protoxon"},{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Notch"}]'    
+
+    # Patch the bukkit.yml file
+    bukkit.yml:
+      parser: yaml
+      find:
+        settings:
+          connection-throttle: 2000
+          allow-flight: true
+
+    # Patch the spigot.yml file
+    spigot.yml:
+      parser: yaml
+      find:
+        settings:
+          debug: true
+          bungeecord: false
+        
+    # Patch the paper-world-defaults.yml file
+    # located in the "config" folder
+    config/paper-world-defaults.yml:
+      parser: yaml
+      find:
+        anticheat:
+          anti-xray:
+            enabled: true
+
+        # You can also patch nested values using dot notation in the key
+        anticheat.anti-xray.enabled: true
+
+state:
+  volumes:
+    - name: "world"
+      source: "worlds/survival_world"
+      target: "/world"
+      mode: cow

@@ -6,6 +6,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/client"
@@ -18,15 +19,14 @@ import (
 )
 
 func (r *Router) getAllBlueprints(c *gin.Context) {
-	// Parse page & limit
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
 
 	if page < 1 {
 		page = 1
 	}
-	if limit < 1 {
-		limit = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	// If only meta requested, paginate meta list
@@ -38,8 +38,8 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	}
 
 	total := len(items)
-	start := (page - 1) * limit
-	end := start + limit
+	start := (page - 1) * perPage
+	end := start + perPage
 	if start > total {
 		start = total
 	}
@@ -50,15 +50,15 @@ func (r *Router) getAllBlueprints(c *gin.Context) {
 	paged := items[start:end]
 
 	totalPages := 0
-	if limit > 0 && total > 0 {
-		totalPages = (total + limit - 1) / limit
+	if perPage > 0 && total > 0 {
+		totalPages = (total + perPage - 1) / perPage
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"meta": gin.H{
 			"pagination": gin.H{
 				"total":        total,
-				"per_page":     limit,
+				"per_page":     perPage,
 				"current_page": page,
 				"total_pages":  totalPages,
 			},
@@ -77,16 +77,12 @@ func (r *Router) getInstallationScript(c *gin.Context) {
 	s.BlueprintId()
 	bp := r.BlueprintRegistry.Get(s.BlueprintId())
 	if bp == nil {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"error": "server uses unknown blueprint " + s.BlueprintId(),
-		})
+		httperror.AbortWithJSON(c, http.StatusNotFound, "unknown blueprint "+s.BlueprintId(), "Blueprint not found for this server.")
 		return
 	}
 	sw := r.SoftwareRegistry.Get(bp.Server.Software)
 	if sw == nil {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"error": "server uses blueprint with unknown software " + bp.Server.Software,
-		})
+		httperror.AbortWithJSON(c, http.StatusNotFound, "unknown software "+bp.Server.Software, "Software not found for this server's blueprint.")
 		return
 	}
 	c.JSON(http.StatusOK, sw.InstallScript)
@@ -153,11 +149,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 	var req models.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.WithError(err).Error("Failed to create server")
-		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
-			"status": http.StatusUnprocessableEntity,
-			"code":   "ValidationFailed",
-			"error":  "The data provided in the request could not be validated.",
-		})
+		httperror.AbortWithJSON(c, http.StatusUnprocessableEntity, err.Error(), "The data provided in the request could not be validated.")
 		return
 	}
 
@@ -168,7 +160,7 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		var ok bool
 		n, ok = r.NodeManager.Get(req.NodeId)
 		if !ok || n == nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "node not found: " + req.NodeId})
+			httperror.JSON(c, http.StatusNotFound, "node not found: "+req.NodeId, "The requested node was not found.")
 			return
 		}
 	} else {
@@ -176,21 +168,21 @@ func (r *Router) postCreateServer(c *gin.Context) {
 		// so use the load balancer to get a node
 		balanced := r.LoadBalancer.Get().PickNode()
 		if balanced == nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no nodes available"})
+			httperror.JSON(c, http.StatusServiceUnavailable, "no nodes available", "No nodes are available to create a server.")
 			return
 		}
 
 		var ok bool
 		n, ok = balanced.(*node.Node)
 		if !ok || n == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected node type"})
+			httperror.JSON(c, http.StatusInternalServerError, "load balancer returned unexpected node type", "An unexpected error occurred while assigning a node.")
 			return
 		}
 	}
 
 	bp := r.BlueprintRegistry.Get(req.BlueprintID)
 	if bp == nil {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "no such blueprint with id: " + req.BlueprintID})
+		httperror.AbortWithJSON(c, http.StatusNotFound, "no blueprint with id "+req.BlueprintID, "Blueprint not found.")
 		return
 	}
 

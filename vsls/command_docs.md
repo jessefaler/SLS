@@ -5,15 +5,18 @@
 ## Table of Contents
 
 - [Info Command](#info-command)
+- [List Command](#list-command)
 - [Create Command](#create-command)
 - [Start Command](#start-command)
 - [Join Command](#join-command)
+- [Find Command](#find-command)
 - [System Command](#system-command)
 - [Console Command](#console-command)
 - [Blueprint Command](#blueprint-command)
 - [Debug Command](#debug-command)
 - [Delete Command](#delete-command)
 - [Logs Command](#logs-command)
+- [Node Command](#node-command)
 - [Reload Command](#reload-command)
 - [Stop Command](#stop-command)
 - [Kill Command](#kill-command)
@@ -37,11 +40,6 @@
 ```
 
 **Details:**
-- `/sls info` - Lists all active servers with their current player counts and status. Server status is color-coded:
-  - Green: Running
-  - Yellow: Starting
-  - Red: Stopping
-  - Dark Red: Offline
 - `/sls info <server>` - Displays detailed information about the specified server, including:
   - Player count (with hoverable list of player names)
   - Server status
@@ -56,25 +54,61 @@
 
 ---
 
+## List Command
+
+**Permission:** None
+
+**Description:** Prints a formatted list of all servers known to vSLS. Each line shows the server display name, current status (indicated by name color), and player count. Hovering over the server name shows its composite ID; hovering over the player count shows the list of player names on that server.
+
+**Usage:**
+```
+/sls list
+```
+
+---
+
 ## Create Command
 
 **Permission:** `sls.command.admin`
 
-**Description:** Creates a new server from a blueprint. This command only creates the server; it does not start it. Use the `start` command to start a created server.
+**Description:** Creates a new server from a blueprint and starts it. You can append optional override flags after the blueprint ID to set the target node, resource limits, software/image, and config patches.
 
 **Usage:**
 ```
 /sls create <blueprint_type> <blueprint_id>
+/sls create <blueprint_type> <blueprint_id> <flags...>
 ```
 
 **Arguments:**
-- `blueprint_type` - The type of blueprint (e.g., "survival", "creative", "lobby")
+- `blueprint_type` - The type of blueprint (e.g., "minigame", "adventure", "pvp")
 - `blueprint_id` - The specific blueprint ID to use for server creation
+- `flags...` (optional) - Space-separated `key=value` overrides. Each flag uses the form `--name=value` (see table below). Invalid flags produce an error; invalid numeric values for resource flags are rejected with a specific message.
+
+**Override flags:**
+
+| Flag | Value | Effect |
+|------|--------|--------|
+| `--node=` | Node ID | Create the server on this node. You may type a short ID; it is resolved against the API’s node list. |
+| `--save=` | `true` or `false` | Enable or disable saving for the server. |
+| `--cpu=` | Integer | CPU limit (percentage of CPU this instance may use). |
+| `--memory=` | Integer | Memory limit in **mebibytes** (MiB). |
+| `--swap=` | Integer | Extra swap space for the container. |
+| `--io_weight=` | Integer | Relative weight for I/O in the container. |
+| `--disk_space=` | Integer | Disk allowance in **megabytes** (MB). |
+| `--threads=` | String | Which CPU threads the Docker instance may use. |
+| `--oom_disabled=` | `true` or `false` | If `true`, disables the OOM killer for this container. |
+| `--software=` | String | Software id to run the server with. |
+| `--version=` | String | Software version to use. |
+| `--image=` | String | Container image to use. |
+| `--seed=` | String | Patches `server.properties`: sets `level-seed`. |
+| `--view-distance=` | String | Patches `server.properties`: sets `view-distance`. |
+| `--enable-command-block=` | String | Patches `server.properties`: sets `enable-command-block` (e.g. `true` / `false`). |
 
 **Details:**
-- The command provides tab completion for both blueprint types and IDs
-- Upon successful creation, the command displays the created server's ID
-- If creation fails, an error message is displayed with the reason
+- The command provides tab completion for blueprint types and IDs. After the blueprint ID, tab completion can suggest flags; for `--node=` it can suggest node IDs, and for `--save=`, `--oom_disabled=`, and `--enable-command-block=` it can suggest `true` or `false`.
+- Multiple `server.properties` flags (`--seed`, `--view-distance`, `--enable-command-block`) are merged into a single config patch.
+- Upon successful creation, the command displays the created server's composite ID.
+- If creation fails, an error message is displayed with the reason.
 
 ---
 
@@ -110,6 +144,8 @@
 ```
 /sls join <blueprint_type> <blueprint_id>
 /sls join <blueprint_type> <blueprint_id> [all | local | <player>]
+/sls join player <player>
+/sls join player <player> --force
 ```
 
 **Arguments:**
@@ -119,11 +155,36 @@
   - `all` - Connects all players currently on the proxy
   - `local` - Connects all players on the same server as the command sender
   - `<player>` - Connects a single specific player by username
+- `player` - When used as `/sls join player <player>`, connects you to the SLS server that player is currently on
+- `--force` - Admin-only confirmation flag for joining a player's server even when the target server is at its blueprint matchmaking capacity
 
 **Details:**
 - If no player argument is provided, the command executor is connected to the server
 - The command automatically handles server creation, starting, and waiting for readiness
 - Requires admin permission to join other players; players can join themselves without permission
+- `/sls join player <player>` is available to players and only works when the target player is currently on a registered SLS server
+- `/sls join player <player>` respects blueprint matchmaking capacity rules for normal players
+- If an admin tries to join a full target server, vSLS shows a warning with a clickable `Join Anyway` confirmation that runs `/sls join player <player> --force`
+- `/sls join player <player> --force` requires `sls.command.admin`
+- Player names and server IDs in the join output include hover details to make it easier to confirm the target
+
+---
+
+## Find Command
+
+**Permission:** None
+
+**Description:** Shows which SLS server a player is currently connected to.
+
+**Usage:**
+```
+/sls find <player>
+```
+
+**Details:**
+- Displays the player's current SLS composite server ID, such as `block_hunt.x82odk`
+- If the player is offline or not currently on an SLS server, the command displays an error message
+- Player names and server IDs include hover details such as UUID, current server, server status, blueprint, and player count
 
 ---
 
@@ -168,9 +229,9 @@ The command displays the following system information:
 **Details:**
 - The command automatically strips leading slashes (`/`) if present
 - The command attempts to capture output by checking server logs with increasing delays:
-  - 100ms delay → reads 8 log lines
-  - 800ms delay → reads 12 log lines
-  - 3000ms delay → reads 25 log lines
+  - 100ms delay - reads 8 log lines
+  - 800ms delay - reads 12 log lines
+  - 3000ms delay - reads 25 log lines
 - Output is formatted and displayed, with error messages highlighted in red
 - If no output is found after all attempts, a "No output found" message is displayed
 - Supports both legacy server format (`>command`) and newer format (`command`)
@@ -193,16 +254,16 @@ The command displays the following system information:
 
 **Details:**
 - Displays the blueprint's complete configuration in a formatted, readable structure
-- Fields are organized in a logical order: metadata, world, server, saving, annotations
+- Fields are organized in a logical order: metadata, server, volumes, annotations
 - Top-level keys are displayed in gold, nested keys in dark grey, and values in red
 - The output includes all blueprint configuration details such as:
   - Metadata (id, name, type)
-  - World configuration
-  - Server software and version
+  - Server runtime configuration
   - Resource limits
-  - Saving settings
-  - Configuration files
-  - Content settings
+  - Config patches
+  - Volumes
+  - Annotations
+  - And more
 
 ---
 
@@ -271,6 +332,34 @@ The command displays the following system information:
 - If a line count is specified, only that many recent log lines are shown
 - Log lines are displayed in grey text for readability
 - The command validates that the line count is a valid number
+
+---
+
+## Node Command
+
+**Permission:** `sls.command.admin`
+
+**Description:** Inspects a daemon node and optionally reads or changes its drained flag. Drained nodes are excluded from provisioning: when drained is `true`, the load balancer does not start new servers on that node.
+
+**Usage:**
+```
+/sls node <id>
+/sls node <id> drained
+/sls node <id> drained <true | false>
+```
+
+**Arguments:**
+- `id` - Node identifier. You may use a short ID; it is resolved against the API’s node list (tab completion suggests shortened IDs).
+- `drained` - Literal keyword. With no further argument, prints whether the node is currently drained (`true` or `false`).
+- `true` or `false` (optional, after `drained`) - Updates the node’s drained state on the API.
+
+**Details:**
+- `/sls node <id>` prints detailed information for the node, including:
+  - Node metadata: name, location, URL, current drained flag, daemon version
+  - **System:** architecture, CPU threads, memory, kernel version, operating system and OS type
+  - **Docker:** engine version; when available, cgroup driver/version, container counts (total, running, paused, stopped), storage driver/filesystem, and runc version. If Docker details are missing, the command indicates that they are unavailable.
+- `/sls node <id> drained` displays only the drained state.
+- `/sls node <id> drained <true | false>` sets the drained state and confirms the value that was sent.
 
 ---
 
@@ -462,4 +551,3 @@ All values are automatically formatted in appropriate units (KB, MB, GB, etc.) f
 - Tab completion is available for most commands to help with argument selection
 - Commands that interact with servers will display error messages if the server doesn't exist or is unavailable
 - Some commands (like `console`) have built-in retry mechanisms to handle asynchronous operations
-

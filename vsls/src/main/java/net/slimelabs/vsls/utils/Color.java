@@ -24,7 +24,7 @@ public enum Color {
         try {
             return Color.valueOf(codeName.toUpperCase()).code;
         } catch (IllegalArgumentException e) {
-            return null; // Or throw an exception or return a default value
+            return null;
         }
     }
     Color(String code) {

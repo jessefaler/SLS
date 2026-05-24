@@ -7,19 +7,18 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 )
 
 var ErrNodeUnavailable = errors.New("node unavailable")
 
-type RequestErrors struct {
-	Errors []RequestError `json:"errors"`
-}
-
+// RequestError is returned when a remote HTTP API responds with an error body.
 type RequestError struct {
 	response *http.Response
 	Code     string `json:"code"`
 	Status   string `json:"status"`
 	Detail   string `json:"detail"`
+	Hint     string `json:"hint,omitempty"`
 }
 
 // IsRequestError checks if the given error is of the RequestError type.
@@ -52,8 +51,10 @@ func (re *RequestError) Error() string {
 	if re.response != nil {
 		c = re.response.StatusCode
 	}
-
-	return fmt.Sprintf("Error response from Node: %s: %s (HTTP/%d)", re.Code, re.Detail, c)
+	if re.Hint != "" {
+		return fmt.Sprintf("Error response from Node: %s %s: %s (hint: %s) (HTTP/%d)", re.Code, re.Status, re.Detail, re.Hint, c)
+	}
+	return fmt.Sprintf("Error response from Node: %s %s: %s (HTTP/%d)", re.Code, re.Status, re.Detail, c)
 }
 
 // StatusCode returns the status code of the response.
@@ -62,25 +63,21 @@ func (re *RequestError) StatusCode() int {
 }
 
 // HandleError sends an appropriate HTTP response for errors returned by a node request.
-// It first checks for structured RequestErrors, then maps context.DeadlineExceeded to 504,
+// It first checks for a structured RequestError, then maps context.DeadlineExceeded to 504,
 // context.Canceled to 408, and falls back to 502 Bad Gateway for all other errors.
 func HandleError(c *gin.Context, err error) {
 	if re := AsRequestError(err); re != nil {
-		c.JSON(re.StatusCode(), gin.H{
-			"code":   re.Code,
-			"status": re.Status,
-			"detail": re.Detail,
-		})
+		c.JSON(re.StatusCode(), httperror.FromParts(re.StatusCode(), re.Code, re.Status, re.Detail, re.Hint))
 		return
 	}
 	switch {
 	case errors.Is(err, ErrNodeUnavailable):
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusServiceUnavailable, err.Error(), "No node is available for this request.")
 	case errors.Is(err, context.DeadlineExceeded):
-		c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Remote node request timed out"})
+		httperror.JSON(c, http.StatusGatewayTimeout, err.Error(), "Remote node request timed out.")
 	case errors.Is(err, context.Canceled):
-		c.JSON(http.StatusRequestTimeout, gin.H{"error": "Request context was canceled"})
+		httperror.JSON(c, http.StatusRequestTimeout, err.Error(), "Request context was canceled.")
 	default:
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusBadGateway, err.Error(), "")
 	}
 }

@@ -10,6 +10,7 @@ import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.slimelabs.vsls.blueprints.BlueprintRegistry;
+import net.slimelabs.vsls.channel.MessageChannel;
 import net.slimelabs.vsls.command.SLSCommand;
 import net.slimelabs.vsls.config.Config;
 import net.slimelabs.vsls.events.EventRouter;
@@ -23,10 +24,12 @@ import net.slimelabs.vsls.matchmaking.strategies.RandomBlueprintStrategy;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.server.ServerManager;
 
+import static net.slimelabs.vsls.channel.MessageChannel.SLS_CHANNEL;
+
 @Plugin(
         id = "vsls",
         name = "vSLS",
-        version = "1.0.0",
+        version = "1.0.2",
         description = "Server Management Plugin",
         authors = {"Protoxon & Contributors"},
         dependencies = {
@@ -103,6 +106,11 @@ public class SLS {
         DirectServerJoiner directJoiner = new DirectServerJoiner();
         SLS.joinService = new JoinService(matchmakingManager, directJoiner);
         SLS.api = api;
+
+        // Register the slimelabs network channel
+        SLS.proxy.getChannelRegistrar().register(SLS_CHANNEL);
+        // Register the plugin message listener
+        SLS.proxy.getEventManager().register(this, new MessageChannel.SLSMessageListener());
     }
 
     @Subscribe

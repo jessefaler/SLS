@@ -4,6 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
@@ -33,12 +34,7 @@ public class SystemCommand {
                                 " <gold>-</gold> <dark_gray>OS Type:</dark_gray> <red>" + info.getOsType() + "</red>\n" +
                                 "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>"
                         ).sendMessage(source);
-                    }, failure -> {
-                        ProtoMessage.chat()
-                                .add(MessagePreset.SLS)
-                                .add("Failed to get system info: " + failure.getMessage(), NamedTextColor.RED)
-                                .sendMessage(source);
-                    });
+                    }, failure -> Log.requestError("Failed to get system information", failure, source));
 
                     return 1;
                 });

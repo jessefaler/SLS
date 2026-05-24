@@ -7,6 +7,7 @@ import com.protoxon.S4J.SLSAction;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -81,20 +82,12 @@ public class ReloadCommand {
                             .add(MessagePreset.SLS)
                             .add("Loaded " + num + " blueprints", NamedTextColor.GRAY)
                             .sendMessage(source);
-                }, failure -> {
-                    ProtoMessage.chat().add(MessagePreset.SLS)
-                            .add("Failed to reload blueprints. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                            .sendMessage(source);
-                });
+                }, failure -> Log.requestError("Failed to reload blueprints", failure, source));
     }
 
     public static void reloadSoftware(CommandSource source) {
         // Make a request to the protocube api to tell it to reload its software configs
-        SLS.api.reloadSoftwareConfigs().executeAsync(success -> {}, failure -> {
-            ProtoMessage.chat().add(MessagePreset.SLS)
-                    .add("Failed to reload software configs. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                    .sendMessage(source);
-        });
+        SLS.api.reloadSoftwareConfigs().executeAsync(success -> {}, failure -> Log.requestError("Failed to reload software configs", failure, source));
     }
 
 }

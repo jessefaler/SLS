@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"emperror.dev/errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	ignore "github.com/sabhiram/go-gitignore"
 	"protoxon.com/sls/daemon/config"
+	"protoxon.com/sls/daemon/environment"
 	"protoxon.com/sls/daemon/internal/ufs"
 )
 
@@ -245,7 +247,7 @@ func (fs *Filesystem) Chown(p string) error {
 		return nil
 	}
 
-	// This walker is probably some of the most efficient code in Wings. It has
+	// This walker is probably some of the most efficient code in the daemon. It has
 	// an internally re-used buffer for listing directory entries and doesn't
 	// need to check if every individual path it touches is safe as the code
 	// doesn't traverse symlinks, is immune to symlink timing attacks, and
@@ -318,6 +320,69 @@ func ChownRecursiveUnsafe(paths ...string) error {
 	return nil
 }
 
+// ChgrpRecursiveUnsafe sets only the group on each path (recursively), leaving
+// owners unchanged. Uses the configured daemon GID.
+func ChgrpRecursiveUnsafe(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	gid := cfg.System.User.Gid
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if err := os.Chown(p, -1, gid); err != nil {
+				return errors.Wrapf(err, "failed to chgrp %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chgrp %s", path)
+		}
+	}
+	return nil
+}
+
+// ChmodAddGroupRWXRecursiveUnsafe ORs group rwx into the mode of each file and directory.
+// This does not verify if the paths are within the servers volume.
+func ChmodAddGroupRWXRecursiveUnsafe(paths ...string) error {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			mode := info.Mode()
+			if err := os.Chmod(p, mode|0o070); err != nil {
+				return errors.Wrapf(err, "failed to chmod %s", p)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to recursively chmod (group +rwx) %s", path)
+		}
+	}
+	return nil
+}
+
 // ChmodUnsafe recursively sets permissions on the provided paths.
 // This does not verify if the paths are within the servers volume.
 func ChmodUnsafe(mode fs.FileMode, paths ...string) error {
@@ -339,6 +404,102 @@ func ChmodUnsafe(mode fs.FileMode, paths ...string) error {
 
 		if err != nil {
 			return errors.Wrapf(err, "failed to recursively chmod %s", path)
+		}
+	}
+	return nil
+}
+
+// setOverlayUpperWorkPermissions walks each path once, applying chown+chmod (0o755).
+// It skips syscalls when the stat result already matches the desired owner and mode.
+func setOverlayUpperWorkPermissions(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	uid := cfg.System.User.Uid
+	gid := cfg.System.User.Gid
+	want := fs.FileMode(0o755)
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			doChown := true
+			if st, ok := info.Sys().(*syscall.Stat_t); ok {
+				if int(st.Uid) == uid && int(st.Gid) == gid {
+					doChown = false
+				}
+			}
+			if doChown {
+				if err := os.Chown(p, uid, gid); err != nil {
+					return errors.Wrapf(err, "failed to chown %s", p)
+				}
+			}
+			if info.Mode().Perm() != want.Perm() {
+				if err := os.Chmod(p, want); err != nil {
+					return errors.Wrapf(err, "failed to chmod %s", p)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to set overlay upper/work permissions %s", path)
+		}
+	}
+	return nil
+}
+
+// setOverlayLowerPermissions walks each path once, applying chgrp (daemon GID) and
+// OR-ing group rwx into the mode. It skips syscalls when already satisfied.
+func setOverlayLowerPermissions(paths ...string) error {
+	cfg := config.Get()
+	if cfg == nil {
+		return nil
+	}
+	gid := cfg.System.User.Gid
+
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+
+		err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			doChgrp := true
+			if st, ok := info.Sys().(*syscall.Stat_t); ok {
+				if int(st.Gid) == gid {
+					doChgrp = false
+				}
+			}
+			if doChgrp {
+				if err := os.Chown(p, -1, gid); err != nil {
+					return errors.Wrapf(err, "failed to chgrp %s", p)
+				}
+			}
+			mode := info.Mode()
+			if mode&0o070 != 0o070 {
+				if err := os.Chmod(p, mode|0o070); err != nil {
+					return errors.Wrapf(err, "failed to chmod %s", p)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to set overlay lower permissions %s", path)
 		}
 	}
 	return nil
@@ -568,6 +729,45 @@ func (fs *Filesystem) Destroy() error {
 	if len(errs) > 0 {
 		return errors.Combine(errs...)
 	}
+	return nil
+}
+
+// SetBindMountPermissions ensures RW bind mount sources are writable by the daemon user.
+// it only sets group to the daemon GID and adds group rwx recursively
+func SetBindMountPermissions(mounts []environment.Mount) error {
+	for _, m := range mounts {
+		// Skip the default /home/container mount (overlay already handles it).
+		if m.Default {
+			continue
+		}
+		// Skip read-only mounts.
+		if m.ReadOnly {
+			continue
+		}
+		// Skip empty sources.
+		if m.Source == "" {
+			continue
+		}
+
+		// Bind mounts require the source to exist if it doesn't, log and skip.
+		if _, err := os.Stat(m.Source); err != nil {
+			if os.IsNotExist(err) {
+				log.WithField("mount_source", m.Source).WithField("mount_target", m.Target).Error("bind mount source does not exist")
+				continue
+			} else {
+				return errors.Wrapf(err, "failed to stat bind mount source %s", m.Source)
+			}
+		}
+
+		// Make the path writable by the daemon group without changing owner.
+		if err := ChgrpRecursiveUnsafe(m.Source); err != nil {
+			return errors.Wrapf(err, "failed to set bind mount group %s", m.Source)
+		}
+		if err := ChmodAddGroupRWXRecursiveUnsafe(m.Source); err != nil {
+			return errors.Wrapf(err, "failed to set bind mount mode %s", m.Source)
+		}
+	}
+
 	return nil
 }
 

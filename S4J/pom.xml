@@ -4,22 +4,115 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.protoxon</groupId>
+    <groupId>io.github.protoxon</groupId>
     <artifactId>S4J</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.2</version>
+
+    <name>S4J</name>
+    <description>Java client for the (SLS) HTTP API.</description>
+    <url>https://github.com/jessefaler/SLS/tree/main/S4J</url>
 
     <parent>
         <groupId>com.protoxon</groupId>
         <artifactId>sls-monorepo</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>protoxon</id>
+            <name>protoxon</name>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/jessefaler/SLS.git</connection>
+        <developerConnection>scm:git:ssh://github.com:jessefaler/SLS.git</developerConnection>
+        <url>https://github.com/jessefaler/SLS/tree/main/S4J</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Full JDK required: JRE-only runtimes have no javadoc. Override if needed: -Djavadoc.executable=/path/to/javadoc -->
+        <javadoc.executable>${java.home}/bin/javadoc</javadoc.executable>
     </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.12.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <javadocExecutable>${javadoc.executable}</javadocExecutable>
+                    <doclint>none</doclint>
+                    <quiet>true</quiet>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.8</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.10.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>ossrh</publishingServerId>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <dependencies>
         <dependency>
@@ -30,12 +123,12 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>5.3.2</version>
+            <version>4.12.0</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.17</version>
+            <version>2.0.18</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

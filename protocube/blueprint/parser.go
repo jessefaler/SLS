@@ -8,7 +8,6 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
-	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/environment"
@@ -171,6 +170,42 @@ func (m *Meta) Validate() error {
 	return nil
 }
 
+func (v *Volume) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err == nil && strings.TrimSpace(s) != "" {
+		return v.unmarshalShorthand(strings.TrimSpace(s))
+	}
+
+	type volumeAlias Volume
+	var tmp volumeAlias
+	if err := unmarshal(&tmp); err != nil {
+		return err
+	}
+	*v = Volume(tmp)
+	return nil
+}
+
+// unmarshalShorthand parses name:source:target[:mode], e.g.
+// world:worlds/world:/world:cow
+func (v *Volume) unmarshalShorthand(s string) error {
+	parts := strings.Split(s, ":")
+	if len(parts) < 3 {
+		return fmt.Errorf("invalid volume shorthand %q: expected name:source:target[:mode]", s)
+	}
+	if len(parts) > 4 {
+		return fmt.Errorf("invalid volume shorthand %q: too many ':' segments (use mapping form if paths contain ':')", s)
+	}
+	v.Name = parts[0]
+	v.Source = parts[1]
+	v.Target = parts[2]
+	if len(parts) == 4 {
+		v.Mode = VolumeMode(parts[3])
+	} else {
+		v.Mode = VolumeModeCOW
+	}
+	return nil
+}
+
 func (v *Volume) Validate() error {
 	if v.Name == "" {
 		return errors.New("volume.name cannot be empty")
@@ -239,33 +274,19 @@ func (s *Server) Validate() error {
 		}
 	}
 
-	// Apply default limits when blueprint omits limits, or fill defaults for partial limits
+	// Apply default limits when blueprint omits limits, or fill defaults for partial limits.
+	// Software-defined limits (per egg) apply first; blueprint overrides any set field.
 	if s.Limits == nil {
 		s.Limits = &environment.Limits{}
 	}
-	if err := ValidateLimits(s.Limits); err != nil {
+	s.Limits = environment.MergeLimits(environment.CopyLimits(sw.Limits), s.Limits)
+	if err := environment.ValidateLimits(s.Limits); err != nil {
 		return errors.Wrap(err, "server.limits")
 	}
 
 	// Sets Path to "<Software>/<Version>" if it is not specified
 	if s.Path == "" {
 		s.Path = filepath.Join(s.Software, s.Version)
-	}
-
-	return nil
-}
-
-// ValidateLimits validates blueprint limits and sets defaults for nil fields.
-func ValidateLimits(limit *environment.Limits) error {
-
-	// Fill in defaults for nil fields
-	if err := defaults.Set(limit); err != nil {
-		return err
-	}
-
-	// Ensure IoWeight is between 10-1000
-	if limit.IoWeight != nil && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
-		return errors.New("io_weight must be between 10 and 1000")
 	}
 
 	return nil
