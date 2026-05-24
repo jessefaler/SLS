@@ -7,7 +7,7 @@
     <!-- Project Information -->
     <groupId>net.slimelabs</groupId>
     <artifactId>vsls</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <name>vsls</name>
 
@@ -161,7 +161,6 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>true</createDependencyReducedPom>
-                            <outputFile>/home/jesse/Desktop/network/proxy/plugins/sls.jar</outputFile>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>

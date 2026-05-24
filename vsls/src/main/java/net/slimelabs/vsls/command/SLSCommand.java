@@ -51,6 +51,7 @@ public class SLSCommand {
         root.then(ResetCommand.register());      // RESET
         root.then(InfoCommand.register());       // INFO
         root.then(ListCommand.register());       // LIST
+        root.then(FindCommand.register());       // FIND
         root.then(SystemCommand.register());     // SYSTEM
         //root.then(TailCommand.register());     // TAIL
 
@@ -80,12 +81,12 @@ public class SLSCommand {
                             "join", "create", "start", "pause", "resume", "restart", "debug",
                             "stop", "kill", "reload", "status", "stats", "delete", "console",
                             "dequeue", "blueprint", "version", "logs", "node", "reset", "info",
-                            "list", "system"))
+                            "list", "find", "system"))
                     .sendMessage(source);
             return 1;
         } else {
             ProtoMessage.chat()
-                    .add(MessageFormatter.commandUsage("/sls", "join", "list", "dequeue"))
+                    .add(MessageFormatter.commandUsage("/sls", "join", "list", "find", "dequeue"))
                     .sendMessage(source);
         }
         return 0;
