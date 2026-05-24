@@ -161,7 +161,7 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>true</createDependencyReducedPom>
-                            <outputFile>/home/jesse/Desktop/network/proxy/plugins/sls.jar</outputFile>
+                            <!-- <outputFile>/home/jesse/Desktop/network/proxy/plugins/sls.jar</outputFile> -->
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>

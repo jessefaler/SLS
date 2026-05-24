@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -24,11 +25,72 @@ public class JoinCommand {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls join", "type"))
+                            .add(MessageFormatter.commandUsage("/sls join", "type", "player"))
                             .sendMessage(source);
                     return 1;
                 })
+                .then(joinPlayerServer())
                 .then(type());
+    }
+
+    private static LiteralArgumentBuilder<CommandSource> joinPlayerServer() {
+        return LiteralArgumentBuilder.<CommandSource>literal("player")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls join player", "player"))
+                            .sendMessage(source);
+                    return 0;
+                })
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("target", StringArgumentType.string())
+                        .suggests((context, builder) -> {
+                            for (Player player : SLS.proxy.getAllPlayers()) {
+                                builder.suggest(player.getUsername());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> {
+                            CommandSource source = context.getSource();
+                            if (!(source instanceof Player player)) {
+                                Log.error("You must be a player to join another player's server");
+                                return 0;
+                            }
+
+                            String targetName = StringArgumentType.getString(context, "target");
+                            Optional<Player> target = SLS.proxy.getPlayer(targetName);
+                            if (target.isEmpty()) {
+                                ProtoMessage.chat()
+                                        .add(MessagePreset.SLS)
+                                        .add("Player " + targetName + " was not found.", NamedTextColor.RED)
+                                        .sendMessage(source);
+                                return 0;
+                            }
+
+                            Server server = ServerUtils.getServer(target.get());
+                            if (server == null) {
+                                ProtoMessage.chat()
+                                        .add(MessagePreset.SLS)
+                                        .add("Player " + targetName + " is not on an SLS server.", NamedTextColor.RED)
+                                        .sendMessage(source);
+                                return 0;
+                            }
+
+                            Server currentServer = ServerUtils.getServer(player);
+                            if (currentServer != null && currentServer.getId().equals(server.getId())) {
+                                ProtoMessage.chat()
+                                        .add(MessagePreset.SLS)
+                                        .add("You are already on " + server.getCompositeId(), NamedTextColor.GRAY)
+                                        .sendMessage(source);
+                                return 1;
+                            }
+
+                            ProtoMessage.chat()
+                                    .add(MessagePreset.SLS)
+                                    .add("Joining " + target.get().getUsername() + "'s server " + server.getCompositeId(), NamedTextColor.DARK_AQUA)
+                                    .sendMessage(source);
+                            SLS.joinService.joinServer(player, server.getCompositeId());
+                            return 1;
+                        }));
     }
 
     private static RequiredArgumentBuilder<CommandSource, String> type() {
