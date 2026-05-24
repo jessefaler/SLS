@@ -16,6 +16,14 @@ type ReplaceValue struct {
 // NewReplaceValue creates a new ReplaceValue from an interface{} value.
 // It marshals the value to JSON and determines its type by inspecting the JSON bytes.
 func NewReplaceValue(value interface{}) (*ReplaceValue, error) {
+	// Strings are stored unquoted to match jsonparser.Get and config file patching.
+	if s, ok := value.(string); ok {
+		return &ReplaceValue{
+			value:     []byte(s),
+			valueType: jsonparser.String,
+		}, nil
+	}
+
 	// Marshal the value to JSON to get the proper representation
 	jsonBytes, err := json.Marshal(value)
 	if err != nil {
@@ -113,9 +121,11 @@ func (cv *ReplaceValue) Bytes() []byte {
 }
 
 // MarshalJSON returns the raw JSON bytes for the value.
-// This allows the value to be properly serialized when sending to the daemon,
-// matching how Pterodactyl Panel sends configuration values.
 func (cv *ReplaceValue) MarshalJSON() ([]byte, error) {
+	// Re-quote strings when writing JSON; unquoted bytes are not valid JSON tokens.
+	if cv.valueType == jsonparser.String {
+		return json.Marshal(string(cv.value))
+	}
 	return cv.value, nil
 }
 
