@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/models"
@@ -14,7 +15,7 @@ func postServerPower(c *gin.Context) {
 	server := middleware.ExtractServer(c)
 	powerAction := models.PowerAction{}
 	if err := c.BindJSON(&powerAction); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to bind json"})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Failed to bind json")
 		return
 	}
 	// Make the request
@@ -81,7 +82,7 @@ func postServerCommands(c *gin.Context) {
 		Commands []string `json:"commands"`
 	}
 	if err := c.BindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to bind json"})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Failed to bind json")
 		return
 	}
 
@@ -136,13 +137,13 @@ func (r *Router) getInstallInfo(c *gin.Context) {
 	// Get the servers blueprint
 	bp := r.BlueprintRegistry.Get(server.BlueprintId())
 	if bp == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Blueprint not found"})
+		httperror.JSON(c, http.StatusNotFound, "blueprint not found for install info", "Blueprint not found")
 		return
 	}
 	// Get the software used by the blueprint
 	sw := r.SoftwareRegistry.Get(bp.Server.Software)
 	if sw == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Software not found"})
+		httperror.JSON(c, http.StatusNotFound, "software not found for blueprint", "Software not found")
 		return
 	}
 

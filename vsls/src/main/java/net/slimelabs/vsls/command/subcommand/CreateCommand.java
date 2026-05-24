@@ -8,6 +8,7 @@ import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
+import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.utils.Id;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
@@ -71,14 +72,10 @@ public class CreateCommand {
                                 .add(MessagePreset.SLS)
                                 .add("Created " + blueprint, NamedTextColor.GREEN)
                                 .add(" (", NamedTextColor.GRAY)
-                                .add(server.getShortId(), NamedTextColor.DARK_GRAY)
+                                .add(server.getCompositeId(), NamedTextColor.DARK_GRAY)
                                 .add(")", NamedTextColor.GRAY)
                                 .sendMessage(source);
-                    }, failure -> {
-                        ProtoMessage.chat()
-                                .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                .sendMessage(source);
-                    });
+                    }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));
 
                     return 0;
                 }).then(overrides());
@@ -100,7 +97,8 @@ public class CreateCommand {
             Map.entry("--image=", "Sets the software to use when running this server"),
             Map.entry("--seed=", "Patches the server.properties config with a custom seed"),
             Map.entry("--view-distance=", "Patches the server.properties config with a custom chunk view distance"),
-            Map.entry("--enable-command-block=", "Patches the server.properties config to set enable command blocks")
+            Map.entry("--enable-command-block=", "Patches the server.properties config to set enable command blocks"),
+            Map.entry("--env=", "Container env KEY=value (repeatable; overrides blueprint state.env)")
     );
 
     private static RequiredArgumentBuilder<CommandSource, String> overrides() {
@@ -253,6 +251,19 @@ public class CreateCommand {
                             case "--oom_disabled=":
                                 creation.setOomDisabled(Boolean.valueOf(value));
                                 break;
+                            case "--env=": {
+                                int eq = value.indexOf('=');
+                                if (eq <= 0) {
+                                    ProtoMessage.chat()
+                                            .add("--env= requires KEY=value", NamedTextColor.RED)
+                                            .sendMessage(source);
+                                    return 0;
+                                }
+                                String envKey = value.substring(0, eq);
+                                String envVal = value.substring(eq + 1);
+                                creation.putEnv(envKey, envVal);
+                                break;
+                            }
                             default:
                                 ProtoMessage.chat()
                                         .add("Unknown flag: ", NamedTextColor.RED)
@@ -278,14 +289,10 @@ public class CreateCommand {
                                     .add(MessagePreset.SLS)
                                     .add("Created " + blueprint, NamedTextColor.GREEN)
                                     .add(" (", NamedTextColor.GRAY)
-                                    .add(server.getShortId(), NamedTextColor.DARK_GRAY)
+                                    .add(server.getCompositeId(), NamedTextColor.DARK_GRAY)
                                     .add(")", NamedTextColor.GRAY)
                                     .sendMessage(source);
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add("Failed to create server. Reason: " + failure.getMessage(), NamedTextColor.GRAY)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to create server for blueprint " + blueprint, failure, source));
                     };
 
                     // If node was specified, fetch node IDs asynchronously and then create server
@@ -295,11 +302,7 @@ public class CreateCommand {
                             String nodeId = Id.findFullId(finalNodeValue, nodeIds);
                             creation.setNodeId(nodeId);
                             createServer.run();
-                        }, failure -> {
-                            ProtoMessage.chat()
-                                    .add("Failed to fetch node ids. Reason: " + failure.getMessage(), NamedTextColor.RED)
-                                    .sendMessage(source);
-                        });
+                        }, failure -> Log.requestError("Failed to fetch node ids for node " + finalNodeValue, failure, source));
                     } else {
                         // No node specified, create server immediately
                         createServer.run();

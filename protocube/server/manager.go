@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"maps"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -240,7 +241,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		},
 		Stop: models.ProcessStopConfiguration{
 			Type:  "command",
-			Value: "stop",
+			Value: sw.StopCommand,
 		},
 		ConfigurationFiles: configFiles,
 	}
@@ -253,7 +254,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		if s.Overrides.Save != nil {
 			save = *s.Overrides.Save
 		}
-		limits = MergeLimits(limits, s.Overrides.Limits)
+		limits = environment.MergeLimits(limits, s.Overrides.Limits)
 	}
 
 	serverFolder := bp.Server.Path
@@ -266,7 +267,7 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		image = *s.Overrides.Image
 	}
 	// If no explicit image is set on the blueprint or via overrides,
-	// fall back to the software's version-aware image selection.
+	// fall back to the software's image mappings selection.
 	if image == "" {
 		selectedImage, err := sw.ImageForVersion(effectiveVersion)
 		if err != nil {
@@ -275,20 +276,49 @@ func GetServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.Re
 		image = selectedImage
 	}
 
+	var effectiveState *blueprint.State
+	if s.Overrides != nil && len(s.Overrides.Env) > 0 {
+		effectiveState = mergeBlueprintState(bp.State, s.Overrides.Env)
+	} else {
+		effectiveState = bp.State
+	}
+
 	nodeReq := models.ServerConfigurationResponse{
 		Id:                   s.Id(),
 		ProcessConfiguration: pc,
 		Image:                image,
 		Invocation:           sw.Invocation,
 		Limits:               limits,
-		State:                bp.State,
+		State:                effectiveState,
 		ServerFolder:         serverFolder,
 		Allocations:          s.Allocations,
 		Save:                 save,
 		SoftwareId:           sw.Id,
 		SoftwareVersion:      bp.Server.Version,
+		HasInstallScript:     sw.InstallScript.Script != "",
+		SkipInstallScript:    sw.InstallScript.SkipScripts,
 	}
 	return &nodeReq, nil
+}
+
+// mergeBlueprintState returns a new State with blueprint env merged with envOverride (override wins on key collision).
+func mergeBlueprintState(bpState *blueprint.State, envOverride map[string]string) *blueprint.State {
+	out := &blueprint.State{}
+	if bpState != nil {
+		out.Volumes = bpState.Volumes
+		out.Mounts = bpState.Mounts
+		out.Copy = bpState.Copy
+		if len(bpState.Env) > 0 {
+			out.Env = maps.Clone(bpState.Env)
+		}
+	}
+	for k, v := range envOverride {
+		if out.Env == nil {
+			out.Env = make(map[string]string, len(envOverride))
+		}
+		out.Env[k] = v
+	}
+	return out
 }
 
 // Loads in all servers stored in the database
@@ -368,32 +398,3 @@ func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *n
 	return server, nil
 }
 
-func MergeLimits(base *environment.Limits, override *environment.Limits) *environment.Limits {
-	if override == nil {
-		return base
-	}
-
-	if override.MemoryLimit != nil {
-		base.MemoryLimit = override.MemoryLimit
-	}
-	if override.Swap != nil {
-		base.Swap = override.Swap
-	}
-	if override.IoWeight != nil {
-		base.IoWeight = override.IoWeight
-	}
-	if override.CpuLimit != nil {
-		base.CpuLimit = override.CpuLimit
-	}
-	if override.DiskSpace != nil {
-		base.DiskSpace = override.DiskSpace
-	}
-	if override.Threads != nil {
-		base.Threads = override.Threads
-	}
-	if override.OOMDisabled != nil {
-		base.OOMDisabled = override.OOMDisabled
-	}
-
-	return base
-}

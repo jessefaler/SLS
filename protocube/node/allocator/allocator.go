@@ -18,6 +18,10 @@ var (
 )
 
 // Allocator manages IP and port assignments for servers.
+//
+// Allocations are persisted in the database as part of server records.
+// When a node connects, its allocator is initialized and existing allocations
+// are restored by claiming ports for each server on that node.
 type Allocator struct {
 	mu          sync.Mutex
 	Used        map[string]map[int]struct{} // ip -> set of ports
@@ -182,7 +186,7 @@ func (a *Allocator) Claim(address string, port int) {
 		return // no allocations for this address, do nothing
 	}
 
-	// Check if port is within any configured range
+	// Check if port is within the configured range
 	inRange := false
 	for _, alloc := range allocs {
 		if port >= alloc.PortRange.Start && port <= alloc.PortRange.End {

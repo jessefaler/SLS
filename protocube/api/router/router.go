@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
-	"protoxon.com/sls/protocube/auth"
+	"protoxon.com/sls/protocube/auth/scope"
 )
 
 // Configure configures the routing infrastructure.
@@ -22,7 +23,7 @@ func (r *Router) Configure() *gin.Engine {
 	// All the routes beyond this point will use an authorization middleware
 	// and will not be accessible without the correct Authorization header provided.
 	protected := router.Group("/api")
-	protected.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application))
+	protected.Use(middleware.RequireAuthorization(r.KeyService, scope.AppAdmin))
 	{
 		protected.GET("/nodes", r.getAllNodes)
 		protected.GET("/system", getSystemInformation)
@@ -38,7 +39,7 @@ func (r *Router) Configure() *gin.Engine {
 	// These are blueprint specific routes, and require that the request be authorized, and
 	// that the blueprint exist.
 	blueprintGroup := router.Group("/api/blueprints/:blueprint")
-	blueprintGroup.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.BlueprintExists(r.BlueprintRegistry))
+	blueprintGroup.Use(middleware.RequireAuthorization(r.KeyService, scope.Node), middleware.BlueprintExists(r.BlueprintRegistry))
 	{
 		blueprintGroup.GET("", getBlueprint)
 	}
@@ -46,7 +47,7 @@ func (r *Router) Configure() *gin.Engine {
 	// These are server specific routes, and require that the request be authorized, and
 	// that the server exist.
 	server := router.Group("/api/servers/:server")
-	server.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.ServerExists(r.ServerManager))
+	server.Use(middleware.RequireAuthorization(r.KeyService, scope.AppAdmin), middleware.ServerExists(r.ServerManager))
 	{
 		server.GET("", getServer)
 		server.DELETE("", deleteServer)
@@ -65,7 +66,7 @@ func (r *Router) Configure() *gin.Engine {
 
 	// Node Registration
 	registration := router.Group("/api/nodes/:node")
-	registration.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node))
+	registration.Use(middleware.RequireAuthorization(r.KeyService, scope.Node))
 	registration.POST("/register", r.postNodeRegister)
 
 	// These are node specific routes, and require that the request be authorized, and
@@ -74,7 +75,7 @@ func (r *Router) Configure() *gin.Engine {
 	// TODO: Refactor to a flat structure like /api/remote/... where the node is
 	//       identified via its API key instead of path parameters.
 	node := router.Group("/api/nodes/:node")
-	node.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Application), middleware.NodeExists(r.NodeManager))
+	node.Use(middleware.RequireAuthorization(r.KeyService, scope.AppAdmin), middleware.NodeExists(r.NodeManager))
 	{
 		node.GET("", getNode)
 		node.GET("/system", getNodeSystemInfo)
@@ -82,7 +83,7 @@ func (r *Router) Configure() *gin.Engine {
 
 		// These are routes for internal communication
 		internal := router.Group("/api/nodes/:node/internal")
-		internal.Use(middleware.RequireAuthorization(r.VerifyToken, auth.Node), middleware.NodeExists(r.NodeManager))
+		internal.Use(middleware.RequireAuthorization(r.KeyService, scope.Node), middleware.NodeExists(r.NodeManager))
 		internal.POST("/heartbeat", postNodeHeartbeat)
 		internal.POST("/disconnect", r.postNodeDisconnect)
 
@@ -107,10 +108,10 @@ func (r *Router) Configure() *gin.Engine {
 	// Return JSON error bodies for unmatched routes and methods so API clients
 	// (e.g. daemon remote client) get a parseable response instead of _MissingResponseCode.
 	router.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist."})
+		httperror.JSON(c, http.StatusNotFound, "no matching route", "The requested resource does not exist.")
 	})
 	router.NoMethod(func(c *gin.Context) {
-		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed."})
+		httperror.JSON(c, http.StatusMethodNotAllowed, "method not allowed for route", "Method not allowed.")
 	})
 
 	return router

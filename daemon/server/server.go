@@ -76,7 +76,7 @@ func New(client remote.Client) (*Server, error) {
 		client:    client,
 		powerLock: system.NewLocker(),
 		sinks: map[system.SinkName]*system.SinkPool{
-			system.LogSink:    system.NewSinkPool(),
+			system.LogSink:     system.NewSinkPool(),
 			system.InstallSink: system.NewSinkPool(),
 		},
 		resources: ResourceUsage{
@@ -313,12 +313,12 @@ func (s *Server) ToAPIResponse() APIResponse {
 	}
 }
 
-// Sync syncs the state of the server on the Panel with Wings. This ensures that
-// we're always using the state of the server from the Panel and allows us to
-// not require successful API calls to Wings to do things.
+// Sync syncs the state of the server on Protocube with the daemon. This ensures that
+// we're always using the state of the server from Protocube and allows us to
+// not require successful API calls to the daemon to do things.
 //
-// This also means mass actions can be performed against servers on the Panel
-// and they will automatically sync with Wings when the server is started.
+// This also means mass actions can be performed against servers on Protocube
+// and they will automatically sync with the daemon when the server is started.
 func (s *Server) Sync() error {
 	cfg, err := s.client.GetServerConfiguration(s.Context(), s.ID())
 	if err != nil {

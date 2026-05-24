@@ -49,7 +49,7 @@ func GetConfigFiles(sw *software.Software, bp *blueprint.Blueprint, overrideConf
 	configFiles := make([]parser.ConfigurationFile, 0, len(order))
 	for _, fileName := range order {
 		m := merged[fileName]
-		cf, err := convertConfigFile(fileName, m.Parser, m.Find, nil)
+		cf, err := convertConfigFile(fileName, m.Parser, m.Find)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to convert config file %s", fileName)
 		}
@@ -59,20 +59,46 @@ func GetConfigFiles(sw *software.Software, bp *blueprint.Blueprint, overrideConf
 	return configFiles, nil
 }
 
-// ConvertConfigFile converts a generic config file (from software or blueprint) to a parser.ConfigurationFile
-func convertConfigFile(fileName, parserType string, find map[string]interface{}, serverData *parser.ServerPlaceholderData) (*parser.ConfigurationFile, error) {
+// flattenMap recursively flattens a nested map into dot-notated paths.
+// For example, {"anticheat": {"anti-xray": {"enabled": false}}} becomes
+// {"anticheat.anti-xray.enabled": false}
+func flattenMap(prefix string, m map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	for key, value := range m {
+		fullKey := key
+		if prefix != "" {
+			fullKey = prefix + "." + key
+		}
+
+		// If the value is a nested map, recursively flatten it
+		if nestedMap, ok := value.(map[string]interface{}); ok {
+			for k, v := range flattenMap(fullKey, nestedMap) {
+				result[k] = v
+			}
+		} else {
+			// This is a leaf value, add it to the result
+			result[fullKey] = value
+		}
+	}
+
+	return result
+}
+
+// convertConfigFile converts a generic config file (from software or blueprint) to a parser.ConfigurationFile.
+func convertConfigFile(fileName, parserType string, find map[string]interface{}) (*parser.ConfigurationFile, error) {
 	configFile := &parser.ConfigurationFile{
 		FileName: fileName,
 		Parser:   parser.ConfigurationParser(parserType),
 		Replace:  make([]parser.ConfigurationFileReplacement, 0, len(find)),
 	}
 
-	// Convert each find entry to a replacement
-	for match, value := range find {
-		// Replace placeholders in the value if serverData is available
-		processedValue := parser.ReplacePlaceholders(value, serverData)
+	// Flatten the find map to handle nested structures
+	flattenedFind := flattenMap("", find)
 
-		replaceValue, err := parser.NewReplaceValue(processedValue)
+	// Convert each flattened find entry to a replacement
+	for match, value := range flattenedFind {
+		replaceValue, err := parser.NewReplaceValue(value)
 		if err != nil {
 			return nil, err
 		}

@@ -1,11 +1,16 @@
 package environment
 
+import (
+	"emperror.dev/errors"
+	"github.com/creasty/defaults"
+)
+
 // Limits is the build settings for a given server that impact docker container
 // creation and resource limits for a server instance.
 type Limits struct {
 	// The total amount of memory in mebibytes that this server is allowed to
 	// use on the host system.
-	MemoryLimit *int64 `yaml:"memory_limit" json:"memory_limit" default:"2048"`
+	MemoryLimit *int64 `yaml:"memory_limit" json:"memory_limit" default:"4096"`
 
 	// The amount of additional swap space to be provided to a container instance.
 	Swap *int64 `yaml:"swap" json:"swap" default:"0"`
@@ -26,7 +31,7 @@ type Limits struct {
 	Threads *string `yaml:"threads" json:"threads" default:""`
 
 	// If true, disables the OOM killer for this container.
-	OOMDisabled *bool `yaml:"oom_disabled" json:"oom_disabled" default:"false"`
+	OOMDisabled *bool `yaml:"oom_disabled" json:"oom_disabled" default:"true"`
 }
 
 func CopyLimits(orig *Limits) *Limits {
@@ -66,4 +71,51 @@ func CopyLimits(orig *Limits) *Limits {
 	}
 
 	return copy
+}
+
+// MergeLimits merges override into base. Non-nil fields in override replace base.
+// If base is nil, it starts as an empty Limits. If override is nil, base is returned unchanged.
+func MergeLimits(base *Limits, override *Limits) *Limits {
+	if override == nil {
+		return base
+	}
+	if base == nil {
+		base = &Limits{}
+	}
+	if override.MemoryLimit != nil {
+		base.MemoryLimit = override.MemoryLimit
+	}
+	if override.Swap != nil {
+		base.Swap = override.Swap
+	}
+	if override.IoWeight != nil {
+		base.IoWeight = override.IoWeight
+	}
+	if override.CpuLimit != nil {
+		base.CpuLimit = override.CpuLimit
+	}
+	if override.DiskSpace != nil {
+		base.DiskSpace = override.DiskSpace
+	}
+	if override.Threads != nil {
+		base.Threads = override.Threads
+	}
+	if override.OOMDisabled != nil {
+		base.OOMDisabled = override.OOMDisabled
+	}
+
+	return base
+}
+
+// ValidateLimits validates limits and sets defaults for nil fields.
+func ValidateLimits(limit *Limits) error {
+	if err := defaults.Set(limit); err != nil {
+		return err
+	}
+
+	if limit.IoWeight != nil && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
+		return errors.New("io_weight must be between 10 and 1000")
+	}
+
+	return nil
 }

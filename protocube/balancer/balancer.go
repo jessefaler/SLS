@@ -19,4 +19,7 @@ type Balancer interface {
 
 	// RemoveNode removes a node from the balancer
 	RemoveNode(n BalancedNode)
+
+	// ListNodes returns a slice of all BalancedNode's in balancer
+	ListNodes() []BalancedNode
 }

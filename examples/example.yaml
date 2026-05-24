@@ -1,0 +1,29 @@
+
+blueprint:
+  id: block_hunt
+  name: Block Hunt
+  type: minigame
+
+server:
+  software: paper
+  version: 1.21.11
+  limits:
+    memory_limit: 2048
+    cpu_limit: 200
+
+state:
+  volumes:
+    - name: world
+      source: worlds/minigames/block_hunt
+      target: /world
+      mode: cow
+
+annotations:
+  # Custom annotation for SlimePacks
+  resource_pack: "block_hunt"
+  # Custom annotation for ProMenu
+  promenu:
+    author: protoxon
+    item: oak_log
+    tags: ["hide and seek", "prop hunt", "stealth", "disguise"]
+    description: Disguise yourself as blocks and avoid getting found by seekers

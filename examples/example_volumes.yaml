@@ -1,0 +1,51 @@
+
+blueprint:
+  id: "slsmp1"
+  name: "SLSMP1"
+  type: "archive"
+
+server:
+  software: "paper"
+  version: "1.21.1"
+
+state:
+  volumes:
+
+  # Volumes are directories managed by SLS that can be mounted into server containers.
+  # By default, they are stored at "/var/lib/sls/volumes".
+  # They make it easy to add custom folders to your server environment.
+
+  # Volume format:
+  # - name:   A unique name for the volume
+  #   source: Path on the host, relative to the volumes directory (default: /var/lib/sls/volumes)
+  #   target: Mount point inside the container
+  #   mode:   Mount mode: cow, rw, ro
+  #           cow (default) - Copy-on-write; recommended for most use cases. It allows multiple servers to share the same files without conflicts, stores only modified files, and automatically merges directories if multiple volumes share the same target.
+  #           rw            - Read/write bind mount
+  #           ro            - Read-only bind mount
+
+  # Examples:
+
+      # Server world state
+    - name: "world"
+      source: "worlds/world"     # Resolved to /sls/volumes/worlds/world
+      target: "/world"           # Mount point inside the container
+      mode: cow                  # cow | ro | rw (default: cow)
+
+    # Read-only plugins or assets
+    - name: "plugins"
+      source: "plugins"
+      target: "/plugins"
+      mode: ro
+
+    # Example persistent data volume
+    # (useful for databases, player data, etc.)
+    - name: "data"
+      source: "shared/data"
+      target: "/data"
+      mode: rw
+
+    # You can also use a shorthand format if you prefer:
+    # name:source:target[:mode]
+    - world:worlds/archives/SLSMP1:/world:cow
+    - nether:worlds/archives/SLSMP1/DIM-1:/world_nether/DIM-1:cow

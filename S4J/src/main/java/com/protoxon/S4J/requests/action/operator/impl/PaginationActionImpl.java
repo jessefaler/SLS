@@ -1,6 +1,8 @@
 package com.protoxon.S4J.requests.action.operator.impl;
 
 import com.protoxon.S4J.entities.S4J;
+import com.protoxon.S4J.exceptions.ApiError;
+import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.requests.PaginationAction;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
@@ -37,7 +39,7 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	 * {@link #limit(int)}
 	 *
 	 * @param api
-	 *        The current P4J instance
+	 *        The current S4J instance
 	 */
 	public PaginationActionImpl(S4J api, Route.CompiledRoute route) {
 		super(api, route);
@@ -139,24 +141,26 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	public CompletableFuture<List<T>> takeAsync(int amount) {
 		return takeAsyncInternally(
 				amount,
-				(task, list) -> forEachAsync(
-						val -> {
-							list.add(val);
-							return list.size() < amount;
-						},
-						task::completeExceptionally));
+				(task, list) ->
+						forEachAsync(
+								val -> {
+									list.add(val);
+									return list.size() < amount;
+								},
+								f -> task.completeExceptionally((ApiError) f)));
 	}
 
 	@Override
 	public CompletableFuture<List<T>> takeRemainingAsync(int amount) {
 		return takeAsyncInternally(
 				amount,
-				(task, list) -> forEachRemainingAsync(
-						val -> {
-							list.add(val);
-							return list.size() < amount;
-						},
-						task::completeExceptionally));
+				(task, list) ->
+						forEachRemainingAsync(
+								val -> {
+									list.add(val);
+									return list.size() < amount;
+								},
+								f -> task.completeExceptionally((ApiError) f)));
 	}
 
 	private CompletableFuture<List<T>> takeAsyncInternally(
@@ -174,31 +178,36 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	}
 
 	@Override
-	public CompletableFuture<?> forEachAsync(Procedure<? super T> action, Consumer<? super Throwable> failure) {
+	public CompletableFuture<?> forEachAsync(Procedure<? super T> action, Consumer<? super ApiFailure> failure) {
 		return forEachAsyncInternally(action, failure, cached);
 	}
 
 	@Override
 	public CompletableFuture<?> forEachRemainingAsync(
-			Procedure<? super T> action, Consumer<? super Throwable> failure) {
+			Procedure<? super T> action, Consumer<? super ApiFailure> failure) {
 		return forEachAsyncInternally(action, failure, getRemainingCache());
 	}
 
 	private CompletableFuture<?> forEachAsyncInternally(
-			Procedure<? super T> action, Consumer<? super Throwable> failure, List<T> acceptorValue) {
+			Procedure<? super T> action, Consumer<? super ApiFailure> failure, List<T> acceptorValue) {
 		Checks.notNull(action, "Procedure");
 		Checks.notNull(failure, "Failure Consumer");
 
 		CompletableFuture<?> task = new CompletableFuture<>();
-		Consumer<List<T>> acceptor = new ChainedConsumer(task, action, (throwable) -> {
-			task.completeExceptionally(throwable);
-			failure.accept(throwable);
-		});
+		Consumer<List<T>> acceptor =
+				new ChainedConsumer(
+						task,
+						action,
+						(apiErr) -> {
+							task.completeExceptionally((ApiError) apiErr);
+							failure.accept(apiErr);
+						});
 		try {
 			acceptor.accept(acceptorValue);
 		} catch (Exception ex) {
-			failure.accept(ex);
-			task.completeExceptionally(ex);
+			ApiError err = ApiError.coerce(ex);
+			failure.accept(err);
+			task.completeExceptionally(err);
 		}
 		return task;
 	}
@@ -258,14 +267,14 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	protected class ChainedConsumer implements Consumer<List<T>> {
 		private final CompletableFuture<?> task;
 		private final Procedure<? super T> action;
-		private final Consumer<Throwable> throwableConsumer;
+		private final Consumer<ApiFailure> failureConsumer;
 		private boolean initial = true;
 
 		protected ChainedConsumer(
-				CompletableFuture<?> task, Procedure<? super T> action, Consumer<Throwable> throwableConsumer) {
+				CompletableFuture<?> task, Procedure<? super T> action, Consumer<ApiFailure> failureConsumer) {
 			this.task = task;
 			this.action = action;
-			this.throwableConsumer = throwableConsumer;
+			this.failureConsumer = failureConsumer;
 		}
 
 		@Override
@@ -296,7 +305,7 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 					"No more elements in cache, asynchronously retrieving next page {} -> {}",
 					getCurrentPage() - 1,
 					getCurrentPage());
-			executeAsync(this, throwableConsumer);
+			executeAsync(this, failureConsumer);
 		}
 	}
 }

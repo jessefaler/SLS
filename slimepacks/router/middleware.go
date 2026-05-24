@@ -5,6 +5,7 @@ import (
 	"protoxon.com/sls/slimepacks/slimepack"
 
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
 )
 
@@ -19,7 +20,7 @@ func PackExists(manager *slimepack.Manager) gin.HandlerFunc {
 			pack = manager.GetPack(c.Param("slimepack"))
 		}
 		if pack == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", middleware.ExtractLogger(c).WithField("pack", pack.Id()))

@@ -6,7 +6,6 @@ import com.velocitypowered.api.command.CommandSource;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.server.Server;
-import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
@@ -33,7 +32,7 @@ public class ListCommand {
                         } else if (server.getStatus() == ServerStatus.PAUSED) {
                             color = "aqua";
                         }
-                        message.addMiniMessage("<hover:show_text:'<" + color + ">" + server.getShortId() + "</" + color + ">'><" + color + ">" + server.getName() + "</" + color + "></hover>");
+                        message.addMiniMessage("<hover:show_text:'<" + color + ">" + server.getCompositeId() + "</" + color + ">'><" + color + ">" + server.getName() + "</" + color + "></hover>");
                         message.add(": ", NamedTextColor.WHITE);
                         int count = server.getPlayerCount();
                         message.addMiniMessage("<dark_aqua><hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'>" + count + "</hover></dark_aqua>");

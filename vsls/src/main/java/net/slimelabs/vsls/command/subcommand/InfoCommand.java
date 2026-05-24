@@ -3,7 +3,6 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.command.CommandSource;
@@ -15,7 +14,6 @@ import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.ServerUtils;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
-import java.util.stream.Collectors;
 
 public class InfoCommand {
 
@@ -86,7 +84,7 @@ public class InfoCommand {
                     ? server.getAllocation().getAlias()
                     : server.getAllocation().getIp())
                     + ":" + server.getAllocation().getPort();
-            ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getShortId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
+            ProtoMessage.chat().addMiniMessage("<dark_aqua>Info</dark_aqua> <dark_gray>(</dark_gray><dark_aqua>" + server.getCompositeId() + "</dark_aqua><dark_gray>)</dark_gray>:\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－\n</st></b></dark_gray>" +
                     " <hover:show_text:'<dark_purple>" + server.getPlayerNames() + "</dark_purple>'><gold>-</gold> <dark_gray>Players:</dark_gray> <red>" + server.getPlayerCount() + "</red></hover>\n" +
                     " <gold>-</gold> <dark_gray>Status:</dark_gray> <" + statusColor + ">" + server.getStatus().getStatus() + "</" + statusColor + ">\n" +
@@ -95,7 +93,7 @@ public class InfoCommand {
                     " <hover:show_text:'<dark_purple>Allocation: " + allocation + "\nImage: " + image + "</dark_purple>'><gold>-</gold> <dark_gray>Server:</dark_gray><blue> " + software + " " + version + "</blue></hover>\n" +
                     " <gold>-</gold> <dark_gray>Node:</dark_gray><dark_purple> " + server.getNodeName() + " " + server.getNodeId().substring(0, 8) + "</dark_purple>\n" +
                     " <gold>-</gold> <dark_gray>Stats:</dark_gray> <hover:show_text:'<dark_purple>" +
-                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "</red>\n" +
+                    "   <gold>-</gold> <dark_gray>Cpu:</dark_gray><red> " + stats.getCpuFormatted() + "<dark_gray> / </dark_gray><red>" + stats.getCpuLimitFormatted() + "</red>\n" +
                     "   <gold>-</gold> <dark_gray>Mem:</dark_gray> <red>" + stats.getMemoryFormattedAuto() + "</red> <dark_gray>/</dark_gray> <red>" + stats.getMaxMemoryFormattedAuto() + "</red> <dark_gray>(</dark_gray><red>" + stats.getMemoryUsagePercentageFormatted() + "</red><dark_gray>)</dark_gray>\n" +
                     "   <gold>-</gold> <dark_gray>Network Inbound:</dark_gray> <red>" + stats.getNetworkIngressFormattedAuto() + "</red>\n" +
                     "   <gold>-</gold> <dark_gray>Network Outbound:</dark_gray> <red>" + stats.getNetworkEgressFormattedAuto() + "</red>\n" +
@@ -106,10 +104,7 @@ public class InfoCommand {
                     " <gold>-</gold> <dark_gray>Uptime:</dark_gray><red> " + stats.formatUptime() + "</red>\n" +
                     "<dark_gray><b><st>－－－－－－－－－－－－－－－－－－－－</st></b></dark_gray>").sendMessage(source);
         },  failure -> {
-            ProtoMessage.chat()
-                    .add(MessagePreset.SLS)
-                    .add("Failed to fetch server stats reason: " + failure.getMessage(), NamedTextColor.RED)
-                    .sendMessage(source);
+            Log.requestError("Failed to fetch server stats for " + server.getCompositeId(), failure, source);
         });
     }
 
