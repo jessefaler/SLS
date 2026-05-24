@@ -7,15 +7,20 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.events.Event;
+import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
+import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.loader.Animation;
+import net.slimelabs.vsls.utils.message.CommandMessageParts;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Queue for a single server: wait until RUNNING then connect all waiting players.
@@ -35,6 +40,7 @@ public class ServerConnectionQueue {
     private final boolean startServer;
     private final Runnable onClosed;
     private final ConcurrentLinkedQueue<Player> waiting = new ConcurrentLinkedQueue<>();
+    private final Set<java.util.UUID> ignoreBlueprintRules = ConcurrentHashMap.newKeySet();
     private final Animation loadingIcon = new Animation();
     private final AtomicBoolean flushed = new AtomicBoolean(false);
     private final Event.Handle statusHandle;
@@ -83,13 +89,28 @@ public class ServerConnectionQueue {
         statusHandle.remove();
         deletionHandle.remove();
         onClosed.run();
+        int connected = 0;
+        int maxPlayers = getMaxPlayers();
         for (Player p : waiting) {
-            ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(p);
             ChatPackets.enableActionBarPackets(p.getUniqueId());
             loadingIcon.stop(p.getUniqueId());
+            if (!ignoreBlueprintRules.contains(p.getUniqueId()) && maxPlayers > 0 && server.getPlayerCount() + connected >= maxPlayers) {
+                ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .addMiniMessage("<red>Server full:</red> " + CommandMessageParts.server(server)
+                                + " <gray>(max " + maxPlayers + ").</gray>")
+                        .sendMessage(p);
+                ProtoMessage.actionBar()
+                        .add("Server full: " + server.getCompositeId(), NamedTextColor.RED)
+                        .sendMessage(p);
+                continue;
+            }
+            ProtoMessage.actionBar().add("Joining " + server.getName(), NamedTextColor.GREEN).sendMessage(p);
             server.connect(p);
+            connected++;
         }
         waiting.clear();
+        ignoreBlueprintRules.clear();
     }
 
     private void flushWithError(String message) {
@@ -103,6 +124,7 @@ public class ServerConnectionQueue {
             loadingIcon.stop(p.getUniqueId());
         }
         waiting.clear();
+        ignoreBlueprintRules.clear();
     }
 
     private void flushWithApiError(String message, ApiFailure failure) {
@@ -116,10 +138,18 @@ public class ServerConnectionQueue {
             loadingIcon.stop(p.getUniqueId());
         }
         waiting.clear();
+        ignoreBlueprintRules.clear();
     }
 
     public void enqueue(Player player) {
+        enqueue(player, false);
+    }
+
+    public void enqueue(Player player, boolean ignoreBlueprintRules) {
         waiting.add(player);
+        if (ignoreBlueprintRules) {
+            this.ignoreBlueprintRules.add(player.getUniqueId());
+        }
         loadingIcon.start(player);
         ProtoMessage.chat()
                 .add(MessagePreset.SLS)
@@ -132,6 +162,7 @@ public class ServerConnectionQueue {
         loadingIcon.stop(player.getUniqueId());
         ChatPackets.enableActionBarPackets(player.getUniqueId());
         boolean removed = waiting.remove(player);
+        ignoreBlueprintRules.remove(player.getUniqueId());
         if (removed && waiting.isEmpty()) {
             statusHandle.remove();
             deletionHandle.remove();
@@ -146,5 +177,16 @@ public class ServerConnectionQueue {
 
     public boolean isQueued(Player player) {
         return waiting.contains(player);
+    }
+
+    public int getWaitingCount() {
+        return waiting.size();
+    }
+
+    private int getMaxPlayers() {
+        var blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
+        if (blueprint == null) return 0;
+        MatchmakingMetadata metadata = BlueprintMetadataParser.parse(blueprint);
+        return metadata != null ? metadata.maxPlayers() : 0;
     }
 }
