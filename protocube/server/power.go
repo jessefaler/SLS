@@ -1,6 +1,6 @@
 package server
 
-// Status is the server power state string, matching the daemon environment design
+// Status is the server power state string
 // (environment.ProcessOfflineState, ProcessStartingState, etc.).
 type Status = string
 

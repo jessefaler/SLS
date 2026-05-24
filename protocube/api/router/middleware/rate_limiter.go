@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
+	"protoxon.com/sls/protocube/api/router/httperror"
 )
 
 // Client rate limiter
@@ -59,11 +59,9 @@ func RateLimiter() gin.HandlerFunc {
 		// Check limit
 		if !entry.limiter.Allow() {
 			log.Debug("Rate limit exceeded for client " + clientID)
-			c.Header("Retry-After", fmt.Sprintf("%d", RetryAfterSeconds(entry.limiter)))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error":   "rate_limit_exceeded",
-				"message": "Too many requests. Please try again later.",
-			})
+			retry := RetryAfterSeconds(entry.limiter)
+			c.Header("Retry-After", fmt.Sprintf("%d", retry))
+			httperror.AbortTooManyRequests(c, "rate_limit_exceeded", "Too many requests. Please try again later.", retry)
 			return
 		}
 

@@ -25,6 +25,8 @@ type ServerConfigurationResponse struct {
 	ServerFolder         string                  `json:"server-folder"`
 	SoftwareId           string                  `json:"software-id"`
 	SoftwareVersion      string                  `json:"software-version"`
+	HasInstallScript     bool                    `json:"has-install-script"`
+	SkipInstallScript    bool                    `json:"skip-install-script"`
 }
 
 // Server data state configuration

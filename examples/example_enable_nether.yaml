@@ -1,0 +1,36 @@
+
+# This example shows how to enable the nether by setting the allow-nether property in a config patch
+
+blueprint:
+  id: survival
+  name: Survival World
+  type: survival
+
+server:
+  software: paper
+  version: 1.21.11
+
+  # Add a config patch to enable the nether
+  configs:
+    server.properties:
+      parser: properties
+      find:
+        allow-nether: true
+
+state:
+  volumes:
+    - name: "world"
+      source: "worlds/survival_world"
+      target: "/world"
+      mode: cow
+
+      # Optional:
+      # CraftBukkit-based servers (like Spigot/Paper) store the Nether in a separate folder called "world_nether".
+      # Vanilla worlds store it in "DIM-1" inside the main world folder.
+      #
+      # If your world was created in vanilla (or you want to keep that structure),
+      # mount DIM-1 into "world_nether/DIM-1" like below.
+    - name: "nether"
+      source: "worlds/survival_world/DIM-1"
+      target: "/world_nether/DIM-1"
+      mode: cow

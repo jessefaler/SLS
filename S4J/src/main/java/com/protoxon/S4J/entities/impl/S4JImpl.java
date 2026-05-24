@@ -29,7 +29,7 @@ public class S4JImpl implements S4J {
 
     @Override
     public String getToken() {
-        return endpointConfig.getToken();
+        return endpointConfig.token();
     }
 
     @Override
@@ -39,7 +39,7 @@ public class S4JImpl implements S4J {
 
     @Override
     public String getUrl() {
-        return endpointConfig.getUrl();
+        return endpointConfig.url();
     }
 
     @Override

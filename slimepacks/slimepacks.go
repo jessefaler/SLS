@@ -42,7 +42,7 @@ var Plugin SlimePacks // Entrypoint
 
 const (
 	name        = "SlimePacks"
-	version     = "1.0.0"
+	version     = "1.0.1"
 	authors     = "Protoxon"
 	description = "Resource pack management plugin"
 )

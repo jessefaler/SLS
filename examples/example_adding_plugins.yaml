@@ -1,0 +1,30 @@
+
+blueprint:
+  id: "slsmp1"
+  name: "SLSMP1"
+  type: "archive"
+
+server:
+  software: "paper"
+  version: "1.21.1"
+  
+state:
+  volumes:
+    - name: "world" 
+      source: "worlds/archives/SLSMP1"
+      target: "/world"
+      mode: cow
+
+      # Simply add a new volume for your plugins 
+      # set the source to the folder containing your plugins (note the source must be a folder, not a single plugin file)
+      # the target should be /plugins to have the plugins loaded by the server
+    - name: "plugins"
+      source: "plugins/folder-with-your-plugins"
+      target: "/plugins"
+      mode: cow
+
+      # You can combine multiple plugin folders 'cow' will automatically merge them
+    - name: "plugins"
+      source: "plugins/another-folder-with-your-plugins"
+      target: "/plugins"
+      mode: cow

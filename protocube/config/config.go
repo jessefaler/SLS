@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/apex/log"
+	"github.com/google/uuid"
 	"github.com/mitchellh/colorstring"
 	"gopkg.in/yaml.v3"
 )
@@ -24,6 +25,10 @@ var (
 )
 
 type Configuration struct {
+
+	// Uuid is a unique identifier for this Protocube installation. It is set when
+	// the default config file is first created (see writeDefaultConfig).
+	Uuid string `yaml:"uuid"`
 
 	// Determines if sls should be running in debug mode. This value is ignored
 	// if the debug flag is passed through the command line arguments.
@@ -41,6 +46,10 @@ type Configuration struct {
 	// AllowCORSPrivateNetwork sets the `Access-Control-Request-Private-Network` header which
 	// allows client browsers to make requests to internal IP addresses over HTTP.
 	AllowCORSPrivateNetwork bool `json:"allow_cors_private_network" yaml:"allow_cors_private_network"`
+
+	// TelemetryEnabled controls usage reporting to protoxon.com. When nil (omitted from YAML),
+	// telemetry is treated as enabled for backward compatibility.
+	TelemetryEnabled *bool `yaml:"telemetry_enabled"`
 }
 
 // ApiConfiguration defines the configuration for the API server
@@ -175,13 +184,43 @@ func writeDefaultConfig(path string) error {
 		return err
 	}
 
-	// Write embedded default config
-	return os.WriteFile(path, defaultConfig, 0o644)
+	var c Configuration
+	if err := yaml.Unmarshal(defaultConfig, &c); err != nil {
+		return err
+	}
+	c.Uuid = uuid.New().String()
+	out, err := yaml.Marshal(&c)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		return err
+	}
+
+	softwareDir := filepath.Clean(c.System.Software)
+	if softwareDir == "" || softwareDir == "." {
+		return nil
+	}
+	if err := os.MkdirAll(softwareDir, 0o700); err != nil {
+		return err
+	}
+	// Only runs when the main config was just created (see InitConfig).
+	syncDefaultSoftwareYAMLs(softwareDir)
+	return nil
 }
 
 // Get returns the global configuration instance.
 func Get() *Configuration {
 	return config
+}
+
+// IsTelemetryEnabled returns whether outbound telemetry is enabled per the config file.
+// Omitted or null telemetry_enabled defaults to true.
+func (c *Configuration) IsTelemetryEnabled() bool {
+	if c == nil || c.TelemetryEnabled == nil {
+		return true
+	}
+	return *c.TelemetryEnabled
 }
 
 func exitWithConfigurationNotice() {

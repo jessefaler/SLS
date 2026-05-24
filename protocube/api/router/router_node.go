@@ -3,12 +3,13 @@ package router
 import (
 	"net/http"
 	"strconv"
+	"sync"
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/api/router/middleware"
-	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node/allocator"
@@ -16,18 +17,23 @@ import (
 	"protoxon.com/sls/protocube/system"
 )
 
+var registerMutex sync.Mutex
+
 func (r *Router) postNodeRegister(c *gin.Context) {
 	var req models.NodeRegistration
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid request body.")
 		return
 	}
 
 	// Validate the request fields
 	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": errors.Wrap(err, "invalid field").Error()})
+		httperror.JSON(c, http.StatusBadRequest, errors.Wrap(err, "invalid field").Error(), "Invalid field in request.")
 		return
 	}
+
+	registerMutex.Lock()
+	defer registerMutex.Unlock()
 
 	// Check if the node is already registered
 	node, exists := r.NodeManager.Get(req.Id)
@@ -37,9 +43,13 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 		node.Allocator, err = allocator.NewAllocator(req.Allocations)
 		if err != nil {
 			log.WithError(err).Errorf("failed to update allocator for existing node %s", node.Id())
-			c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to update allocator"))
+			wrapped := errors.Wrap(err, "failed to update allocator")
+			httperror.JSON(c, http.StatusInternalServerError, wrapped.Error(), "")
 			return
 		}
+		// Invoke the callback to attach node clients to existing servers
+		// This ensures existing allocations are claimed in the new allocator
+		r.NodeManager.TriggerNodeRegistered(req.Id, node)
 		// Node is already registered return the current token
 		c.JSON(http.StatusOK, gin.H{
 			"token": node.Client().GetToken(),
@@ -47,10 +57,11 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 		return
 	}
 
-	// Generate a token the node will use to authenticate future requests from Protocube
-	token, err := auth.GenerateToken()
+	// Generate a key the node will use to authenticate future requests from Protocube
+	token, err := system.GenerateKey()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to generate auth token"))
+		wrapped := errors.Wrap(err, "failed to generate auth token")
+		httperror.JSON(c, http.StatusInternalServerError, wrapped.Error(), "")
 		return
 	}
 
@@ -58,15 +69,16 @@ func (r *Router) postNodeRegister(c *gin.Context) {
 	alloc, err := allocator.NewAllocator(req.Allocations)
 	if err != nil {
 		log.WithError(err).Errorf("failed to create allocator for node %s", req.Id)
-		c.JSON(http.StatusInternalServerError, errors.Wrap(err, "failed to create allocator"))
+		wrapped := errors.Wrap(err, "failed to create allocator")
+		httperror.JSON(c, http.StatusInternalServerError, wrapped.Error(), "")
 		return
 	}
 
 	// Connect the node in the node manager
-	r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token.String(), alloc)
+	r.NodeManager.Register(c.Request.Context(), req.Id, req.Name, req.Url, req.Location, token, alloc)
 
 	c.JSON(http.StatusOK, gin.H{
-		"token": token.String(),
+		"token": token,
 	})
 }
 
@@ -89,7 +101,7 @@ func postNodeServerStatus(c *gin.Context) {
 	var status server.Status
 	// Bind the JSON to the status variable
 	if err := c.ShouldBindJSON(&status); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid request body.")
 		return
 	}
 
@@ -112,7 +124,7 @@ type installStatusBody struct {
 func postNodeServerInstallStatus(c *gin.Context) {
 	var body installStatusBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid request body.")
 		return
 	}
 	s := middleware.ExtractServer(c)
@@ -129,7 +141,7 @@ func postNodeServerInstallStatus(c *gin.Context) {
 func postEventServerCrash(c *gin.Context) {
 	var crash server.CrashData
 	if err := c.ShouldBindJSON(&crash); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid request body.")
 		return
 	}
 
@@ -174,16 +186,15 @@ func toggleNodeDrained(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Invalid request body.")
 		return
 	}
 
 	err := node.SetDrained(req.Drained)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to update node drained state",
-		})
+		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "Failed to update node drained state.")
 		log.Errorf("failed to update drained state for node %s: %v", node.Id(), err)
+		return
 	}
 	c.Status(http.StatusOK)
 }
@@ -192,16 +203,13 @@ func (r *Router) getServerConfiguration(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	bp := r.BlueprintRegistry.Get(s.BlueprintId())
 	if bp == nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "unable to get server configuration: referenced blueprint does not exist (blueprint_id=" + s.BlueprintId() + ")",
-		})
+		httperror.JSON(c, http.StatusNotFound, "blueprint_id="+s.BlueprintId(), "Referenced blueprint does not exist.")
 		return
 	}
 	configuration, err := server.GetServerConfiguration(s, bp, r.SoftwareRegistry)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": err.Error(),
-		})
+		httperror.JSON(c, http.StatusNotFound, err.Error(), "Could not build server configuration.")
+		return
 	}
 	c.JSON(http.StatusOK, configuration)
 }

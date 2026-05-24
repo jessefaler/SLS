@@ -4,17 +4,6 @@ blueprint:
   name: "Blueprint Name"         # Human-readable name
   type: "game"                   # Arbitrary grouping tag
 
-# Traits are reusable configuration layers applied to this blueprint.
-# Traits are merged in order from top to bottom.
-# If multiple traits define the same field, the last trait listed wins.
-# Values defined directly in this blueprint always override trait values.
-traits:
-  - Plugins:
-      - ViaVersion
-  - LightWeight
-  - MotdPatch
-  - PluginAnnotations
-
 # Server runtime configuration
 # If the software includes an installation script the servers base files
 # will be installed once per version at /servers/<software>/<version>
@@ -97,15 +86,6 @@ state:
   # Destinations are always relative to the server filesystem
   copy:
     - sls/files/config.yml:plugins/config.yml
-
-  # Lifecycle hooks executed at specific events
-  hooks:
-    start:
-      - echo "Server starting"
-    running:
-      - echo "Server started successfully"
-    stopping:
-      - echo "Server stopping server"
 
   # Environment variables for the server
   env:

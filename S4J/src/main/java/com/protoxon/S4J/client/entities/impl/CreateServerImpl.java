@@ -6,6 +6,7 @@ import com.protoxon.S4J.client.entities.ConfigPatch;
 import com.protoxon.S4J.client.entities.ServerLimits;
 import com.protoxon.S4J.requests.Route;
 
+import java.util.HashMap;
 import java.util.Map;
 import com.protoxon.S4J.requests.SLSActionImpl;
 import okhttp3.RequestBody;
@@ -22,6 +23,7 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
     private String software;
     private String version;
     private String image;
+    private Map<String, String> envOverrides;
 
     private SLSClientImpl impl;
 
@@ -162,6 +164,15 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
         return this;
     }
 
+    @Override
+    public ServerCreationAction putEnv(String key, String value) {
+        if (envOverrides == null) {
+            envOverrides = new HashMap<>();
+        }
+        envOverrides.put(key, value);
+        return this;
+    }
+
     /**
      * Checks if the limits object has any non-null values set.
      */
@@ -193,8 +204,9 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
         boolean hasSoftware = software != null && !software.isEmpty();
         boolean hasVersion = version != null && !version.isEmpty();
         boolean hasImage = image != null && !image.isEmpty();
+        boolean hasEnv = envOverrides != null && !envOverrides.isEmpty();
 
-        if (hasSave || hasLimits || hasConfigs || hasSoftware || hasVersion || hasImage) {
+        if (hasSave || hasLimits || hasConfigs || hasSoftware || hasVersion || hasImage || hasEnv) {
             JSONObject overrides = new JSONObject();
             if (hasSave) {
                 overrides.put("save", save);
@@ -214,6 +226,13 @@ public class CreateServerImpl extends SLSActionImpl<ClientServer> implements Ser
             }
             if (hasImage) {
                 overrides.put("image", image);
+            }
+            if (hasEnv) {
+                JSONObject envObj = new JSONObject();
+                for (Map.Entry<String, String> e : envOverrides.entrySet()) {
+                    envObj.put(e.getKey(), e.getValue());
+                }
+                overrides.put("env", envObj);
             }
             obj.put("overrides", overrides);
         }

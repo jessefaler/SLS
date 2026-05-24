@@ -6,14 +6,16 @@ import "sync"
 // For development testing
 
 type RoundRobinBalancer struct {
-	mu    sync.Mutex
-	nodes []BalancedNode
-	index int
+	mu      sync.Mutex
+	nodes   []BalancedNode
+	nodeMap map[string]int // id -> index
+	index   int
 }
 
 func NewRoundRobin() *RoundRobinBalancer {
 	return &RoundRobinBalancer{
-		nodes: make([]BalancedNode, 0),
+		nodes:   make([]BalancedNode, 0),
+		nodeMap: make(map[string]int),
 	}
 }
 
@@ -38,20 +40,48 @@ func (b *RoundRobinBalancer) PickNode() BalancedNode {
 func (b *RoundRobinBalancer) AddNode(n BalancedNode) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
+	id := n.Id()
+
+	if idx, exists := b.nodeMap[id]; exists {
+		b.nodes[idx] = n
+		return
+	}
+
 	b.nodes = append(b.nodes, n)
+	b.nodeMap[id] = len(b.nodes) - 1
 }
 
 func (b *RoundRobinBalancer) RemoveNode(target BalancedNode) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	for i, n := range b.nodes {
-		if n.Id() == target.Id() { // compare by Id instead of pointer
-			b.nodes = append(b.nodes[:i], b.nodes[i+1:]...)
-			if b.index >= len(b.nodes) && len(b.nodes) > 0 {
-				b.index = 0
-			}
-			break
-		}
+	id := target.Id()
+
+	idx, exists := b.nodeMap[id]
+	if !exists {
+		return
 	}
+
+	lastIdx := len(b.nodes) - 1
+	lastNode := b.nodes[lastIdx]
+
+	// Move last node into removed spot (if not same)
+	b.nodes[idx] = lastNode
+	b.nodeMap[lastNode.Id()] = idx
+
+	// Shrink slice
+	b.nodes = b.nodes[:lastIdx]
+	delete(b.nodeMap, id)
+
+	// Fix round-robin index
+	if b.index >= len(b.nodes) && len(b.nodes) > 0 {
+		b.index = 0
+	}
+}
+
+func (b *RoundRobinBalancer) ListNodes() []BalancedNode {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.nodes
 }

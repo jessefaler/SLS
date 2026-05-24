@@ -43,12 +43,12 @@ public class SLSBuilder {
     }
 
     /**
-     * Sets the API key that will be used when P4J makes a Request
+     * Sets the API key that will be used when S4J makes a Request
      *
      * @param  token
      *         The API key for the user or application
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setToken(String token) {
         this.token = token;
@@ -56,14 +56,14 @@ public class SLSBuilder {
     }
 
     /**
-     * Sets the {@link okhttp3.OkHttpClient OkHttpClient} that will be used by P4Js requester.
+     * Sets the {@link okhttp3.OkHttpClient OkHttpClient} that will be used by S4Js requester.
      *
      * <br>This can be used to set things such as connection timeout and proxy.
      *
      * @param  client
      *         The new {@link okhttp3.OkHttpClient OkHttpClient} to use
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setHttpClient(OkHttpClient client) {
         this.httpClient = client;
@@ -71,7 +71,7 @@ public class SLSBuilder {
     }
 
     /**
-     * Sets the {@link ExecutorService ExecutorService} that should be used in the P4J request handler.
+     * Sets the {@link ExecutorService ExecutorService} that should be used in the S4J request handler.
      *
      * <br><b>Only change this pool if you know what you're doing.</b>
      *
@@ -82,7 +82,7 @@ public class SLSBuilder {
      * @param  pool
      *         The thread pool to use for action handling
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setActionPool(ExecutorService pool) {
         this.actionPool = pool;
@@ -91,7 +91,7 @@ public class SLSBuilder {
 
     /**
      * Sets the {@link ExecutorService ExecutorService} that should be used in
-     * the P4J callback handler which consists of {@link com.protoxon.S4J.SLSAction SLSAction} callbacks.
+     * the S4J callback handler which consists of {@link com.protoxon.S4J.SLSAction SLSAction} callbacks.
      * <br><b>Only change this pool if you know what you're doing.</b>
      *
      * <p>This is used to handle callbacks of {@link SLSAction#executeAsync()}, similarly it is used to
@@ -102,7 +102,7 @@ public class SLSBuilder {
      * @param  pool
      *         The thread pool to use for callback handling
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setCallbackPool(ExecutorService pool) {
         this.callbackPool = pool;
@@ -111,7 +111,7 @@ public class SLSBuilder {
 
     /**
      * Sets the {@link ScheduledExecutorService ScheduledExecutorService} that should be used in
-     * the P4J rate limiter. Changing this can affect the P4J behavior for PteroAction execution
+     * the S4J rate limiter. Changing this can affect the S4J behavior for SLSAction execution
      * and should be handled carefully.
      *
      * <br><b>Only change this pool if you know what you're doing.</b>
@@ -123,7 +123,7 @@ public class SLSBuilder {
      * @param  pool
      *         The thread pool to use for rate limiting
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setRateLimitPool(ScheduledExecutorService pool) {
         this.rateLimitPool = pool;
@@ -132,18 +132,18 @@ public class SLSBuilder {
 
     /**
      * Sets the {@link ExecutorService ExecutorService} that should be used in
-     * the P4J Action CompletableFutures.
+     * the S4J Action CompletableFutures.
      *
      * <br><b>Only change this pool if you know what you're doing.</b>
      *
-     * <p>This is used to execute Suppliers mainly used by PteroActions that aren't requests.
+     * <p>This is used to execute Suppliers mainly used by SLSActions that aren't requests.
      *
      * <p>Default: {@link ThreadPoolExecutor} with 3 threads.
      *
      * @param  pool
      *         The thread pool to use for CompletableFutures
      *
-     * @return The PteroBuilder instance. Useful for chaining.
+     * @return The SLSBuilder instance. Useful for chaining.
      */
     public SLSBuilder setSupplierPool(ExecutorService pool) {
         this.supplierPool = pool;

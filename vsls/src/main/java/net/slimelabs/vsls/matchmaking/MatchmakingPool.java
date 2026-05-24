@@ -102,7 +102,11 @@ public class MatchmakingPool {
     public boolean dequeue(Player player) {
         ChatPackets.enableActionBarPackets(player.getUniqueId());
         loadingIcon.stop(player.getUniqueId());
-        return waiting.removeIf(qp -> qp.player().getUniqueId().equals(player.getUniqueId()));
+        boolean removed = waiting.removeIf(qp -> qp.player().getUniqueId().equals(player.getUniqueId()));
+        if (removed && waiting.isEmpty()) {
+            allocator.cancelProvisioningWhenQueueEmpty();
+        }
+        return removed;
     }
 
     /** Returns true if the player is in this pool's waiting queue. */

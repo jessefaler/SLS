@@ -11,6 +11,8 @@ import (
 	"github.com/apex/log"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/grokify/coreforge/identity/apikey"
+	"protoxon.com/sls/protocube/api/router/httperror"
 	"protoxon.com/sls/protocube/auth"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/config"
@@ -63,7 +65,7 @@ func CaptureErrors() gin.HandlerFunc {
 			status = c.Writer.Status()
 		}
 		if err.Error() == io.EOF.Error() {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "The data passed in the request was not in a parsable format. Please try again."})
+			httperror.AbortWithJSON(c, http.StatusBadRequest, "empty or unreadable request body", "The data passed in the request was not in a parsable format.")
 			return
 		}
 		captured := NewError(err.Err)
@@ -126,7 +128,7 @@ func ServerExists(manager *server.Manager) gin.HandlerFunc {
 			s = manager.GetServer(c.Param("server"))
 		}
 		if s == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("server_id", s.Id()))
@@ -145,7 +147,7 @@ func NodeExists(manager *node.Manager) gin.HandlerFunc {
 			n, _ = manager.Get(c.Param("node"))
 		}
 		if n == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("node_id", n.Id()))
@@ -155,52 +157,48 @@ func NodeExists(manager *node.Manager) gin.HandlerFunc {
 }
 
 // RequireAuthorization authenticates the request using the verification function.
-func RequireAuthorization(verify func(token string, keyType auth.KeyType) (bool, error), keyType auth.KeyType) gin.HandlerFunc {
+func RequireAuthorization(service *auth.KeyService, scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.Header("WWW-Authenticate", "Bearer")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "The required authorization header was not present in the request.",
-			})
-			logUnauthorisedAccess("The required authorization header was not present in the request.", c, "")
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "The required authorization header was not present in the request.")
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid authorization header format.",
-			})
-			logUnauthorisedAccess("Invalid authorization header format", c, "")
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, "", "Invalid authorization header format.")
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		// Extract the actual token
+		token := strings.TrimPrefix(authHeader, "Bearer ")
 
-		valid, err := verify(tokenStr, keyType)
-		if !valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error":  "You are not authorized to access this endpoint.",
-				"reason": err.Error(),
-			})
-			logUnauthorisedAccess("Invalid token: "+err.Error(), c, tokenStr)
+		// Verify the key using CoreForge
+		key, err := service.Validate(c.Request.Context(), token)
+		if err != nil {
+			httperror.AbortWithJSON(c, http.StatusUnauthorized, err.Error(), "You are not authorized to access this endpoint.")
 			return
 		}
+
+		// Check the required scope
+		if scope != "" && !key.HasScope(scope) {
+			log.WithFields(log.Fields{
+				"owner_id":   key.OwnerID,
+				"scope":      scope,
+				"key_prefix": key.Prefix,
+				"endpoint":   c.FullPath(),
+				"method":     c.Request.Method,
+			}).Error("Api key key does not have required scope for this endpoint")
+			httperror.AbortWithJSON(c, http.StatusForbidden, "Api key missing required scope for this endpoint", "Insufficient privileges")
+			return
+		}
+
+		// Store the verified key in Gin context
+		c.Set("apiKey", key)
 
 		c.Next()
 	}
-}
-
-func logUnauthorisedAccess(reason string, c *gin.Context, tokenStr string) {
-	log.WithFields(log.Fields{
-		"reason":      reason,
-		"client_ip":   c.ClientIP(),
-		"remote_addr": c.Request.RemoteAddr,
-		"method":      c.Request.Method,
-		"path":        c.Request.URL.Path,
-		"token_len":   len(tokenStr),
-		"token_head":  tokenHead(tokenStr),
-	}).Warn("unauthorized access attempt rejected")
 }
 
 // Timeout sets a 30-second timeout on all requests
@@ -230,19 +228,20 @@ func Timeout() gin.HandlerFunc {
 
 		// Check if the request has been canceled due to timeout
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.JSON(http.StatusGatewayTimeout, gin.H{"error": "Request timed out"})
+			httperror.JSON(c, http.StatusGatewayTimeout, "request deadline exceeded", "Request timed out")
 			return
 		}
 	}
 }
 
-// tokenHead returns the leading token segment (e.g., "SLS_aB3dE1").
-func tokenHead(token string) string {
-	parts := strings.Split(token, "_")
-	if len(parts) >= 2 {
-		return parts[0] + "_" + parts[1]
+// GetAPIKey retrieves the verified API key from Gin context
+func GetAPIKey(c *gin.Context) *apikey.APIKey {
+	if key, ok := c.Get("apiKey"); ok {
+		if ak, ok := key.(*apikey.APIKey); ok {
+			return ak
+		}
 	}
-	return ""
+	return nil
 }
 
 // ExtractLogger pulls the logger out of the request context and returns it. By
@@ -287,7 +286,7 @@ func BlueprintExists(registry *blueprint.Registry) gin.HandlerFunc {
 			bp = registry.Get(c.Param("blueprint"))
 		}
 		if bp == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("blueprint_id", bp.Meta.ID))
@@ -307,7 +306,7 @@ func SoftwareExists(registry *software.Registry) gin.HandlerFunc {
 			sw = registry.Get(c.Param("software"))
 		}
 		if sw == nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": "The requested resource does not exist on this instance."})
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
 			return
 		}
 		c.Set("logger", ExtractLogger(c).WithField("software_id", sw.Id))
