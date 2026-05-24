@@ -9,6 +9,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.utils.ServerUtils;
+import net.slimelabs.vsls.utils.message.CommandMessageParts;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -44,7 +45,10 @@ public class FindCommand {
                     if (player.isEmpty()) {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
-                                .add("Player " + playerName + " was not found.", NamedTextColor.RED)
+                                .addMiniMessage("<red>Player</red> <dark_aqua>" + CommandMessageParts.text(playerName) + "</dark_aqua> <red>was not found.</red>")
+                                .sendMessage(source);
+                        ProtoMessage.actionBar()
+                                .add("Player not found: " + playerName, NamedTextColor.RED)
                                 .sendMessage(source);
                         return 0;
                     }
@@ -53,14 +57,22 @@ public class FindCommand {
                     if (server == null) {
                         ProtoMessage.chat()
                                 .add(MessagePreset.SLS)
-                                .add("Player " + player.get().getUsername() + " is not on an SLS server.", NamedTextColor.RED)
+                                .addMiniMessage(CommandMessageParts.player(player.get()) + " <red>is not on a vSLS server.</red> "
+                                        + "<dark_gray>Current server:</dark_gray> <gray>" + CommandMessageParts.text(ServerUtils.getServerName(player.get())) + "</gray>")
+                                .sendMessage(source);
+                        ProtoMessage.actionBar()
+                                .add(player.get().getUsername() + " is not on a vSLS server", NamedTextColor.RED)
                                 .sendMessage(source);
                         return 0;
                     }
 
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
-                            .add("Player " + player.get().getUsername() + " is currently on " + server.getCompositeId(), NamedTextColor.DARK_AQUA)
+                            .addMiniMessage(CommandMessageParts.player(player.get())
+                                    + " <gray>is currently on</gray> " + CommandMessageParts.server(server))
+                            .sendMessage(source);
+                    ProtoMessage.actionBar()
+                            .add(player.get().getUsername() + " is on " + server.getCompositeId(), NamedTextColor.GREEN)
                             .sendMessage(source);
                     return 1;
                 });
