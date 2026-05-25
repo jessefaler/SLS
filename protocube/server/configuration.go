@@ -98,7 +98,7 @@ func BuildServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.
 	}
 	effectiveState := blueprint.MergeState(bp.State, env)
 
-	nodeReq := models.ServerConfiguration{
+	cfg := models.ServerConfiguration{
 		Id:                   s.Id(),
 		ProcessConfiguration: pc,
 		Image:                image,
@@ -115,5 +115,5 @@ func BuildServerConfiguration(s *Server, bp *blueprint.Blueprint, swr *software.
 	}
 
 	installScript := sw.InstallScript
-	return &nodeReq, &installScript, nil
+	return &cfg, &installScript, nil
 }

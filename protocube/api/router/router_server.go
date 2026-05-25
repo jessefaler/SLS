@@ -132,9 +132,5 @@ func getServerLogs(c *gin.Context) {
 
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	if s.InstallScript == nil {
-		httperror.JSON(c, http.StatusInternalServerError, "install script is missing", "Server install script is missing.")
-		return
-	}
 	c.JSON(http.StatusOK, s.InstallScript)
 }
