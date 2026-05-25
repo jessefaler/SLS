@@ -17,7 +17,7 @@ type NodeClient interface {
 	Delete(ctx context.Context, path string) (*Response, error)
 
 	// Requests
-	CreateServer(context context.Context, request models.ServerConfigurationResponse) (models.CreateServerResponse, error)
+	CreateServer(context context.Context, request models.ServerConfiguration) (models.CreateServerResponse, error)
 	GetSystemInformation(context context.Context) (models.Information, error)
 	Sync(context context.Context) error
 }
@@ -49,7 +49,7 @@ func (nc *nodeClient) GetToken() string {
 
 // CreateServer sends a request to create a new server on the remote node
 // and returns the server's data upon successful creation.
-func (nc *nodeClient) CreateServer(ctx context.Context, create models.ServerConfigurationResponse) (models.CreateServerResponse, error) {
+func (nc *nodeClient) CreateServer(ctx context.Context, create models.ServerConfiguration) (models.CreateServerResponse, error) {
 	return Post[models.CreateServerResponse](nc, ctx, "/servers", create)
 }
 

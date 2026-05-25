@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	log2 "log"
 	"context"
+	log2 "log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -48,7 +48,7 @@ func run(cmd *cobra.Command, _ []string) {
 	// Create the node manager
 	nodeManager := node.NewManager(remoteClient, loadBalancer)
 	// Create the server manager
-	serverManager, err := server.NewManager(cmd.Context(), nodeManager)
+	serverManager, err := server.NewManager(nodeManager)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

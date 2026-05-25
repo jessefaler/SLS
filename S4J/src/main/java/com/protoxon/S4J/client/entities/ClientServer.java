@@ -56,6 +56,34 @@ public interface ClientServer {
      */
     ServerOverrides getOverrides();
 
+    /**
+     * The software id this server is running (from configuration).
+     *
+     * @return the software id, or null if not set
+     */
+    String getSoftwareId();
+
+    /**
+     * The software version this server is running (from configuration).
+     *
+     * @return the software version, or null if not set
+     */
+    String getSoftwareVersion();
+
+    /**
+     * The container image this server is using.
+     *
+     * @return the image, or null if not set
+     */
+    String getImage();
+
+    /**
+     * The effective resource limits for this server.
+     *
+     * @return the limits, or null if not set
+     */
+    ServerLimits getLimits();
+
     SLSAction<Void> setPower(PowerAction powerAction);
 
     /**

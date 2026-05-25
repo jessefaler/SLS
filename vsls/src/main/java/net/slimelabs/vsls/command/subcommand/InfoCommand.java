@@ -68,9 +68,9 @@ public class InfoCommand {
         server.getStats(true).executeAsync(stats -> {
             Blueprint blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
             String type        = blueprint != null ? blueprint.getType() : "Unknown";
-            String software    = blueprint != null ? blueprint.getServerSoftware() : "Unknown";
-            String version     = blueprint != null ? blueprint.getServerVersion() : "Unknown";
-            String image       = blueprint != null ? blueprint.getImage() : "Unknown";
+            String software    = orUnknown(server.getSoftwareId());
+            String version     = orUnknown(server.getVersion() != null ? server.getVersion() : server.getSoftwareVersion());
+            String image       = orUnknown(server.getImage());
             String name        = blueprint != null ? blueprint.getName() : server.getBlueprintId();
             String statusColor = "green";
             if(server.getStatus() == ServerStatus.STOPPING || server.getStatus() == ServerStatus.OFFLINE) {
@@ -106,6 +106,10 @@ public class InfoCommand {
         },  failure -> {
             Log.requestError("Failed to fetch server stats for " + server.getCompositeId(), failure, source);
         });
+    }
+
+    private static String orUnknown(String value) {
+        return value != null && !value.isEmpty() ? value : "Unknown";
     }
 
 }

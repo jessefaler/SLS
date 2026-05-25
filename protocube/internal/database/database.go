@@ -65,7 +65,7 @@ func Initialize() error {
 }
 
 func migrations() error {
-	err := Instance().AutoMigrate(&models.ServerStore{})
+	err := Instance().AutoMigrate(&models.ServerRecord{})
 	if err != nil {
 		return errors.Wrap(err, "database: failed to auto migrate server data")
 	}

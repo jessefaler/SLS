@@ -14,7 +14,6 @@ import (
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
-	"protoxon.com/sls/protocube/server"
 	"protoxon.com/sls/protocube/software"
 	"protoxon.com/sls/protocube/system"
 )
@@ -75,18 +74,8 @@ func getBlueprint(c *gin.Context) {
 
 func (r *Router) getInstallationScript(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	if s.InstallScript != nil {
-		c.JSON(http.StatusOK, s.InstallScript)
-		return
-	}
-
-	bp := r.BlueprintRegistry.Get(s.BlueprintId())
-	if bp == nil {
-		httperror.AbortWithJSON(c, http.StatusNotFound, "unknown blueprint "+s.BlueprintId(), "Install script snapshot is missing and the referenced blueprint does not exist.")
-		return
-	}
-	if _, err := server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry); err != nil {
-		httperror.AbortWithJSON(c, http.StatusNotFound, err.Error(), "Could not build server installation data.")
+	if s.InstallScript == nil {
+		httperror.AbortWithJSON(c, http.StatusInternalServerError, "install script is missing", "Server install script is missing.")
 		return
 	}
 	c.JSON(http.StatusOK, s.InstallScript)

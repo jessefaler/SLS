@@ -1,10 +1,5 @@
 package environment
 
-import (
-	"emperror.dev/errors"
-	"github.com/creasty/defaults"
-)
-
 // Limits is the build settings for a given server that impact docker container
 // creation and resource limits for a server instance.
 type Limits struct {
@@ -32,90 +27,4 @@ type Limits struct {
 
 	// If true, disables the OOM killer for this container.
 	OOMDisabled *bool `yaml:"oom_disabled" json:"oom_disabled" default:"true"`
-}
-
-func CopyLimits(orig *Limits) *Limits {
-	if orig == nil {
-		return nil
-	}
-
-	copy := &Limits{}
-
-	if orig.MemoryLimit != nil {
-		val := *orig.MemoryLimit
-		copy.MemoryLimit = &val
-	}
-	if orig.Swap != nil {
-		val := *orig.Swap
-		copy.Swap = &val
-	}
-	if orig.IoWeight != nil {
-		val := *orig.IoWeight
-		copy.IoWeight = &val
-	}
-	if orig.CpuLimit != nil {
-		val := *orig.CpuLimit
-		copy.CpuLimit = &val
-	}
-	if orig.DiskSpace != nil {
-		val := *orig.DiskSpace
-		copy.DiskSpace = &val
-	}
-	if orig.Threads != nil {
-		val := *orig.Threads
-		copy.Threads = &val
-	}
-	if orig.OOMDisabled != nil {
-		val := *orig.OOMDisabled
-		copy.OOMDisabled = &val
-	}
-
-	return copy
-}
-
-// MergeLimits merges override into base. Non-nil fields in override replace base.
-// If base is nil, it starts as an empty Limits. If override is nil, base is returned unchanged.
-func MergeLimits(base *Limits, override *Limits) *Limits {
-	if override == nil {
-		return base
-	}
-	if base == nil {
-		base = &Limits{}
-	}
-	if override.MemoryLimit != nil {
-		base.MemoryLimit = override.MemoryLimit
-	}
-	if override.Swap != nil {
-		base.Swap = override.Swap
-	}
-	if override.IoWeight != nil {
-		base.IoWeight = override.IoWeight
-	}
-	if override.CpuLimit != nil {
-		base.CpuLimit = override.CpuLimit
-	}
-	if override.DiskSpace != nil {
-		base.DiskSpace = override.DiskSpace
-	}
-	if override.Threads != nil {
-		base.Threads = override.Threads
-	}
-	if override.OOMDisabled != nil {
-		base.OOMDisabled = override.OOMDisabled
-	}
-
-	return base
-}
-
-// ValidateLimits validates limits and sets defaults for nil fields.
-func ValidateLimits(limit *Limits) error {
-	if err := defaults.Set(limit); err != nil {
-		return err
-	}
-
-	if limit.IoWeight != nil && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
-		return errors.New("io_weight must be between 10 and 1000")
-	}
-
-	return nil
 }
