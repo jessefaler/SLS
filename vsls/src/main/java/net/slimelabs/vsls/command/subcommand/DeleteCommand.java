@@ -122,7 +122,14 @@ public class DeleteCommand {
                                             .add("Deleting " + id, NamedTextColor.GRAY)
                                             .sendMessage(source);
                                 },
-                                failure -> Log.requestError("Failed to delete server " + id, failure, source)
+                                failure -> {
+                                    Log.requestError("Failed to delete server " + id, failure, source);
+                                    SLS.servers.unRegister(server.getId());
+                                    ProtoMessage.chat()
+                                            .add(MessagePreset.SLS)
+                                            .add("Failed to delete server on the remote node but was successfully unregistered from vSLS " + id, NamedTextColor.RED)
+                                            .sendMessage(source);
+                                }
                         );
                     } else {
                         // No such server exists
