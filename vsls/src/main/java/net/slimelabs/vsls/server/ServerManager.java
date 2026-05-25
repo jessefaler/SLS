@@ -13,7 +13,6 @@ import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.events.ServerEventRouter;
 import net.slimelabs.vsls.server.events.GlobalEvents;
 import net.slimelabs.vsls.server.lifecycle.LifecycleManager;
-import net.slimelabs.vsls.utils.VersionFetcher;
 import net.slimelabs.vsls.utils.ViaVersion;
 
 import java.net.InetSocketAddress;
@@ -98,11 +97,7 @@ public class ServerManager implements ServerProvider {
             Log.warn("Blueprint not found for server {} with blueprint id: {}", clientServer.getId(), clientServer.getBlueprintId());
         }
         register(server);
-        VersionFetcher.resolveVersion(clientServer.getOverrides(), blueprint, api.getAllServers().getS4J())
-                .executeAsync(
-                        version -> server.setVersion(version != null ? version : "null"),
-                        failure -> Log.warn("Failed to resolve version for server {}: {}", clientServer.getId(), failure.info())
-                );
+        ViaVersion.register(server);
         // Fetch the servers status and update it locally
         clientServer.getStatus().executeAsync(server::setStatus);
         // Set weather to manage the servers lifecycle
@@ -160,13 +155,9 @@ public class ServerManager implements ServerProvider {
         return action.map(clientServer -> {
             Blueprint blueprint = SLS.blueprints.getBlueprint(action.getBlueprintId());
             Server server = new Server(name, idPrefix, clientServer, () -> unRegister(clientServer.getId()));
-            // Set the version from the creation action or from the blueprint if not set
-            server.setVersion(!Objects.equals(action.getVersion(), "")
-                    ? action.getVersion()
-                    : (blueprint != null ? blueprint.getServerVersion() : "null"));
-            // Set weather to manage the servers lifecycle
             server.setLifecycleEnabled(!VslsAnnotations.dontStopWhenEmpty(blueprint));
             register(server);
+            ViaVersion.register(server);
             return server;
         });
     }
@@ -206,8 +197,6 @@ public class ServerManager implements ServerProvider {
         );
         ServerInfo serverInfo = new ServerInfo(server.getCompositeId(), address);
         SLS.proxy.registerServer(serverInfo);
-        // Register the server with ViaVersion
-        ViaVersion.register(server);
     }
 
     /**

@@ -92,7 +92,7 @@ func (m *Manager) All() []*Server {
 }
 
 // InitServer initializes a server using the provided server configuration data
-func (m *Manager) InitServer(req models.ServerConfigurationResponse) (*Server, error) {
+func (m *Manager) InitServer(req models.ServerConfiguration) (*Server, error) {
 	s, err := New(m.client)
 	if err != nil {
 		return nil, err

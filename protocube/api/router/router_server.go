@@ -9,18 +9,17 @@ import (
 	"protoxon.com/sls/protocube/api/router/middleware"
 	"protoxon.com/sls/protocube/client"
 	"protoxon.com/sls/protocube/models"
-	"protoxon.com/sls/protocube/server"
 )
 
 func postServerPower(c *gin.Context) {
-	server := middleware.ExtractServer(c)
+	s := middleware.ExtractServer(c)
 	powerAction := models.PowerAction{}
 	if err := c.BindJSON(&powerAction); err != nil {
 		httperror.JSON(c, http.StatusBadRequest, err.Error(), "Failed to bind json")
 		return
 	}
 	// Make the request
-	err := server.Power(c.Request.Context(), powerAction)
+	err := s.Power(c.Request.Context(), powerAction)
 	// Handle any errors
 	if err != nil {
 		client.HandleError(c, err)
@@ -31,18 +30,18 @@ func postServerPower(c *gin.Context) {
 }
 
 func getServer(c *gin.Context) {
-	server := middleware.ExtractServer(c)
-	c.JSON(http.StatusOK, server.ServerData())
+	s := middleware.ExtractServer(c)
+	c.JSON(http.StatusOK, s.ServerData())
 }
 
 func deleteServer(c *gin.Context) {
-	server := middleware.ExtractServer(c)
-	err := server.Delete(c.Request.Context())
+	s := middleware.ExtractServer(c)
+	err := s.Delete(c.Request.Context())
 	if err != nil {
 		// If force is enabled, ensure the server is cleaned up on Protocube
 		// even if deletion from the daemon fails
 		if c.Query("force") == "true" {
-			server.CleanupForDestroy()
+			s.CleanupForDestroy()
 			c.Status(http.StatusOK)
 			return
 		}
@@ -77,7 +76,7 @@ func getServerStats(c *gin.Context) {
 }
 
 func postServerCommands(c *gin.Context) {
-	server := middleware.ExtractServer(c)
+	s := middleware.ExtractServer(c)
 
 	var data struct {
 		Commands []string `json:"commands"`
@@ -88,7 +87,7 @@ func postServerCommands(c *gin.Context) {
 	}
 
 	// Make the request
-	err := server.SendCommands(c.Request.Context(), data.Commands)
+	err := s.SendCommands(c.Request.Context(), data.Commands)
 	// Handle any errors
 	if err != nil {
 		client.HandleError(c, err)
@@ -99,10 +98,9 @@ func postServerCommands(c *gin.Context) {
 }
 
 func postServerReset(c *gin.Context) {
-	server := middleware.ExtractServer(c)
-	// Make the request
-	err := server.Reset(c.Request.Context())
-	// Handle any errors
+	s := middleware.ExtractServer(c)
+	// Reset overlay filesystem
+	err := s.Reset(c.Request.Context())
 	if err != nil {
 		client.HandleError(c, err)
 		return
@@ -111,9 +109,9 @@ func postServerReset(c *gin.Context) {
 }
 
 func getServerLogs(c *gin.Context) {
-	server := middleware.ExtractServer(c)
+	s := middleware.ExtractServer(c)
 
-	// Parse the size query parameter, defaulting to 100
+	// Parse the size query parameter
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
 	if size <= 0 {
 		size = 100
@@ -122,33 +120,21 @@ func getServerLogs(c *gin.Context) {
 	}
 
 	// Make the request to the daemon
-	logs, err := server.GetLogs(c.Request.Context(), size)
+	logs, err := s.GetLogs(c.Request.Context(), size)
 	if err != nil {
 		client.HandleError(c, err)
 		return
 	}
 
-	// Return the logs response
+	// Return the logs in the response
 	c.JSON(http.StatusOK, logs)
 }
 
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	if s.InstallScript != nil {
-		c.JSON(http.StatusOK, s.InstallScript)
+	if s.InstallScript == nil {
+		httperror.JSON(c, http.StatusInternalServerError, "install script is missing", "Server install script is missing.")
 		return
 	}
-
-	// Get the servers blueprint
-	bp := r.BlueprintRegistry.Get(s.BlueprintId())
-	if bp == nil {
-		httperror.JSON(c, http.StatusNotFound, "blueprint not found for install info", "Install script snapshot is missing and the referenced blueprint does not exist.")
-		return
-	}
-	if _, err := server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry); err != nil {
-		httperror.JSON(c, http.StatusNotFound, err.Error(), "Could not build server installation data.")
-		return
-	}
-
 	c.JSON(http.StatusOK, s.InstallScript)
 }

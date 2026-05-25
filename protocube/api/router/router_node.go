@@ -201,20 +201,7 @@ func toggleNodeDrained(c *gin.Context) {
 
 func (r *Router) getServerConfiguration(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	configuration, err := server.GetServerConfiguration(s)
-	if err != nil {
-		bp := r.BlueprintRegistry.Get(s.BlueprintId())
-		if bp == nil {
-			httperror.JSON(c, http.StatusNotFound, "blueprint_id="+s.BlueprintId(), "Server configuration snapshot is missing and the referenced blueprint does not exist.")
-			return
-		}
-		configuration, err = server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry)
-		if err != nil {
-			httperror.JSON(c, http.StatusNotFound, err.Error(), "Could not build server configuration.")
-			return
-		}
-	}
-	c.JSON(http.StatusOK, configuration)
+	c.JSON(http.StatusOK, s.GetServerConfiguration())
 }
 
 func (r *Router) getAllServerConfigurations(c *gin.Context) {
@@ -239,28 +226,9 @@ func (r *Router) getAllServerConfigurations(c *gin.Context) {
 	servers := r.ServerManager.ServersByNode(nodeId)
 
 	// Build configurations for all servers
-	configurations := make([]*models.ServerConfigurationResponse, 0, len(servers))
+	configurations := make([]*models.ServerConfiguration, 0, len(servers))
 	for _, s := range servers {
-		configuration, err := server.GetServerConfiguration(s)
-		if err != nil {
-			bp := r.BlueprintRegistry.Get(s.BlueprintId())
-			if bp == nil {
-				// Skip legacy servers with no snapshot and missing blueprints.
-				log.WithField("server", s.Id()).WithField("blueprint_id", s.BlueprintId()).
-					Warn("skipping server configuration: snapshot is missing and referenced blueprint does not exist")
-				continue
-			}
-
-			configuration, err = server.EnsureServerSnapshot(s, bp, r.SoftwareRegistry)
-			if err != nil {
-				// Skip servers with configuration errors, log but don't fail the request
-				log.WithField("server", s.Id()).WithError(err).
-					Warn("skipping server configuration: failed to generate configuration")
-				continue
-			}
-		}
-
-		configurations = append(configurations, configuration)
+		configurations = append(configurations, s.GetServerConfiguration())
 	}
 
 	// Calculate pagination
@@ -276,11 +244,11 @@ func (r *Router) getAllServerConfigurations(c *gin.Context) {
 	}
 
 	// Get the paged slice
-	var paged []*models.ServerConfigurationResponse
+	var paged []*models.ServerConfiguration
 	if start < total {
 		paged = configurations[start:end]
 	} else {
-		paged = []*models.ServerConfigurationResponse{}
+		paged = []*models.ServerConfiguration{}
 	}
 
 	// Calculate pagination metadata

@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"maps"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -13,7 +11,6 @@ import (
 	"github.com/gammazero/workerpool"
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/client"
-	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/events"
 	"protoxon.com/sls/protocube/models"
 	"protoxon.com/sls/protocube/node"
@@ -34,12 +31,12 @@ type Manager struct {
 }
 
 // NewManager returns a new server manager instance.
-func NewManager(ctx context.Context, nm *node.Manager) (*Manager, error) {
+func NewManager(nm *node.Manager) (*Manager, error) {
 	m := &Manager{
 		servers: make(map[string]*Server),
 		emitter: events.NewBus(),
 	}
-	if err := m.init(ctx, nm); err != nil {
+	if err := m.init(nm); err != nil {
 		return nil, err
 	}
 	return m, nil
@@ -115,11 +112,13 @@ func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
 		server.sc.SetNodeClient(node.Client())
 		// Update the servers node name in case it changed
 		server.nodeName = node.Name()
-		// Also claim the servers allocation in the allocator
-		node.Allocator.Claim(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
-		// Set the release function in the allocation
-		server.Allocations.Release = func() {
-			node.Allocator.Release(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
+		if a := server.allocations(); a != nil {
+			// Also claim the servers allocation in the allocator
+			node.Allocator.Claim(a.DefaultMapping.Ip, a.DefaultMapping.Port)
+			// Set the release function in the allocation
+			a.Release = func() {
+				node.Allocator.Release(a.DefaultMapping.Ip, a.DefaultMapping.Port)
+			}
 		}
 	}
 }
@@ -149,7 +148,6 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		Remove: func() {
 			m.Remove(serverId)
 		},
-		Allocations: alloc,
 	}
 
 	// This will remove the server in the event any of the following steps fail
@@ -165,23 +163,22 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 		}
 	}()
 
-	// Add the server to the manager
-	m.Add(s)
-
-	cfg, installScript, err := BuildServerSnapshot(s, bp, swr)
+	cfg, installScript, err := BuildServerConfiguration(s, bp, swr, alloc)
 	if err != nil {
 		return nil, err
 	}
 	s.Configuration = cfg
 	s.InstallScript = installScript
 
+	// Add the server to the manager
+	m.Add(s)
+
 	// Write the server to the database
-	if err := repository.StoreServer(&models.ServerStore{
+	if err := repository.StoreServer(&models.ServerRecord{
 		Id:            serverId,
 		NodeName:      node.Name(),
 		NodeId:        node.Id(),
 		BlueprintId:   bp.Meta.ID,
-		Allocation:    alloc,
 		Overrides:     overrides,
 		Configuration: cfg,
 		InstallScript: installScript,
@@ -200,172 +197,8 @@ func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *bluepri
 	return s, nil
 }
 
-func GetServerConfiguration(s *Server) (*models.ServerConfigurationResponse, error) {
-	if s.Configuration == nil {
-		return nil, errors.New("server configuration snapshot is missing")
-	}
-
-	cfg := *s.Configuration
-	cfg.Id = s.Id()
-	cfg.Allocations = s.Allocations
-	return &cfg, nil
-}
-
-func BuildServerSnapshot(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, *software.InstallationScript, error) {
-	effectiveSoftware := bp.Server.Software
-	effectiveVersion := bp.Server.Version
-	if s.Overrides != nil {
-		if s.Overrides.Software != nil {
-			effectiveSoftware = *s.Overrides.Software
-		}
-		if s.Overrides.Version != nil {
-			effectiveVersion = *s.Overrides.Version
-		}
-	}
-
-	sw := swr.Get(effectiveSoftware)
-	if sw == nil {
-		return nil, nil, errors.Errorf("software not found: %s", effectiveSoftware)
-	}
-
-	matcher, err := models.NewOutputLineMatcher(sw.OnlineSignal)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to create output line matcher for the start configuration: %s", sw.OnlineSignal)
-	}
-
-	// Convert software, blueprint, and optional request override patches
-	// to config file patches (overrides merge/override when applied last).
-	var overrideConfigs map[string]blueprint.ConfigFile
-	if s.Overrides != nil && s.Overrides.Configs != nil {
-		overrideConfigs = s.Overrides.Configs
-	}
-	configFiles, cfgErr := GetConfigFiles(sw, bp, overrideConfigs)
-
-	// log any errors that occurred when converting configuration patches
-	if cfgErr != nil {
-		log.WithError(cfgErr).Warn("an error occurred while converting config patches for server " + s.Id())
-	}
-
-	pc := &models.ProcessConfiguration{
-		Startup: struct {
-			Done      []*models.OutputLineMatcher `json:"done"`
-			StripAnsi bool                        `json:"strip_ansi"`
-		}{
-			Done:      []*models.OutputLineMatcher{matcher},
-			StripAnsi: false,
-		},
-		Stop: models.ProcessStopConfiguration{
-			Type:  "command",
-			Value: sw.StopCommand,
-		},
-		ConfigurationFiles: configFiles,
-	}
-
-	// Handle Overrides
-	save := bp.Save
-	// We need to make a copy of the limits so we don't mutate the blueprints default limits
-	limits := environment.CopyLimits(bp.Server.Limits)
-	if s.Overrides != nil {
-		if s.Overrides.Save != nil {
-			save = *s.Overrides.Save
-		}
-		limits = environment.MergeLimits(limits, s.Overrides.Limits)
-	}
-
-	serverFolder := bp.Server.Path
-	if s.Overrides != nil && (s.Overrides.Software != nil || s.Overrides.Version != nil) {
-		serverFolder = filepath.Join(effectiveSoftware, effectiveVersion)
-	}
-
-	image := bp.Server.Image
-	if s.Overrides != nil && s.Overrides.Image != nil {
-		image = *s.Overrides.Image
-	}
-	// If no explicit image is set on the blueprint or via overrides,
-	// fall back to the software's image mappings selection.
-	if image == "" {
-		selectedImage, err := sw.ImageForVersion(effectiveVersion)
-		if err != nil {
-			return nil, nil, errors.Wrapf(err, "failed to select image for version %s", effectiveVersion)
-		}
-		image = selectedImage
-	}
-
-	var effectiveState *blueprint.State
-	if s.Overrides != nil && len(s.Overrides.Env) > 0 {
-		effectiveState = mergeBlueprintState(bp.State, s.Overrides.Env)
-	} else {
-		effectiveState = bp.State
-	}
-
-	nodeReq := models.ServerConfigurationResponse{
-		Id:                   s.Id(),
-		ProcessConfiguration: pc,
-		Image:                image,
-		Invocation:           sw.Invocation,
-		Limits:               limits,
-		State:                effectiveState,
-		ServerFolder:         serverFolder,
-		Allocations:          s.Allocations,
-		Save:                 save,
-		SoftwareId:           sw.Id,
-		SoftwareVersion:      effectiveVersion,
-		HasInstallScript:     sw.InstallScript.Script != "",
-		SkipInstallScript:    sw.InstallScript.SkipScripts,
-	}
-	installScript := sw.InstallScript
-	return &nodeReq, &installScript, nil
-}
-
-func EnsureServerSnapshot(s *Server, bp *blueprint.Blueprint, swr *software.Registry) (*models.ServerConfigurationResponse, error) {
-	cfg, err := GetServerConfiguration(s)
-	if err == nil && s.InstallScript != nil {
-		return cfg, nil
-	}
-
-	if bp == nil {
-		if err == nil {
-			return cfg, nil
-		}
-		return nil, err
-	}
-
-	cfg, installScript, err := BuildServerSnapshot(s, bp, swr)
-	if err != nil {
-		return nil, err
-	}
-
-	s.Configuration = cfg
-	s.InstallScript = installScript
-	if err := repository.StoreServerSnapshot(s.Id(), cfg, installScript); err != nil {
-		log.WithError(err).WithField("server", s.Id()).Warn("failed to persist server snapshot")
-	}
-
-	return GetServerConfiguration(s)
-}
-
-// mergeBlueprintState returns a new State with blueprint env merged with envOverride (override wins on key collision).
-func mergeBlueprintState(bpState *blueprint.State, envOverride map[string]string) *blueprint.State {
-	out := &blueprint.State{}
-	if bpState != nil {
-		out.Volumes = bpState.Volumes
-		out.Mounts = bpState.Mounts
-		out.Copy = bpState.Copy
-		if len(bpState.Env) > 0 {
-			out.Env = maps.Clone(bpState.Env)
-		}
-	}
-	for k, v := range envOverride {
-		if out.Env == nil {
-			out.Env = make(map[string]string, len(envOverride))
-		}
-		out.Env[k] = v
-	}
-	return out
-}
-
 // Loads in all servers stored in the database
-func (m *Manager) init(ctx context.Context, nm *node.Manager) error {
+func (m *Manager) init(nm *node.Manager) error {
 	servers, err := repository.GetAllServers()
 	if err != nil {
 		return errors.WrapIf(err, "failed to load servers from database")
@@ -380,9 +213,9 @@ func (m *Manager) init(ctx context.Context, nm *node.Manager) error {
 		data := data
 		n, _ := nm.Get(data.NodeId)
 		pool.Submit(func() {
-			s, err := m.InitServer(ctx, data, n)
+			s, err := m.InitServer(data, n)
 			if err != nil {
-				log.WithField("server", data.Id).WithField("error", err).Error("failed to load server, skipping...")
+				log.WithField("server", data.Id).WithField("node_id", data.NodeId).WithField("error", err).Error("failed to load server, skipping...")
 				return
 			}
 			m.Add(s)
@@ -399,46 +232,49 @@ func (m *Manager) init(ctx context.Context, nm *node.Manager) error {
 	return nil
 }
 
-func (m *Manager) InitServer(ctx context.Context, data *models.ServerStore, n *node.Node) (*Server, error) {
+func (m *Manager) InitServer(s *models.ServerRecord, n *node.Node) (*Server, error) {
+	if err := s.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid server record")
+	}
+
 	// Create the server client.
 	// The node client is likely nil at startup because servers are loaded
 	// during program boot, before any nodes have connected. The node client will
 	// be attached later when a node becomes available.
-	serverClient := client.NewServerClient(data.Id, data.NodeId)
+	serverClient := client.NewServerClient(s.Id, s.NodeId)
 	if n != nil {
 		// Set the node client if the node has already connected
 		serverClient.SetNodeClient(n.Client())
 		// Update the servers node name in case it changed
-		data.NodeName = n.Name()
-		// Set the release function in the allocation
-		data.Allocation.Release = func() {
-			n.Allocator.Release(data.Allocation.DefaultMapping.Ip, data.Allocation.DefaultMapping.Port)
+		s.NodeName = n.Name()
+		a := &s.Configuration.Allocations
+		a.Release = func() {
+			n.Allocator.Release(a.DefaultMapping.Ip, a.DefaultMapping.Port)
 		}
 	}
 
 	// Instantiate the server
 	server := &Server{
-		id:            data.Id,
-		nodeName:      data.NodeName,
-		nodeId:        data.NodeId,
-		blueprintId:   data.BlueprintId,
-		Overrides:     data.Overrides,
-		Configuration: data.Configuration,
-		InstallScript: data.InstallScript,
+		id:            s.Id,
+		nodeName:      s.NodeName,
+		nodeId:        s.NodeId,
+		blueprintId:   s.BlueprintId,
+		Overrides:     s.Overrides,
+		Configuration: s.Configuration,
+		InstallScript: s.InstallScript,
 		sc:            serverClient,
 		GlobalEvents:  m.Events,
-		Allocations:   data.Allocation,
 		Remove: func() {
-			m.Remove(data.Id)
+			m.Remove(s.Id)
 		},
 	}
 
 	if n != nil {
-		// claim the servers allocation
-		n.Allocator.Claim(server.Allocations.DefaultMapping.Ip, server.Allocations.DefaultMapping.Port)
+		if a := server.allocations(); a != nil {
+			// claim the servers allocation
+			n.Allocator.Claim(a.DefaultMapping.Ip, a.DefaultMapping.Port)
+		}
 	}
 
-	// Add the server to the manager
-	m.Add(server)
 	return server, nil
 }

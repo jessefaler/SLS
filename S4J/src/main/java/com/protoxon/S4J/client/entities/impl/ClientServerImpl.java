@@ -6,6 +6,7 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ServerLimits;
 import com.protoxon.S4J.client.entities.ServerOverrides;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
@@ -21,6 +22,7 @@ public class ClientServerImpl implements ClientServer {
     private final SLSClientImpl impl;
     private final Allocation allocation;
     private final ServerOverrides overrides;
+    private final ServerLimits limits;
 
     public ClientServerImpl(JSONObject json, SLSClientImpl impl) {
         this.json = json;
@@ -28,6 +30,7 @@ public class ClientServerImpl implements ClientServer {
         JSONObject allocationsObj = json.optJSONObject("allocations");
         this.allocation = allocationsObj != null ? new AllocationImpl(allocationsObj) : null;
         this.overrides = ServerOverrides.fromJson(json.optJSONObject("overrides"));
+        this.limits = ServerLimits.fromJson(json.optJSONObject("limits"));
     }
 
     @Override
@@ -58,6 +61,26 @@ public class ClientServerImpl implements ClientServer {
     @Override
     public ServerOverrides getOverrides() {
         return overrides;
+    }
+
+    @Override
+    public String getSoftwareId() {
+        return json.optString("software_id", null);
+    }
+
+    @Override
+    public String getSoftwareVersion() {
+        return json.optString("software_version", null);
+    }
+
+    @Override
+    public String getImage() {
+        return json.optString("image", null);
+    }
+
+    @Override
+    public ServerLimits getLimits() {
+        return limits;
     }
 
     @Override

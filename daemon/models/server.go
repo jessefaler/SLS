@@ -4,7 +4,7 @@ import (
 	"protoxon.com/sls/daemon/environment"
 )
 
-// ServerConfigurationResponse holds the server configuration data returned from
+// ServerConfiguration holds the server configuration data returned from
 // Protocube. When a server process is started, The daemon communicates with Protocube
 // to fetch the latest build information.
 //
@@ -13,7 +13,7 @@ import (
 // means if a configuration is accidentally wiped on the daemon we can self-recover
 // without too much hassle, so long as the daemon is aware of what servers should
 // exist on it.
-type ServerConfigurationResponse struct {
+type ServerConfiguration struct {
 	Id                   string                  `json:"id"`
 	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
 	Image                string                  `json:"image"`
@@ -29,7 +29,7 @@ type ServerConfigurationResponse struct {
 	SkipInstallScript    bool                    `json:"skip-install-script"`
 }
 
-// Server data state configuration
+// State holds the server's state configuration
 type State struct {
 	Volumes []Volume            `yaml:"volumes,omitempty" json:"volumes,omitempty"`
 	Mounts  []environment.Mount `yaml:"mounts,omitempty" json:"mounts,omitempty"`
@@ -42,9 +42,7 @@ type Copy struct {
 	Target string `yaml:"target" json:"target"`
 }
 
-// Volumes are managed storage units.
-// They must exist within the configured volumes directory
-// (e.g. /sls/volumes).
+// Volume holds mounting information for SLS managed volumes
 type Volume struct {
 	Name   string     `yaml:"name" json:"name"`
 	Source string     `yaml:"source" json:"source"`

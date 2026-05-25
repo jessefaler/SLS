@@ -30,13 +30,28 @@ public class ViaVersion {
      * @param server the server to register with ViaVersion
      */
     public static void register(Server server) {
-        if(!isUsingViaVersion()) return; // ViaVersion is not in use on the proxy so return
-        ProtocolVersion protocolId = ProtocolVersion.getClosest(server.getVersion()); // Get Mapping
-        if(protocolId == null) {
-            Log.error("failed to get protocol version for minecraft version {} while registering server {}", server.getVersion(), server.getCompositeId());
-        } else {
-            getDetector().setProtocolVersion(server.getCompositeId(), protocolId.getVersion()); // Register with ViaVersion
+        if (!isUsingViaVersion()) return;
+        String version = resolveMinecraftVersion(server);
+        if (version == null) {
+            return;
         }
+        ProtocolVersion protocolId = ProtocolVersion.getClosest(version);
+        if (protocolId == null) {
+            Log.error("failed to get protocol version for minecraft version {} while registering server {}", version, server.getCompositeId());
+        } else {
+            getDetector().setProtocolVersion(server.getCompositeId(), protocolId.getVersion());
+        }
+    }
+
+    private static String resolveMinecraftVersion(Server server) {
+        String version = server.getVersion();
+        if (version == null || version.isEmpty() || "null".equals(version)) {
+            version = server.getSoftwareVersion();
+        }
+        if (version == null || version.isEmpty() || "null".equals(version)) {
+            return null;
+        }
+        return version;
     }
 
     /**

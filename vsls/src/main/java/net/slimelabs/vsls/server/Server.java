@@ -5,6 +5,7 @@ import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
+import com.protoxon.S4J.client.entities.ServerLimits;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.ServerInfo;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -34,7 +35,7 @@ public class Server {
     // Runnable that removes this server from the registry when executed
     private final Runnable unregister;
     // The software version the server is using
-    private volatile String version;
+    private final String version;
     // Servers last updated status
     private volatile ServerStatus status = ServerStatus.UNKNOWN;
     // Server events
@@ -51,6 +52,7 @@ public class Server {
         this.shortId = id.length() >= 6 ? id.substring(0, 6) : id;
         this.compositeId = idPrefix + "." + shortId;
         this.unregister = unregister;
+        this.version = client.getSoftwareVersion();
         new JoinActions(this);
     }
 
@@ -146,19 +148,39 @@ public class Server {
     }
 
     /**
-     * Sets the servers software version
-     * @param version the version to set
-     */
-    protected void setVersion(String version) {
-        this.version = version;
-    }
-
-    /**
      * Returns the blueprint id the server is from
      * @return the blueprint id
      */
     public String getBlueprintId() {
         return client.getBlueprintId();
+    }
+
+    /**
+     * Returns the software id configured for this server.
+     */
+    public String getSoftwareId() {
+        return client.getSoftwareId();
+    }
+
+    /**
+     * Returns the software version configured for this server.
+     */
+    public String getSoftwareVersion() {
+        return client.getSoftwareVersion();
+    }
+
+    /**
+     * Returns the container image configured for this server.
+     */
+    public String getImage() {
+        return client.getImage();
+    }
+
+    /**
+     * Returns the resource limits configured for this server.
+     */
+    public ServerLimits getLimits() {
+        return client.getLimits();
     }
 
     public SLSAction<Void> stop() {

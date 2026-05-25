@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/environment"
 	"protoxon.com/sls/protocube/software"
@@ -12,25 +14,60 @@ type PowerAction struct {
 	WaitSeconds int    `json:"wait_seconds"`
 }
 
+// ServerData is the public API representation of a managed server.
 type ServerData struct {
-	Id          string                  `json:"id"`
-	BlueprintId string                  `json:"blueprint_id"`
-	NodeName    string                  `json:"node_name"`
-	NodeId      string                  `json:"node_id"`
-	Allocations environment.Allocations `json:"allocations"`
-	// Overrides that were set when the server was created (nil if none).
-	Overrides *ServerOverrides `json:"overrides,omitempty"`
+	Id              string                   `json:"id"`
+	BlueprintId     string                   `json:"blueprint_id"`
+	NodeName        string                   `json:"node_name"`
+	NodeId          string                   `json:"node_id"`
+	Allocations     *environment.Allocations `json:"allocations"`
+	Overrides       *ServerOverrides         `json:"overrides,omitempty"`
+	SoftwareId      string                   `json:"software_id"`
+	SoftwareVersion string                   `json:"software_version"`
+	Image           string                   `json:"image"`
+	Limits          *environment.Limits      `json:"limits"`
 }
 
-type ServerStore struct {
+// ServerRecord is the database representation of a server.
+type ServerRecord struct {
 	Id            string                       `gorm:"primaryKey"`
 	NodeName      string                       `gorm:"index"`
 	NodeId        string                       `gorm:"index"`
 	BlueprintId   string                       `gorm:"index"`
-	Allocation    environment.Allocations      `gorm:"serializer:json"`
 	Overrides     *ServerOverrides             `gorm:"serializer:json"`
-	Configuration *ServerConfigurationResponse `gorm:"serializer:json"`
+	Configuration *ServerConfiguration         `gorm:"serializer:json"`
 	InstallScript *software.InstallationScript `gorm:"serializer:json"`
+}
+
+// Validate reports whether the server record has the required fields.
+func (r *ServerRecord) Validate() error {
+	if r == nil {
+		return errors.New("server record is nil")
+	}
+	if r.Configuration == nil {
+		return errors.New("server configuration is missing")
+	}
+	if r.InstallScript == nil {
+		return errors.New("server install script is missing")
+	}
+	return nil
+}
+
+// ServerConfiguration is the servers runtime configuration information
+type ServerConfiguration struct {
+	Id                   string                  `json:"id"`
+	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
+	Image                string                  `json:"image"`
+	Invocation           string                  `json:"invocation"`
+	State                *blueprint.State        `json:"state"`
+	Limits               *environment.Limits     `json:"limits"`
+	Save                 bool                    `json:"save"`
+	Allocations          environment.Allocations `json:"allocations"`
+	SoftwareId           string                  `json:"software-id"`
+	ServerFolder         string                  `json:"server-folder"`
+	SoftwareVersion      string                  `json:"software-version"`
+	HasInstallScript     bool                    `json:"has-install-script"`
+	SkipInstallScript    bool                    `json:"skip-install-script"`
 }
 
 type StatusResponse struct {
@@ -59,35 +96,6 @@ type ResourceUsage struct {
 	Overlay int64 `json:"overlay_bytes"`
 }
 
-// ContentItem is the wire format for content to copy into a server (replaces blueprint.Content).
-type ContentItem struct {
-	Name   string `json:"name"`
-	Source string `json:"source"`
-}
-
-// MountConfig is the wire format for a bind mount (source/target match daemon environment.Mount).
-type MountConfig struct {
-	Source   string `json:"source"`
-	Target   string `json:"target"`
-	ReadOnly bool   `json:"read_only"`
-}
-
-type ServerConfigurationResponse struct {
-	Id                   string                  `json:"id"`
-	ProcessConfiguration *ProcessConfiguration   `json:"process-configuration"`
-	Image                string                  `json:"image"`
-	Invocation           string                  `json:"invocation"`
-	State                *blueprint.State        `json:"state"`
-	Limits               *environment.Limits     `json:"limits"`
-	Save                 bool                    `json:"save"`
-	Allocations          environment.Allocations `json:"allocations"`
-	SoftwareId           string                  `json:"software-id"`
-	ServerFolder         string                  `json:"server-folder"`
-	SoftwareVersion      string                  `json:"software-version"`
-	HasInstallScript     bool                    `json:"has-install-script"`
-	SkipInstallScript    bool                    `json:"skip-install-script"`
-}
-
 type CreateServerRequest struct {
 	BlueprintID string           `json:"blueprint_id"`
 	NodeId      string           `json:"node_id,omitempty"`
@@ -95,10 +103,12 @@ type CreateServerRequest struct {
 }
 
 type ServerOverrides struct {
-	Save   *bool               `json:"save,omitempty"`
+	// Save overrides the save flag
+	Save *bool `json:"save,omitempty"`
+	// Resource limit overrides
 	Limits *environment.Limits `json:"limits,omitempty"`
 	// Configs are configuration file patches applied after software and blueprint
-	// patches. Same file/key is overridden; new keys are merged.
+	// patches. Same file/key is overridden and new keys are merged.
 	Configs map[string]blueprint.ConfigFile `json:"configs,omitempty"`
 	// Software overrides the blueprint's server.software (registry lookup and path).
 	Software *string `json:"software,omitempty"`
