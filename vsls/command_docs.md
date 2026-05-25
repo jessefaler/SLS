@@ -9,6 +9,7 @@
 - [Create Command](#create-command)
 - [Start Command](#start-command)
 - [Join Command](#join-command)
+- [Find Command](#find-command)
 - [System Command](#system-command)
 - [Console Command](#console-command)
 - [Blueprint Command](#blueprint-command)
@@ -143,6 +144,8 @@
 ```
 /sls join <blueprint_type> <blueprint_id>
 /sls join <blueprint_type> <blueprint_id> [all | local | <player>]
+/sls join player <player>
+/sls join player <player> --force
 ```
 
 **Arguments:**
@@ -152,11 +155,36 @@
   - `all` - Connects all players currently on the proxy
   - `local` - Connects all players on the same server as the command sender
   - `<player>` - Connects a single specific player by username
+- `player` - When used as `/sls join player <player>`, connects you to the SLS server that player is currently on
+- `--force` - Admin-only confirmation flag for joining a player's server even when the target server is at its blueprint matchmaking capacity
 
 **Details:**
 - If no player argument is provided, the command executor is connected to the server
 - The command automatically handles server creation, starting, and waiting for readiness
 - Requires admin permission to join other players; players can join themselves without permission
+- `/sls join player <player>` is available to players and only works when the target player is currently on a registered SLS server
+- `/sls join player <player>` respects blueprint matchmaking capacity rules for normal players
+- If an admin tries to join a full target server, vSLS shows a warning with a clickable `Join Anyway` confirmation that runs `/sls join player <player> --force`
+- `/sls join player <player> --force` requires `sls.command.admin`
+- Player names and server IDs in the join output include hover details to make it easier to confirm the target
+
+---
+
+## Find Command
+
+**Permission:** None
+
+**Description:** Shows which SLS server a player is currently connected to.
+
+**Usage:**
+```
+/sls find <player>
+```
+
+**Details:**
+- Displays the player's current SLS composite server ID, such as `block_hunt.x82odk`
+- If the player is offline or not currently on an SLS server, the command displays an error message
+- Player names and server IDs include hover details such as UUID, current server, server status, blueprint, and player count
 
 ---
 
@@ -523,4 +551,3 @@ All values are automatically formatted in appropriate units (KB, MB, GB, etc.) f
 - Tab completion is available for most commands to help with argument selection
 - Commands that interact with servers will display error messages if the server doesn't exist or is unavailable
 - Some commands (like `console`) have built-in retry mechanisms to handle asynchronous operations
-

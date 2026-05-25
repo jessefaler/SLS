@@ -39,6 +39,14 @@ public class JoinService {
         direct.join(player, serverId);
     }
 
+    /**
+     * Connects the player directly to the server, optionally ignoring blueprint capacity rules.
+     */
+    public void joinServer(Player player, String serverId, boolean ignoreBlueprintRules) {
+        matchmaking.dequeue(player);
+        direct.join(player, serverId, ignoreBlueprintRules);
+    }
+
     /** Queues the player for matchmaking on the given blueprint. */
     public void joinBlueprint(Player player, String blueprintId) {
         direct.dequeue(player);

@@ -3,12 +3,17 @@ package net.slimelabs.vsls.command.subcommand;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.slimelabs.vsls.SLS;
 import net.slimelabs.vsls.log.Log;
+import net.slimelabs.vsls.matchmaking.metadata.BlueprintMetadataParser;
+import net.slimelabs.vsls.matchmaking.metadata.MatchmakingMetadata;
 import net.slimelabs.vsls.server.Server;
+import net.slimelabs.vsls.utils.ServerUtils;
+import net.slimelabs.vsls.utils.message.CommandMessageParts;
 import net.slimelabs.vsls.utils.message.MessageFormatter;
 import net.slimelabs.vsls.utils.message.MessagePreset;
 import net.slimelabs.vsls.utils.message.ProtoMessage;
@@ -24,11 +29,129 @@ public class JoinCommand {
                     CommandSource source = context.getSource();
                     ProtoMessage.chat().add(MessagePreset.INCORRECT_COMMAND_USAGE).sendMessage(source);
                     ProtoMessage.chat()
-                            .add(MessageFormatter.commandUsage("/sls join", "type"))
+                            .add(MessageFormatter.commandUsage("/sls join", "type", "player"))
                             .sendMessage(source);
                     return 1;
                 })
+                .then(joinPlayerServer())
                 .then(type());
+    }
+
+    private static LiteralArgumentBuilder<CommandSource> joinPlayerServer() {
+        return LiteralArgumentBuilder.<CommandSource>literal("player")
+                .executes(context -> {
+                    CommandSource source = context.getSource();
+                    ProtoMessage.chat()
+                            .add(MessageFormatter.commandUsage("/sls join player", "player"))
+                            .sendMessage(source);
+                    return 0;
+                })
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("target", StringArgumentType.string())
+                        .suggests((context, builder) -> {
+                            for (Player player : SLS.proxy.getAllPlayers()) {
+                                builder.suggest(player.getUsername());
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> joinPlayerServer(context, false))
+                        .then(LiteralArgumentBuilder.<CommandSource>literal("--force")
+                                .requires(source -> source.hasPermission("sls.command.admin"))
+                                .executes(context -> joinPlayerServer(context, true))));
+    }
+
+    private static int joinPlayerServer(CommandContext<CommandSource> context, boolean force) {
+        CommandSource source = context.getSource();
+        if (!(source instanceof Player player)) {
+            Log.error("You must be a player to join another player's server");
+            return 0;
+        }
+
+        String targetName = StringArgumentType.getString(context, "target");
+        Optional<Player> target = SLS.proxy.getPlayer(targetName);
+        if (target.isEmpty()) {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .addMiniMessage("<red>Player</red> <dark_aqua>" + CommandMessageParts.text(targetName) + "</dark_aqua> <red>was not found.</red>")
+                    .sendMessage(source);
+            ProtoMessage.actionBar()
+                    .add("Player not found: " + targetName, NamedTextColor.RED)
+                    .sendMessage(source);
+            return 0;
+        }
+
+        Server server = ServerUtils.getServer(target.get());
+        if (server == null) {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .addMiniMessage(CommandMessageParts.player(target.get()) + " <red>is not on a vSLS server.</red> "
+                            + "<dark_gray>Current server:</dark_gray> <gray>" + CommandMessageParts.text(ServerUtils.getServerName(target.get())) + "</gray>")
+                    .sendMessage(source);
+            ProtoMessage.actionBar()
+                    .add(target.get().getUsername() + " is not on a vSLS server", NamedTextColor.RED)
+                    .sendMessage(source);
+            return 0;
+        }
+
+        Server currentServer = ServerUtils.getServer(player);
+        if (currentServer != null && currentServer.getId().equals(server.getId())) {
+            ProtoMessage.chat()
+                    .add(MessagePreset.SLS)
+                    .addMiniMessage("<gray>You are already with</gray> " + CommandMessageParts.player(target.get())
+                            + " <gray>on</gray> " + CommandMessageParts.server(server) + "<gray>.</gray>")
+                    .sendMessage(source);
+            ProtoMessage.actionBar()
+                    .add("Already on " + server.getCompositeId(), NamedTextColor.GRAY)
+                    .sendMessage(source);
+            return 1;
+        }
+
+        int maxPlayers = getMaxPlayers(server);
+        if (!force && maxPlayers > 0 && server.getPlayerCount() >= maxPlayers) {
+            if (source.hasPermission("sls.command.admin")) {
+                String forceCommand = "/sls join player " + target.get().getUsername() + " --force";
+                ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .addMiniMessage("<yellow>Blueprint limit warning:</yellow> "
+                                + CommandMessageParts.server(server) + " <gray>is full ("
+                                + server.getPlayerCount() + "/" + maxPlayers + ").</gray>\n"
+                                + "<dark_gray>Joining anyway may overfill this blueprint's matchmaking limit.</dark_gray> "
+                                + "<click:run_command:'" + CommandMessageParts.text(forceCommand) + "'><hover:show_text:'Run " + CommandMessageParts.text(forceCommand)
+                                + "'><green>[Join Anyway]</green></hover></click>")
+                        .sendMessage(source);
+                ProtoMessage.actionBar()
+                        .add("Confirm override to join " + server.getCompositeId(), NamedTextColor.YELLOW)
+                        .sendMessage(source);
+            } else {
+                ProtoMessage.chat()
+                        .add(MessagePreset.SLS)
+                        .addMiniMessage("<red>Server full:</red> " + CommandMessageParts.server(server)
+                                + " <gray>(" + server.getPlayerCount() + "/" + maxPlayers + ").</gray>")
+                        .sendMessage(source);
+                ProtoMessage.actionBar()
+                        .add("Server full: " + server.getCompositeId(), NamedTextColor.RED)
+                        .sendMessage(source);
+            }
+            return 0;
+        }
+
+        ProtoMessage.chat()
+                .add(MessagePreset.SLS)
+                .addMiniMessage((force ? "<yellow>Force joining</yellow> " : "<green>Joining</green> ")
+                        + CommandMessageParts.player(target.get())
+                        + " <gray>on</gray> " + CommandMessageParts.server(server) + "<gray>.</gray>")
+                .sendMessage(source);
+        ProtoMessage.actionBar()
+                .add((force ? "Force joining " : "Joining ") + target.get().getUsername() + " on " + server.getCompositeId(), force ? NamedTextColor.YELLOW : NamedTextColor.GREEN)
+                .sendMessage(source);
+        SLS.joinService.joinServer(player, server.getCompositeId(), force);
+        return 1;
+    }
+
+    private static int getMaxPlayers(Server server) {
+        var blueprint = SLS.blueprints.getBlueprint(server.getBlueprintId());
+        if (blueprint == null) return 0;
+        MatchmakingMetadata metadata = BlueprintMetadataParser.parse(blueprint);
+        return metadata != null ? metadata.maxPlayers() : 0;
     }
 
     private static RequiredArgumentBuilder<CommandSource, String> type() {

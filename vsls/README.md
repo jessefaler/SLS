@@ -68,6 +68,13 @@ In-game and console commands are documented here:
 
 Most admin operations use the `/sls` command tree and require `sls.command.admin` where noted in that document.
 
+Useful player-facing commands include:
+
+- `/sls list` - Show active vSLS servers and player counts.
+- `/sls find <player>` - Show which vSLS server a player is currently on.
+- `/sls join player <player>` - Join the vSLS server that player is currently on.
+- `/sls dequeue` - Leave matchmaking or direct-server queues.
+
 ## License
 
 See [LICENSE](LICENSE) in this directory.
