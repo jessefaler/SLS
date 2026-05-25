@@ -36,8 +36,8 @@ type Server struct {
 	// The crash handler for this server instance.
 	crasher CrashHandler
 
-	// Configuration is the immutable runtime snapshot sent to the node.
-	Configuration *models.ServerConfigurationResponse
+	// Configuration is the servers runtime configuration information
+	Configuration *models.ServerConfiguration
 
 	// InstallScript is copied from the selected software at creation time.
 	InstallScript *software.InstallationScript
@@ -45,8 +45,17 @@ type Server struct {
 	// sc is the dedicated client used to interact with server-specific API endpoints.
 	// A server client can only access its own endpoints and control itself.
 	sc client.ServerClient
+}
 
-	Allocations environment.Allocations
+// GetServerConfiguration returns the runtime configuration info for the server.
+func (s *Server) GetServerConfiguration() *models.ServerConfiguration {
+	cfg := *s.Configuration
+	cfg.Id = s.Id()
+	return &cfg
+}
+
+func (s *Server) allocations() *environment.Allocations {
+	return &s.Configuration.Allocations
 }
 
 func (s *Server) Id() string {
@@ -137,15 +146,21 @@ func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
 }
 
 // ServerData returns the ServerData model for this server.
+// ServerData is the public API representation of a managed server.
 func (s *Server) ServerData() models.ServerData {
-	return models.ServerData{
-		Id:          s.id,
-		BlueprintId: s.BlueprintId(),
-		NodeId:      s.NodeId(),
-		NodeName:    s.NodeName(),
-		Allocations: s.Allocations,
-		Overrides:   s.Overrides,
+	data := models.ServerData{
+		Id:              s.id,
+		BlueprintId:     s.BlueprintId(),
+		NodeId:          s.NodeId(),
+		NodeName:        s.NodeName(),
+		Overrides:       s.Overrides,
+		SoftwareId:      s.Configuration.SoftwareId,
+		SoftwareVersion: s.Configuration.SoftwareVersion,
+		Image:           s.Configuration.Image,
+		Limits:          s.Configuration.Limits,
+		Allocations:     s.allocations(),
 	}
+	return data
 }
 
 func (s *Server) Log() *log.Entry {
@@ -158,8 +173,8 @@ func (s *Server) CleanupForDestroy() {
 	s.Events().Destroy()
 	s.DestroyAllSinks()
 	// Release allocations if they exist
-	if s.Allocations.Release != nil {
-		s.Allocations.Release()
+	if a := s.allocations(); a != nil && a.Release != nil {
+		a.Release()
 	}
 	// Remove the server from the manager
 	s.Remove()

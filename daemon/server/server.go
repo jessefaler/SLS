@@ -347,7 +347,7 @@ func (s *Server) Sync() error {
 // underlying environment will not be affected. This is because this function
 // can be called from scoped where the server may not be fully initialized,
 // therefore other things like the filesystem and environment may not exist yet.
-func (s *Server) SyncWithConfiguration(cfg models.ServerConfigurationResponse) error {
+func (s *Server) SyncWithConfiguration(cfg models.ServerConfiguration) error {
 	s.Lock()
 	s.procConfig = cfg.ProcessConfiguration
 	s.cfg.mu.Lock()

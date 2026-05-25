@@ -33,7 +33,7 @@ func (c *client) ServerDeleted(ctx context.Context, id string) error {
 // GetServers returns all the servers that are present on the Protocube that are part of this node making
 // parallel API calls to the endpoint if more than one page of servers is
 // returned.
-func (c *client) GetServers(ctx context.Context, limit int) ([]models.ServerConfigurationResponse, error) {
+func (c *client) GetServers(ctx context.Context, limit int) ([]models.ServerConfiguration, error) {
 	servers, meta, err := c.getServersPaged(ctx, 0, limit)
 	if err != nil {
 		return nil, err
@@ -65,10 +65,10 @@ func (c *client) GetServers(ctx context.Context, limit int) ([]models.ServerConf
 
 // getServersPaged returns a subset of servers from the Protocube API using the
 // pagination query parameters.
-func (c *client) getServersPaged(ctx context.Context, page, limit int) ([]models.ServerConfigurationResponse, Pagination, error) {
+func (c *client) getServersPaged(ctx context.Context, page, limit int) ([]models.ServerConfiguration, Pagination, error) {
 	type r struct {
-		Data []models.ServerConfigurationResponse `json:"data"`
-		Meta Pagination                           `json:"meta"`
+		Data []models.ServerConfiguration `json:"data"`
+		Meta Pagination                   `json:"meta"`
 	}
 	res, err := Get[r](c, ctx, "/internal/servers", q{
 		"page":     strconv.Itoa(page),
@@ -80,9 +80,9 @@ func (c *client) getServersPaged(ctx context.Context, page, limit int) ([]models
 	return res.Data, res.Meta, nil
 }
 
-func (c *client) GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfigurationResponse, error) {
-	var config models.ServerConfigurationResponse
-	res, err := Get[models.ServerConfigurationResponse](c, ctx, fmt.Sprintf("/internal/servers/%s", uuid), nil)
+func (c *client) GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfiguration, error) {
+	var config models.ServerConfiguration
+	res, err := Get[models.ServerConfiguration](c, ctx, fmt.Sprintf("/internal/servers/%s", uuid), nil)
 	if err != nil {
 		return config, err
 	}

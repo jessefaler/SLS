@@ -17,8 +17,8 @@ type Client interface {
 	StatusUpdate(ctx context.Context, status string, id string) error // Sends a server status update
 	CrashReport(ctx context.Context, data CrashData, id string) error // Sends a server crash report
 	ServerDeleted(ctx context.Context, id string) error               // Sends a server deleted event
-	GetServers(context context.Context, perPage int) ([]models.ServerConfigurationResponse, error)
-	GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfigurationResponse, error)
+	GetServers(context context.Context, perPage int) ([]models.ServerConfiguration, error)
+	GetServerConfiguration(ctx context.Context, uuid string) (models.ServerConfiguration, error)
 	GetInstallationScript(ctx context.Context, serverId string) (InstallationScript, error)
 	SetInstallationStatus(ctx context.Context, uuid string, data InstallStatusRequest) error
 	SetOnConnected(callback func(context.Context))

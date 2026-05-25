@@ -19,7 +19,7 @@ var (
 
 // Allocator manages IP and port assignments for servers.
 //
-// Allocations are persisted in the database as part of server records.
+// Allocations are persisted in the database as part of server configuration.
 // When a node connects, its allocator is initialized and existing allocations
 // are restored by claiming ports for each server on that node.
 type Allocator struct {

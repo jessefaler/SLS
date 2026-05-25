@@ -17,7 +17,7 @@ import (
 
 func (r *Router) postCreateServer(c *gin.Context) {
 	// Parse incoming JSON body
-	var req models.ServerConfigurationResponse
+	var req models.ServerConfiguration
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httperror.JSON(c, http.StatusInternalServerError, err.Error(), "Invalid request body.")
 		return
