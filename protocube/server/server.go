@@ -145,6 +145,10 @@ func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
 	return s.Client().Logs(ctx, size)
 }
 
+func (s *Server) InstallInfo(ctx context.Context, size int) (models.InstallInfo, error) {
+	return s.Client().InstallInfo(ctx, size)
+}
+
 // ServerData returns the ServerData model for this server.
 // ServerData is the public API representation of a managed server.
 func (s *Server) ServerData() models.ServerData {

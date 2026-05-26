@@ -39,17 +39,26 @@ func (s *Server) Install(ctx context.Context) error {
 func (s *Server) install(ctx context.Context, reinstall bool) error {
 	var err error
 	if !s.Config().SkipInstallScripts {
+		installerName := s.ID() + "_installer"
+		s.StartInstallPhase(InstallPhaseInstalling, installerName, filepath.Join(config.Get().System.LogDirectory, "/install", s.ID()+".log"))
+
 		// Send the start event so protocube can automatically update.
 		s.Events().Publish(InstallStartedEvent, "")
 
 		err = s.internalInstall(ctx)
 	} else {
 		s.Log().Info("server configured to skip running installation scripts for this software, not executing process")
+		s.FinishInstallPhase(InstallPhaseReady, "")
 	}
 
 	// Notify protocube of install state. On failure, do this in the background so we return
 	// (and the caller can log the error) immediately instead of blocking on a slow/timeout HTTP call.
 	successful := err == nil
+	if successful {
+		s.FinishInstallPhase(InstallPhaseReady, "")
+	} else {
+		s.FinishInstallPhase(InstallPhaseInstallFailed, err.Error())
+	}
 	s.Log().WithField("was_successful", successful).Debug("notifying protocube of server install state")
 	notifyProtocube := func() {
 		if serr := s.SyncInstallState(successful, reinstall); serr != nil {
@@ -528,11 +537,13 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	ip.Server.SetInstallContainer(r.ID)
 
 	ip.Server.Log().WithField("container_id", r.ID).Info("running installation script for server in container")
 	if err := ip.client.ContainerStart(ctx, r.ID, container.StartOptions{}); err != nil {
 		return "", err
 	}
+	ip.Server.SetInstallStatus("running")
 
 	// Process the install event in the background by listening to the stream output until the
 	// container has stopped, at which point we'll disconnect from it.
@@ -551,11 +562,14 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	case err := <-eChan:
 		// Once the container has stopped running we can mark the install process as being completed.
 		if err == nil {
+			ip.Server.SetInstallStatus("exited")
 			ip.Server.Events().Publish(DaemonMessageEvent, "Installation process completed.")
 		} else {
 			return "", err
 		}
 	case res := <-sChan:
+		ip.Server.SetInstallExitCode(res.StatusCode)
+		ip.Server.SetInstallStatus("exited")
 		if res.StatusCode != 0 {
 			ip.writeFailedInstallLog(ctx, r.ID, res.StatusCode)
 			return "", errors.Errorf("install script exited with code %d (see install log for output)", res.StatusCode)

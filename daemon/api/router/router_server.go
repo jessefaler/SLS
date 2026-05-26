@@ -94,6 +94,12 @@ func getServerStats(c *gin.Context) {
 	c.JSON(http.StatusOK, s.Proc())
 }
 
+func getServerInstallInfo(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	l, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
+	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context(), l))
+}
+
 // Sends an array of commands to a running server instance.
 func postServerCommands(c *gin.Context) {
 	s := middleware.ExtractServer(c)
