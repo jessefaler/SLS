@@ -65,6 +65,8 @@ type Server struct {
 
 	// Tracks if we've already emitted the very first status update.
 	initialStateBroadcast *system.AtomicBool
+
+	installState *installState
 }
 
 func New(client remote.Client) (*Server, error) {
@@ -83,6 +85,7 @@ func New(client remote.Client) (*Server, error) {
 			State: system.NewAtomicString("offline"),
 		},
 		initialStateBroadcast: system.NewAtomicBool(false),
+		installState:          newInstallState(),
 	}
 
 	return server, nil

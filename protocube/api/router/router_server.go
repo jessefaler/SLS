@@ -130,6 +130,17 @@ func getServerLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, logs)
 }
 
+func getServerInstallInfo(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
+	info, err := s.InstallInfo(c.Request.Context(), size)
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, info)
+}
+
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	c.JSON(http.StatusOK, s.InstallScript)

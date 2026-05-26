@@ -23,6 +23,7 @@ type ServerClient interface {
 	Power(ctx context.Context, action models.PowerAction) error
 	Reset(ctx context.Context) error
 	Logs(ctx context.Context, size int) (gin.H, error)
+	InstallInfo(ctx context.Context, size int) (models.InstallInfo, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
 	Status(ctx context.Context) (string, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
@@ -113,4 +114,9 @@ func (sc *serverClient) Commands(ctx context.Context, commands []string) error {
 func (sc *serverClient) Logs(ctx context.Context, size int) (gin.H, error) {
 	query := q{"size": strconv.Itoa(size)}
 	return Get[gin.H](sc, ctx, "/logs", query)
+}
+
+func (sc *serverClient) InstallInfo(ctx context.Context, size int) (models.InstallInfo, error) {
+	query := q{"size": strconv.Itoa(size)}
+	return Get[models.InstallInfo](sc, ctx, "/install", query)
 }

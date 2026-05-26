@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"time"
 
 	"protoxon.com/sls/protocube/blueprint"
 	"protoxon.com/sls/protocube/environment"
@@ -72,6 +73,18 @@ type ServerConfiguration struct {
 
 type StatusResponse struct {
 	Status string `json:"status"`
+}
+
+type InstallInfo struct {
+	Phase         string     `json:"phase"`
+	ContainerID   string     `json:"container_id,omitempty"`
+	ContainerName string     `json:"container_name,omitempty"`
+	Status        string     `json:"status,omitempty"`
+	ExitCode      *int64     `json:"exit_code,omitempty"`
+	StartedAt     *time.Time `json:"started_at,omitempty"`
+	FinishedAt    *time.Time `json:"finished_at,omitempty"`
+	FailureReason string     `json:"failure_reason,omitempty"`
+	Logs          []string   `json:"logs"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you
