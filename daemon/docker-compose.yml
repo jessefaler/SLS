@@ -37,8 +37,10 @@ services:
       # given a bind mount of that path by the host Docker daemon; without propagation
       # the host never sees the overlay and server containers get an empty directory
       - type: bind
-        source: /home/dani/sls-data
+        source: /var/lib/sls
         target: /var/lib/sls
+        bind:
+          propagation: rshared
 
 networks:
   sls:
