@@ -132,8 +132,7 @@ func getServerLogs(c *gin.Context) {
 
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	info, err := s.InstallInfo(c.Request.Context(), size)
+	info, err := s.InstallInfo(c.Request.Context())
 	if err != nil {
 		client.HandleError(c, err)
 		return

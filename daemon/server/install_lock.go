@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -41,6 +42,14 @@ func InstallLockExists(serverPath string) bool {
 
 func lockPath(serverPath string) string {
 	return filepath.Join(serverPath, InstallLockFile)
+}
+
+func InstallLockOwner(serverPath string) string {
+	data, err := os.ReadFile(lockPath(serverPath))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 // WaitForInstallLockReleased blocks until serverPath/.lock does not exist (install
@@ -82,7 +91,7 @@ func WaitForInstallLockReleased(ctx context.Context, serverPath string, timeout 
 // Caller with needInstall true must run install then release(). The folder
 // already exists (created here). On install failure, caller must RemoveAll(serverPath)
 // then release(). On success, just release().
-func AcquireInstallLock(serverPath string) (release func(), needInstall bool, err error) {
+func AcquireInstallLock(serverPath, ownerID string) (release func(), needInstall bool, err error) {
 	for {
 		if IsBaseInstalled(serverPath) {
 			return func() {}, false, nil
@@ -93,6 +102,7 @@ func AcquireInstallLock(serverPath string) (release func(), needInstall bool, er
 		lp := lockPath(serverPath)
 		f, err := os.OpenFile(lp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err == nil {
+			_, _ = f.WriteString(ownerID)
 			releaseFn := func() {
 				_ = f.Close()
 				_ = os.Remove(lp)
