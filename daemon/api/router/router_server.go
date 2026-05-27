@@ -96,8 +96,7 @@ func getServerStats(c *gin.Context) {
 
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	l, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context(), l))
+	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context()))
 }
 
 // Sends an array of commands to a running server instance.
@@ -172,7 +171,7 @@ func getServerLogs(c *gin.Context) {
 		l = 100
 	}
 
-	out, err := s.ReadLogfile(l)
+	out, err := s.ReadLogfile(c.Request.Context(), l)
 	if err != nil {
 		middleware.CaptureAndAbort(c, err)
 		return

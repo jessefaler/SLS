@@ -145,8 +145,8 @@ func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
 	return s.Client().Logs(ctx, size)
 }
 
-func (s *Server) InstallInfo(ctx context.Context, size int) (models.InstallInfo, error) {
-	return s.Client().InstallInfo(ctx, size)
+func (s *Server) InstallInfo(ctx context.Context) (models.InstallInfo, error) {
+	return s.Client().InstallInfo(ctx)
 }
 
 // ServerData returns the ServerData model for this server.

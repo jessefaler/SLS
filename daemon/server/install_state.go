@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"protoxon.com/sls/daemon/config"
 	"protoxon.com/sls/daemon/environment"
 )
 
@@ -36,7 +37,6 @@ type InstallInfo struct {
 	StartedAt     *time.Time   `json:"started_at,omitempty"`
 	FinishedAt    *time.Time   `json:"finished_at,omitempty"`
 	FailureReason string       `json:"failure_reason,omitempty"`
-	Logs          []string     `json:"logs"`
 }
 
 type installState struct {
@@ -104,21 +104,9 @@ func (s *Server) FinishInstallPhase(phase InstallPhase, failureReason string) {
 	}
 }
 
-func (s *Server) InstallInfo(ctx context.Context, lines int) InstallInfo {
-	if lines <= 0 {
-		lines = 100
-	} else if lines > 500 {
-		lines = 500
-	}
-
+func (s *Server) InstallInfo(ctx context.Context) InstallInfo {
 	info := s.installInfoSnapshot()
-	s.enrichInstallInfoFromDocker(ctx, &info, lines)
-	if len(info.Logs) == 0 {
-		info.Logs = readTailLines(s.installLogPath(), lines)
-	}
-	if len(info.Logs) == 0 {
-		info.Logs = []string{}
-	}
+	s.enrichInstallInfoFromDocker(ctx, &info)
 	return info
 }
 
@@ -144,7 +132,34 @@ func (s *Server) installLogPath() string {
 	return path
 }
 
-func (s *Server) enrichInstallInfoFromDocker(ctx context.Context, info *InstallInfo, lines int) {
+func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string, error) {
+	phase := s.installPhase()
+	if phase != InstallPhaseIdle && phase != InstallPhaseReady {
+		return s.ReadInstallLogfile(ctx, lines)
+	}
+
+	ownerID := InstallLockOwner(s.Filesystem().Overlay().ServerPath)
+	if ownerID == "" || ownerID == s.ID() {
+		return nil, nil
+	}
+
+	logs, err := readInstallLogsFromDocker(ctx, ownerID+"_installer", lines)
+	if err != nil {
+		return nil, err
+	}
+	if len(logs) > 0 {
+		return logs, nil
+	}
+	return readTailLines(filepath.Join(config.Get().System.LogDirectory, "install", ownerID+".log"), lines), nil
+}
+
+func (s *Server) installPhase() InstallPhase {
+	s.installState.mu.RLock()
+	defer s.installState.mu.RUnlock()
+	return s.installState.phase
+}
+
+func (s *Server) enrichInstallInfoFromDocker(ctx context.Context, info *InstallInfo) {
 	containerRef := info.ContainerID
 	if containerRef == "" {
 		containerRef = info.ContainerName
@@ -187,6 +202,37 @@ func (s *Server) enrichInstallInfoFromDocker(ctx context.Context, info *InstallI
 			}
 		}
 	}
+}
+
+func (s *Server) ReadInstallLogfile(ctx context.Context, lines int) ([]string, error) {
+	logs, err := readInstallLogsFromDocker(ctx, s.installContainerRef(), lines)
+	if err != nil {
+		return nil, err
+	}
+	if len(logs) > 0 {
+		return logs, nil
+	}
+	return readTailLines(s.installLogPath(), lines), nil
+}
+
+func (s *Server) installContainerRef() string {
+	s.installState.mu.RLock()
+	defer s.installState.mu.RUnlock()
+	if s.installState.containerID != "" {
+		return s.installState.containerID
+	}
+	return s.installState.containerName
+}
+
+func readInstallLogsFromDocker(ctx context.Context, containerRef string, lines int) ([]string, error) {
+	if containerRef == "" {
+		return nil, nil
+	}
+
+	cli, err := environment.Docker()
+	if err != nil {
+		return nil, err
+	}
 
 	reader, err := cli.ContainerLogs(ctx, containerRef, container.LogsOptions{
 		ShowStdout: true,
@@ -194,14 +240,19 @@ func (s *Server) enrichInstallInfoFromDocker(ctx context.Context, info *InstallI
 		Tail:       strconv.Itoa(lines),
 	})
 	if err != nil {
-		return
+		if client.IsErrNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	defer reader.Close()
 
+	var logs []string
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		info.Logs = append(info.Logs, scanner.Text())
+		logs = append(logs, scanner.Text())
 	}
+	return logs, scanner.Err()
 }
 
 func readTailLines(path string, max int) []string {

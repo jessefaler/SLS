@@ -142,9 +142,23 @@ func (s *Server) IsRunning() bool {
 	return st == environment.ProcessRunningState || st == environment.ProcessStartingState
 }
 
-// Reads the log file for a server up to a specified number of bytes.
-func (s *Server) ReadLogfile(len int) ([]string, error) {
-	return s.Environment.Readlog(len)
+// Reads the log file for a server up to a specified number of lines.
+func (s *Server) ReadLogfile(ctx context.Context, lines int) ([]string, error) {
+	out, err := s.Environment.Readlog(lines)
+	if err != nil {
+		out = nil
+	}
+
+	installLogs, installErr := s.installLogsForServer(ctx, lines)
+	if installErr != nil && err != nil {
+		return nil, err
+	}
+
+	out = append(out, installLogs...)
+	if len(out) > lines {
+		out = out[len(out)-lines:]
+	}
+	return out, nil
 }
 
 // Checks if the server is marked as being suspended or not on the system.

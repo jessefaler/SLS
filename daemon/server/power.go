@@ -300,7 +300,7 @@ func (s *Server) onBeforeStart() error {
 	serverPath := s.Filesystem().Overlay().ServerPath
 	for {
 		if !IsBaseInstalled(serverPath) {
-			release, needInstall, err := AcquireInstallLock(serverPath)
+			release, needInstall, err := AcquireInstallLock(serverPath, s.ID())
 			if err != nil {
 				return errors.Wrap(err, "install lock")
 			}
