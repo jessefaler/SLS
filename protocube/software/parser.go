@@ -180,7 +180,34 @@ func (is *InstallationScript) Validate() error {
 	if is.Script == "" {
 		return errors.New("missing required field: install-script.script")
 	}
+	is.ApplyDefaults()
+	if is.WarmupTimeout <= 0 {
+		return errors.New("install-script.warmup-timeout must be greater than zero")
+	}
+	if is.WarmupRetries < 0 {
+		return errors.New("install-script.warmup-retries cannot be negative")
+	}
+	if is.PostWarmupTimeout <= 0 {
+		return errors.New("install-script.post-warmup-timeout must be greater than zero")
+	}
+	switch is.WarmupFailurePolicy {
+	case "fail", "continue", "retry":
+	default:
+		return errors.New("install-script.warmup_failure_policy must be one of: fail, continue, retry")
+	}
 	return nil
+}
+
+func (is *InstallationScript) ApplyDefaults() {
+	if is.WarmupTimeout == 0 {
+		is.WarmupTimeout = 300
+	}
+	if is.PostWarmupTimeout == 0 {
+		is.PostWarmupTimeout = 120
+	}
+	if strings.TrimSpace(is.WarmupFailurePolicy) == "" {
+		is.WarmupFailurePolicy = "fail"
+	}
 }
 
 type config struct {

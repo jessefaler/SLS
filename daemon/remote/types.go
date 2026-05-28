@@ -54,11 +54,17 @@ type InstallStatusRequest struct {
 // process. This is used when a server version is installed for the first time, and when
 // a server version is marked for re-installation.
 type InstallationScript struct {
-	ContainerImage string             `json:"container_image"`
-	Entrypoint     string             `json:"entrypoint"`
-	Script         string             `json:"script"`
-	SkipScripts    bool               `json:"skip_scripts"`
-	InstallLimits  environment.Limits `json:"limits"`
+	ContainerImage      string             `json:"container_image"`
+	Entrypoint          string             `json:"entrypoint"`
+	Script              string             `json:"script"`
+	SkipScripts         bool               `json:"skip_scripts"`
+	InstallLimits       environment.Limits `json:"limits"`
+	Warmup              bool               `json:"warmup"`
+	WarmupTimeout       int                `json:"warmup_timeout"`
+	WarmupRetries       int                `json:"warmup_retries"`
+	PostWarmupScript    string             `json:"post_warmup_script"`
+	PostWarmupTimeout   int                `json:"post_warmup_timeout"`
+	WarmupFailurePolicy string             `json:"warmup_failure_policy"`
 }
 
 type HeartBeat struct {

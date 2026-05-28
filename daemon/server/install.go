@@ -57,7 +57,11 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 	if successful {
 		s.FinishInstallPhase(InstallPhaseReady, "")
 	} else {
-		s.FinishInstallPhase(InstallPhaseInstallFailed, err.Error())
+		switch s.installPhase() {
+		case InstallPhaseWarmupFailed, InstallPhasePostWarmupFailed:
+		default:
+			s.FinishInstallPhase(InstallPhaseInstallFailed, err.Error())
+		}
 	}
 	s.Log().WithField("was_successful", successful).Debug("notifying protocube of server install state")
 	notifyProtocube := func() {
@@ -114,6 +118,10 @@ func (s *Server) internalInstall(ctx context.Context) error {
 
 	s.Log().Info("beginning installation process for server")
 	if err := p.Run(ctx); err != nil {
+		return err
+	}
+
+	if err := p.RunWarmup(ctx); err != nil {
 		return err
 	}
 
@@ -473,7 +481,7 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	// writes directly to the base on the host.
 	baseServerFolder := ip.Server.Filesystem().Overlay().ServerPath
 	containerUser, hostUID, hostGID := ip.installContainerUser()
-	if err := chownRecursiveTo(baseServerFolder, hostUID, hostGID); err != nil {
+	if err := ip.prepareLifecyclePathWritable(ctx, baseServerFolder, containerUser, hostUID, hostGID); err != nil {
 		return "", errors.Wrapf(err, "install: chown base server folder for container user")
 	}
 
