@@ -33,13 +33,8 @@ func (ip *InstallationProcess) RunWarmup(ctx context.Context) error {
 		return nil
 	}
 
-	attempts := 1
-	if ip.Script.WarmupFailurePolicy == warmupPolicyRetry {
-		attempts += ip.Script.WarmupRetries
-	}
-
 	var lastErr error
-	for attempt := 1; attempt <= attempts; attempt++ {
+	for attempt := 1; attempt <= ip.warmupAttempts(); attempt++ {
 		if attempt > 1 {
 			ip.Server.Log().WithField("attempt", attempt).Info("retrying server warmup")
 		}
@@ -74,6 +69,14 @@ func (ip *InstallationProcess) RunWarmup(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (ip *InstallationProcess) warmupAttempts() int {
+	ip.applyWarmupDefaults()
+	if ip.Script.WarmupFailurePolicy != warmupPolicyRetry {
+		return 1
+	}
+	return 1 + ip.Script.WarmupRetries
 }
 
 func (ip *InstallationProcess) applyWarmupDefaults() {
