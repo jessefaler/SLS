@@ -22,6 +22,7 @@ type ServerClient interface {
 	// Requests
 	Power(ctx context.Context, action models.PowerAction) error
 	Reset(ctx context.Context) error
+	Reinstall(ctx context.Context) error
 	Logs(ctx context.Context, size int) (gin.H, error)
 	InstallInfo(ctx context.Context) (models.InstallInfo, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
@@ -69,6 +70,11 @@ func (sc *serverClient) Power(ctx context.Context, action models.PowerAction) er
 
 func (sc *serverClient) Reset(ctx context.Context) error {
 	_, err := sc.Post(ctx, "/reset", nil)
+	return err
+}
+
+func (sc *serverClient) Reinstall(ctx context.Context) error {
+	_, err := sc.Post(ctx, "/reinstall", nil)
 	return err
 }
 

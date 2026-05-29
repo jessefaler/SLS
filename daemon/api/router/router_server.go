@@ -99,6 +99,18 @@ func getServerInstallInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context()))
 }
 
+func postServerReinstall(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	go func(s *server.Server) {
+		if err := s.Reinstall(); err != nil {
+			s.Log().WithField("error", err).Error("failed to reinstall server")
+		}
+	}(s)
+
+	c.Status(http.StatusAccepted)
+}
+
 // Sends an array of commands to a running server instance.
 func postServerCommands(c *gin.Context) {
 	s := middleware.ExtractServer(c)

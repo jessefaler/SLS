@@ -59,7 +59,7 @@ func (r *Router) Configure() *gin.Engine {
 		server.POST("/commands", postServerCommands)
 		server.POST("/reset", postServerReset)
 		server.GET("/install", getServerInstallInfo)
-		//server.POST("/reinstall", postServerReinstall)
+		server.POST("/reinstall", postServerReinstall)
 		//server.POST("/sync", postServerSync)
 		//server.POST("/ws/deny", postServerDenyWSTokens)
 	}

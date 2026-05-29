@@ -140,6 +140,15 @@ func getServerInstallInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
+func postServerReinstall(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	if err := s.Reinstall(c.Request.Context()); err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	c.JSON(http.StatusOK, s.InstallScript)

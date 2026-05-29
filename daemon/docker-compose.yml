@@ -1,6 +1,11 @@
 services:
   daemon:
     image: ghcr.io/jessefaler/sls/daemon:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: v0.1.2
     # Overlay mounts (used for server filesystems) need one of:
     # - userns_mode: host (when Docker uses userns-remap, container root cannot mount)
     # - apparmor=unconfined (Docker's default AppArmor profile can deny mount)
