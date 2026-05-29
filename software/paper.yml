@@ -50,7 +50,10 @@ software:
               VERSION=${LATEST_VERSION}
           fi
 
-          BUILD_EXISTS=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}" | jq -r --arg BUILD "${BUILD_NUMBER}" '.builds[] | tostring | contains($BUILD)' | grep -m1 true || true)
+          BUILD_EXISTS=false
+          if [ -n "${BUILD_NUMBER}" ]; then
+              BUILD_EXISTS=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}" | jq -r --arg BUILD "${BUILD_NUMBER}" '.builds[] | tostring | . == $BUILD' | grep -m1 true || true)
+          fi
           LATEST_BUILD=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}" | jq -r '.builds' | jq -r '.[-1]')
           if [ "${BUILD_EXISTS}" = "true" ]; then
               echo -e "Build is valid for version ${VERSION}. Using build ${BUILD_NUMBER}"
