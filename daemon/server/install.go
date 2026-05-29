@@ -37,6 +37,14 @@ func (s *Server) Install(ctx context.Context) error {
 }
 
 func (s *Server) install(ctx context.Context, reinstall bool) error {
+	if s.installLock == nil {
+		s.installLock = system.NewLocker()
+	}
+	if err := s.installLock.Acquire(); err != nil {
+		return errors.Wrap(err, "install: failed to acquire exclusive install lifecycle lock")
+	}
+	defer s.installLock.Release()
+
 	var err error
 	if !s.Config().SkipInstallScripts {
 		installerName := s.ID() + "_installer"
@@ -102,7 +110,10 @@ func (s *Server) Reinstall() error {
 		return errors.WrapIf(err, "install: failed to sync server state with Protocube")
 	}
 
-	return s.install(s.Context(), true)
+	installCtx, cancel := context.WithTimeout(s.Context(), InstallLockTimeout)
+	defer cancel()
+
+	return s.install(installCtx, true)
 }
 
 // Internal installation function used to simplify reporting back to Protocube.

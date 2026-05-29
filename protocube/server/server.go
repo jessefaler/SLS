@@ -120,6 +120,10 @@ func (s *Server) Reset(ctx context.Context) error {
 	return s.Client().Reset(ctx)
 }
 
+func (s *Server) Reinstall(ctx context.Context) error {
+	return s.Client().Reinstall(ctx)
+}
+
 // Delete deletes the server from the daemon
 func (s *Server) Delete(ctx context.Context) error {
 	return s.Client().DeleteServer(ctx)

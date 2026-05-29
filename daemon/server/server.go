@@ -26,8 +26,9 @@ type Server struct {
 	// Internal mutex used to block actions that need to occur sequentially, such as
 	// writing the configuration to the disk.
 	sync.RWMutex
-	ctx       context.Context
-	ctxCancel *context.CancelFunc
+	installLock *system.Locker
+	ctx         context.Context
+	ctxCancel   *context.CancelFunc
 
 	client remote.Client
 
@@ -73,10 +74,11 @@ func New(client remote.Client) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	server := &Server{
-		ctx:       ctx,
-		ctxCancel: &cancel,
-		client:    client,
-		powerLock: system.NewLocker(),
+		ctx:         ctx,
+		ctxCancel:   &cancel,
+		installLock: system.NewLocker(),
+		client:      client,
+		powerLock:   system.NewLocker(),
 		sinks: map[system.SinkName]*system.SinkPool{
 			system.LogSink:     system.NewSinkPool(),
 			system.InstallSink: system.NewSinkPool(),
@@ -251,6 +253,9 @@ func (s *Server) CleanupForDestroy() {
 	s.CtxCancel()
 	s.Events().Destroy()
 	s.DestroyAllSinks()
+	if s.installLock != nil {
+		s.installLock.Destroy()
+	}
 	// per-server websockets are not implemented yet
 	// this will be needed when they are implemented
 	//s.Websockets().CancelAll()
