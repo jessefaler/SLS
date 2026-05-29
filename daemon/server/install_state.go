@@ -37,6 +37,7 @@ type InstallInfo struct {
 	StartedAt     *time.Time   `json:"started_at,omitempty"`
 	FinishedAt    *time.Time   `json:"finished_at,omitempty"`
 	FailureReason string       `json:"failure_reason,omitempty"`
+	Content       []string     `json:"content,omitempty"`
 }
 
 type installState struct {
@@ -110,6 +111,15 @@ func (s *Server) InstallInfo(ctx context.Context) InstallInfo {
 	return info
 }
 
+func (s *Server) InstallInfoWithLogs(ctx context.Context, lines int) InstallInfo {
+	info := s.InstallInfo(ctx)
+	logs, err := s.InstallLogs(ctx, lines)
+	if err == nil {
+		info.Content = logs
+	}
+	return info
+}
+
 func (s *Server) installInfoSnapshot() InstallInfo {
 	s.installState.mu.RLock()
 	defer s.installState.mu.RUnlock()
@@ -138,6 +148,11 @@ func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string,
 		return s.ReadInstallLogfile(ctx, lines)
 	}
 
+	logs := s.readStoredInstallLogs(lines)
+	if len(logs) > 0 {
+		return logs, nil
+	}
+
 	ownerID := InstallLockOwner(s.Filesystem().Overlay().ServerPath)
 	if ownerID == "" || ownerID == s.ID() {
 		return nil, nil
@@ -151,6 +166,13 @@ func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string,
 		return logs, nil
 	}
 	return readTailLines(filepath.Join(config.Get().System.LogDirectory, "install", ownerID+".log"), lines), nil
+}
+
+func (s *Server) InstallLogs(ctx context.Context, lines int) ([]string, error) {
+	if lines <= 0 {
+		lines = 100
+	}
+	return s.installLogsForServer(ctx, lines)
 }
 
 func (s *Server) installPhase() InstallPhase {
@@ -212,7 +234,36 @@ func (s *Server) ReadInstallLogfile(ctx context.Context, lines int) ([]string, e
 	if len(logs) > 0 {
 		return logs, nil
 	}
-	return readTailLines(s.installLogPath(), lines), nil
+
+	logs = readTailLines(s.installLogPath(), lines)
+	if len(logs) > 0 {
+		return logs, nil
+	}
+	return s.readStoredInstallLogs(lines), nil
+}
+
+func (s *Server) readStoredInstallLogs(lines int) []string {
+	paths := []string{
+		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+".log"),
+		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+"-warmup.log"),
+		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+"-post-warmup.log"),
+	}
+
+	var out []string
+	for _, path := range paths {
+		logs := readTailLines(path, lines)
+		if len(logs) == 0 {
+			continue
+		}
+		if len(out) > 0 {
+			out = append(out, "")
+		}
+		out = append(out, logs...)
+	}
+	if len(out) > lines {
+		out = out[len(out)-lines:]
+	}
+	return out
 }
 
 func (s *Server) installContainerRef() string {

@@ -112,15 +112,10 @@ func getServerLogs(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 
 	// Parse the size query parameter
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	if size <= 0 {
-		size = 100
-	} else if size > 100 {
-		size = 100
-	}
+	size := logLineCount(c)
 
 	// Make the request to the daemon
-	logs, err := s.GetLogs(c.Request.Context(), size)
+	logs, err := s.GetLogs(c.Request.Context(), size, c.Query("type"))
 	if err != nil {
 		client.HandleError(c, err)
 		return
@@ -132,7 +127,7 @@ func getServerLogs(c *gin.Context) {
 
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	info, err := s.InstallInfo(c.Request.Context())
+	info, err := s.InstallInfo(c.Request.Context(), logLineCount(c))
 	if err != nil {
 		client.HandleError(c, err)
 		return
@@ -152,4 +147,16 @@ func postServerReinstall(c *gin.Context) {
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	c.JSON(http.StatusOK, s.InstallScript)
+}
+
+func logLineCount(c *gin.Context) int {
+	raw := c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
+	size, _ := strconv.Atoi(raw)
+	if size <= 0 {
+		return 100
+	}
+	if size > 100 {
+		return 100
+	}
+	return size
 }

@@ -84,6 +84,7 @@ type InstallInfo struct {
 	StartedAt     *time.Time `json:"started_at,omitempty"`
 	FinishedAt    *time.Time `json:"finished_at,omitempty"`
 	FailureReason string     `json:"failure_reason,omitempty"`
+	Content       []string   `json:"content,omitempty"`
 }
 
 // ResourceUsage defines the current resource usage for a given server instance. If a server is offline you

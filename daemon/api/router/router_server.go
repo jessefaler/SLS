@@ -96,7 +96,8 @@ func getServerStats(c *gin.Context) {
 
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context()))
+	l := logLineCount(c)
+	c.JSON(http.StatusOK, s.InstallInfoWithLogs(c.Request.Context(), l))
 }
 
 func postServerReinstall(c *gin.Context) {
@@ -176,14 +177,15 @@ var stripAnsiRegex = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-z
 func getServerLogs(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 
-	l, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	if l <= 0 {
-		l = 100
-	} else if l > 100 {
-		l = 100
-	}
+	l := logLineCount(c)
 
-	out, err := s.ReadLogfile(c.Request.Context(), l)
+	var out []string
+	var err error
+	if c.Query("type") == "install" {
+		out, err = s.InstallLogs(c.Request.Context(), l)
+	} else {
+		out, err = s.ReadLogfile(c.Request.Context(), l)
+	}
 	if err != nil {
 		middleware.CaptureAndAbort(c, err)
 		return
@@ -225,4 +227,16 @@ func getServerLogs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": stripped})
+}
+
+func logLineCount(c *gin.Context) int {
+	raw := c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
+	l, _ := strconv.Atoi(raw)
+	if l <= 0 {
+		return 100
+	}
+	if l > 100 {
+		return 100
+	}
+	return l
 }

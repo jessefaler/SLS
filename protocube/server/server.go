@@ -145,12 +145,12 @@ func (s *Server) SendCommands(ctx context.Context, commands []string) error {
 }
 
 // GetLogs fetches server logs from the remote node.
-func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
-	return s.Client().Logs(ctx, size)
+func (s *Server) GetLogs(ctx context.Context, size int, logType string) (gin.H, error) {
+	return s.Client().Logs(ctx, size, logType)
 }
 
-func (s *Server) InstallInfo(ctx context.Context) (models.InstallInfo, error) {
-	return s.Client().InstallInfo(ctx)
+func (s *Server) InstallInfo(ctx context.Context, size int) (models.InstallInfo, error) {
+	return s.Client().InstallInfo(ctx, size)
 }
 
 // ServerData returns the ServerData model for this server.

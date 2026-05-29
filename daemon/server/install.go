@@ -429,7 +429,11 @@ func (ip *InstallationProcess) AfterExecute(containerId string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(ip.GetLogPath(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	logPath := ip.GetLogPath()
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
@@ -438,7 +442,7 @@ func (ip *InstallationProcess) AfterExecute(containerId string) error {
 	// We write the contents of the container output to a more "permanent" file so that they
 	// can be referenced after this container is deleted. We'll also include the environment
 	// variables passed into the container to make debugging things a little easier.
-	ip.Server.Log().WithField("path", ip.GetLogPath()).Debug("writing most recent installation logs to disk")
+	ip.Server.Log().WithField("path", logPath).Debug("writing most recent installation logs to disk")
 
 	tmpl, err := template.New("header").Parse(`SLS Server Installation Log
 
