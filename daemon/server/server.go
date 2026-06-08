@@ -146,17 +146,18 @@ func (s *Server) IsRunning() bool {
 
 // Reads the log file for a server up to a specified number of lines.
 func (s *Server) ReadLogfile(ctx context.Context, lines int) ([]string, error) {
+	installLogs, installErr := s.installLogsForServer(ctx, lines)
+
 	out, err := s.Environment.Readlog(lines)
 	if err != nil {
 		out = nil
 	}
 
-	installLogs, installErr := s.installLogsForServer(ctx, lines)
 	if installErr != nil && err != nil {
 		return nil, err
 	}
 
-	out = append(out, installLogs...)
+	out = append(installLogs, out...)
 	if len(out) > lines {
 		out = out[len(out)-lines:]
 	}
