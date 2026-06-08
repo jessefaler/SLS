@@ -3,6 +3,7 @@ package net.slimelabs.vsls.server;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.requests.PaginationAction;
 import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.ServerLimits;
@@ -284,22 +285,31 @@ public class Server {
     }
 
     /**
-     * Returns the most recent 100 log lines from the server.
+     * Returns server logs with pagination. Page 1 contains the most recent lines.
      *
-     * @return an action that resolves to a list of log lines
+     * @return a paginated action that resolves to a page of log lines
      */
-    public SLSAction<List<String>> getLogs() {
+    public PaginationAction<String> getLogs() {
         return client.getLogs();
     }
 
     /**
-     * Returns the specified number of most recent log lines from the server.
+     * Returns server logs with a custom page size. Page 1 contains the most recent lines.
      *
-     * @param lines the number of log lines to retrieve
-     * @return an action that resolves to a list of log lines
+     * @param lines the number of log lines per page
+     * @return a paginated action that resolves to a page of log lines
      */
-    public SLSAction<List<String>> getLogs(int lines) {
+    public PaginationAction<String> getLogs(int lines) {
         return client.getLogs(lines);
+    }
+
+    /**
+     * Returns install logs with pagination. Page 1 contains the most recent lines.
+     *
+     * @return a paginated action that resolves to a page of install log lines
+     */
+    public PaginationAction<String> getInstallLogs() {
+        return client.getInstallLogs();
     }
 
     /**

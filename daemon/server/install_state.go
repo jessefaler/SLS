@@ -169,9 +169,6 @@ func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string,
 }
 
 func (s *Server) InstallLogs(ctx context.Context, lines int) ([]string, error) {
-	if lines <= 0 {
-		lines = 100
-	}
 	return s.installLogsForServer(ctx, lines)
 }
 
@@ -260,7 +257,7 @@ func (s *Server) readStoredInstallLogs(lines int) []string {
 		}
 		out = append(out, logs...)
 	}
-	if len(out) > lines {
+	if lines > 0 && len(out) > lines {
 		out = out[len(out)-lines:]
 	}
 	return out
@@ -285,11 +282,14 @@ func readInstallLogsFromDocker(ctx context.Context, containerRef string, lines i
 		return nil, err
 	}
 
-	reader, err := cli.ContainerLogs(ctx, containerRef, container.LogsOptions{
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Tail:       strconv.Itoa(lines),
-	})
+	}
+	if lines > 0 {
+		opts.Tail = strconv.Itoa(lines)
+	}
+	reader, err := cli.ContainerLogs(ctx, containerRef, opts)
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return nil, nil
@@ -320,7 +320,7 @@ func readTailLines(path string, max int) []string {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
-		if len(lines) > max {
+		if max > 0 && len(lines) > max {
 			lines = lines[len(lines)-max:]
 		}
 	}

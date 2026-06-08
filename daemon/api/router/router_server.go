@@ -177,21 +177,37 @@ var stripAnsiRegex = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-z
 func getServerLogs(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 
-	l := logLineCount(c)
+	page, perPage := logPaginationParams(c)
 
 	var out []string
 	var err error
 	if c.Query("type") == "install" {
-		out, err = s.InstallLogs(c.Request.Context(), l)
+		out, err = s.InstallLogs(c.Request.Context(), 0)
 	} else {
-		out, err = s.ReadLogfile(c.Request.Context(), l)
+		out, err = s.ReadLogfile(c.Request.Context(), 0)
 	}
 	if err != nil {
 		middleware.CaptureAndAbort(c, err)
 		return
 	}
 
-	// Strip ANSI formatting codes and other formatting from each log line
+	stripped := stripLogLines(out)
+	paged, totalPages := paginateLogLines(stripped, page, perPage)
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": gin.H{
+			"pagination": gin.H{
+				"total":        len(stripped),
+				"per_page":     perPage,
+				"current_page": page,
+				"total_pages":  totalPages,
+			},
+		},
+		"data": paged,
+	})
+}
+
+func stripLogLines(out []string) []string {
 	stripped := make([]string, len(out))
 	for i, line := range out {
 		// Strip ANSI escape codes
@@ -225,18 +241,50 @@ func getServerLogs(c *gin.Context) {
 
 		stripped[i] = cleaned
 	}
+	return stripped
+}
 
-	c.JSON(http.StatusOK, gin.H{"data": stripped})
+func paginateLogLines(lines []string, page, perPage int) ([]string, int) {
+	total := len(lines)
+	totalPages := 0
+	if total > 0 {
+		totalPages = (total + perPage - 1) / perPage
+	}
+
+	end := total - (page-1)*perPage
+	if end <= 0 {
+		return []string{}, totalPages
+	}
+
+	start := end - perPage
+	if start < 0 {
+		start = 0
+	}
+
+	return lines[start:end], totalPages
+}
+
+func logPaginationParams(c *gin.Context) (page, perPage int) {
+	page, _ = strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+
+	perPageRaw := c.Query("per_page")
+	if perPageRaw == "" {
+		perPageRaw = c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
+	}
+	perPage, _ = strconv.Atoi(perPageRaw)
+	if perPage <= 0 {
+		perPage = 100
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+	return page, perPage
 }
 
 func logLineCount(c *gin.Context) int {
-	raw := c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
-	l, _ := strconv.Atoi(raw)
-	if l <= 0 {
-		return 100
-	}
-	if l > 100 {
-		return 100
-	}
-	return l
+	_, perPage := logPaginationParams(c)
+	return perPage
 }

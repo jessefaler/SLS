@@ -69,6 +69,14 @@ public interface PaginationAction<T> extends SLSAction<List<T>>, Iterable<T> {
 	 */
 	int getTotalPages();
 
+	/**
+	 * The total number of entities available across all pages.
+	 * <br>This is updated by each retrieve action.
+	 *
+	 * @return The total entity count
+	 */
+	int getTotal();
+
 	@Override
 	PaginationAction<T> timeout(long timeout, TimeUnit unit);
 
