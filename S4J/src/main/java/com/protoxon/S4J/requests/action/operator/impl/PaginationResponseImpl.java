@@ -5,6 +5,7 @@ import com.protoxon.S4J.requests.Request;
 import com.protoxon.S4J.requests.Response;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.utils.PaginatedEntity;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.LinkedList;
@@ -30,10 +31,15 @@ public class PaginationResponseImpl<T> extends PaginationActionImpl<T> {
 		JSONObject object = response.getObject();
 
 		PaginatedEntity paginatedEntity = PaginatedEntity.create(object);
+		total = paginatedEntity.getTotal();
 		totalPages = paginatedEntity.getTotalPages();
 
 		List<T> entities = new LinkedList<>();
-		for (Object o : object.getJSONArray("data")) {
+		JSONArray dataArray = object.optJSONArray("data");
+		if (dataArray == null) {
+			dataArray = new JSONArray();
+		}
+		for (Object o : dataArray) {
 			T entity = handler.apply(new JSONObject(o.toString()));
 			entities.add(entity);
 

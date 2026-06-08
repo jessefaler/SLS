@@ -158,7 +158,7 @@ func (s *Server) ReadLogfile(ctx context.Context, lines int) ([]string, error) {
 	}
 
 	out = append(installLogs, out...)
-	if len(out) > lines {
+	if lines > 0 && len(out) > lines {
 		out = out[len(out)-lines:]
 	}
 	return out, nil

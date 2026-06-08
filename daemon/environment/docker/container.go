@@ -315,11 +315,14 @@ func (e *Environment) SendCommand(c string) error {
 // is running or not, it will simply try to read the last X bytes of the file
 // and return them.
 func (e *Environment) Readlog(lines int) ([]string, error) {
-	r, err := e.client.ContainerLogs(context.Background(), e.Id, container.LogsOptions{
+	opts := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Tail:       strconv.Itoa(lines),
-	})
+	}
+	if lines > 0 {
+		opts.Tail = strconv.Itoa(lines)
+	}
+	r, err := e.client.ContainerLogs(context.Background(), e.Id, opts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

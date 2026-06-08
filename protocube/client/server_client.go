@@ -23,7 +23,7 @@ type ServerClient interface {
 	Power(ctx context.Context, action models.PowerAction) error
 	Reset(ctx context.Context) error
 	Reinstall(ctx context.Context) error
-	Logs(ctx context.Context, size int, logType string) (gin.H, error)
+	Logs(ctx context.Context, page, perPage int, logType string) (gin.H, error)
 	InstallInfo(ctx context.Context, size int) (models.InstallInfo, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
 	Status(ctx context.Context) (string, error)
@@ -117,8 +117,11 @@ func (sc *serverClient) Commands(ctx context.Context, commands []string) error {
 }
 
 // Logs fetches server logs from the remote node.
-func (sc *serverClient) Logs(ctx context.Context, size int, logType string) (gin.H, error) {
-	query := q{"size": strconv.Itoa(size)}
+func (sc *serverClient) Logs(ctx context.Context, page, perPage int, logType string) (gin.H, error) {
+	query := q{
+		"page":     strconv.Itoa(page),
+		"per_page": strconv.Itoa(perPage),
+	}
 	if logType != "" {
 		query["type"] = logType
 	}
