@@ -19,7 +19,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/grokify/coreforge v0.6.0
-	github.com/mattn/go-colorable v0.1.14
+	github.com/mattn/go-colorable v0.1.15
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
