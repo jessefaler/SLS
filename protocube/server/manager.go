@@ -123,6 +123,19 @@ func (m *Manager) AttachNodeClientToServers(nodeId string, node *node.Node) {
 	}
 }
 
+// DetachNodeClientFromServers clears the node client on all servers that belong to the
+// specified node. This is called when a node disconnects so server operations fail
+// fast with ErrNodeUnavailable instead of retrying against a dead endpoint.
+func (m *Manager) DetachNodeClientFromServers(nodeId string) {
+	servers := m.ServersByNode(nodeId)
+	for _, server := range servers {
+		server.sc.SetNodeClient(nil)
+		if a := server.allocations(); a != nil {
+			a.Release = nil
+		}
+	}
+}
+
 // CreateServer creates a server on the specified node and adds it to the manager
 func (m *Manager) CreateServer(ctx context.Context, node *node.Node, bp *blueprint.Blueprint, swr *software.Registry, overrides *models.ServerOverrides) (*Server, error) {
 	serverId := id.New()

@@ -20,6 +20,9 @@ type Manager struct {
 	// onNodeRegistered is called when a node is registered.
 	// The callback receives the node ID and the node client.
 	onNodeRegistered func(nodeId string, node *Node)
+
+	// onNodeDisconnected is called when a node disconnects.
+	onNodeDisconnected func(nodeId string)
 }
 
 // NewManager returns a new server manager instance.
@@ -54,6 +57,13 @@ func (m *Manager) SetOnNodeRegistered(callback func(nodeId string, node *Node)) 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.onNodeRegistered = callback
+}
+
+// SetOnNodeDisconnected sets a callback that will be invoked when a node disconnects.
+func (m *Manager) SetOnNodeDisconnected(callback func(nodeId string)) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.onNodeDisconnected = callback
 }
 
 // TriggerNodeRegistered invokes the onNodeRegistered callback if it's set.
@@ -111,6 +121,14 @@ func (m *Manager) Register(ctx context.Context, id string, name string, url stri
 func (m *Manager) Disconnect(node *Node) {
 	node.Online = false
 	m.lb.Get().RemoveNode(node)
+
+	m.mutex.RLock()
+	callback := m.onNodeDisconnected
+	m.mutex.RUnlock()
+	if callback != nil {
+		callback(node.Id())
+	}
+
 	m.remove(node.Id())
 }
 

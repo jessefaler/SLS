@@ -53,9 +53,12 @@ func run(cmd *cobra.Command, _ []string) {
 		log.Fatal(err.Error())
 	}
 
-	// Wire up node connection callback to attach node clients to servers
+	// Wire up node connection callbacks to attach/detach node clients on servers
 	nodeManager.SetOnNodeRegistered(func(nodeId string, node *node.Node) {
 		serverManager.AttachNodeClientToServers(nodeId, node)
+	})
+	nodeManager.SetOnNodeDisconnected(func(nodeId string) {
+		serverManager.DetachNodeClientFromServers(nodeId)
 	})
 
 	// Initialize the api key service
