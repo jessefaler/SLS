@@ -288,10 +288,6 @@ func (s *Server) onBeforeStart() error {
 		return ErrSuspended
 	}
 
-	// Ensure we sync the server information with the environment so that any new environment variables
-	// and process resource limits are correctly applied.
-	s.SyncWithEnvironment()
-
 	// Install server base files only if the folder does not exist. Use a lock
 	// file serverPath/.lock so only one process installs; others wait and then
 	// skip when the folder has content (installed). If the lock is held longer
