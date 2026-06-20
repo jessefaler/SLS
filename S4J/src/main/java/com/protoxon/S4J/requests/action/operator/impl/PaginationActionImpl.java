@@ -30,6 +30,7 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	protected volatile int iteratorIndex = 0;
 	protected volatile int currentPage = 1;
 	protected volatile int totalPages = 1;
+	protected volatile int total = 0;
 	protected volatile T last = null;
 	protected volatile boolean useCache = true;
 
@@ -68,6 +69,11 @@ public abstract class PaginationActionImpl<T> extends SLSActionImpl<List<T>> imp
 	@Override
 	public int getTotalPages() {
 		return totalPages;
+	}
+
+	@Override
+	public int getTotal() {
+		return total;
 	}
 
 	@Override

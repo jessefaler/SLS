@@ -37,19 +37,40 @@ func (s *Server) Install(ctx context.Context) error {
 }
 
 func (s *Server) install(ctx context.Context, reinstall bool) error {
+	if s.installLock == nil {
+		s.installLock = system.NewLocker()
+	}
+	if err := s.installLock.Acquire(); err != nil {
+		return errors.Wrap(err, "install: failed to acquire exclusive install lifecycle lock")
+	}
+	defer s.installLock.Release()
+
 	var err error
 	if !s.Config().SkipInstallScripts {
+		installerName := s.ID() + "_installer"
+		s.StartInstallPhase(InstallPhaseInstalling, installerName, installLogDiskPath(s.installLogBasePath(), ""))
+
 		// Send the start event so protocube can automatically update.
 		s.Events().Publish(InstallStartedEvent, "")
 
 		err = s.internalInstall(ctx)
 	} else {
 		s.Log().Info("server configured to skip running installation scripts for this software, not executing process")
+		s.FinishInstallPhase(InstallPhaseCompleted, "")
 	}
 
 	// Notify protocube of install state. On failure, do this in the background so we return
 	// (and the caller can log the error) immediately instead of blocking on a slow/timeout HTTP call.
 	successful := err == nil
+	if successful {
+		s.FinishInstallPhase(InstallPhaseCompleted, "")
+	} else {
+		switch s.installPhase() {
+		case InstallPhaseWarmupFailed, InstallPhasePostWarmupFailed:
+		default:
+			s.FinishInstallPhase(InstallPhaseInstallFailed, err.Error())
+		}
+	}
 	s.Log().WithField("was_successful", successful).Debug("notifying protocube of server install state")
 	notifyProtocube := func() {
 		if serr := s.SyncInstallState(successful, reinstall); serr != nil {
@@ -73,15 +94,21 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 	return errors.WithStackIf(err)
 }
 
+// ValidateReinstall reports whether reinstall can proceed. Every server using the
+// same installed artifact must be stopped first.
+func (s *Server) ValidateReinstall() error {
+	if s.BaseReinstallAllowed != nil && !s.BaseReinstallAllowed(s.sharedBasePath()) {
+		return ErrInstalledServerArtifactInUse
+	}
+	return nil
+}
+
 // Reinstall reinstalls a server's software by utilizing the installation script
 // for the server software. This does not touch any existing files for the server,
 // other than what the script modifies.
 func (s *Server) Reinstall() error {
-	if s.Environment.State() != environment.ProcessOfflineState {
-		s.Log().Debug("waiting for server instance to enter a stopped state")
-		if err := s.Environment.WaitForStop(s.Context(), time.Second*10, true); err != nil {
-			return errors.WrapIf(err, "install: failed to stop running environment")
-		}
+	if err := s.ValidateReinstall(); err != nil {
+		return err
 	}
 
 	s.Log().Info("syncing server state with remote source before executing re-installation process")
@@ -89,7 +116,17 @@ func (s *Server) Reinstall() error {
 		return errors.WrapIf(err, "install: failed to sync server state with Protocube")
 	}
 
-	return s.install(s.Context(), true)
+	installCtx, cancel := context.WithTimeout(s.Context(), InstallLockTimeout)
+	defer cancel()
+
+	return s.install(installCtx, true)
+}
+
+func (s *Server) sharedBasePath() string {
+	if s.fs == nil {
+		return ""
+	}
+	return filepath.Clean(s.Filesystem().Overlay().ServerPath)
 }
 
 // Internal installation function used to simplify reporting back to Protocube.
@@ -105,6 +142,10 @@ func (s *Server) internalInstall(ctx context.Context) error {
 
 	s.Log().Info("beginning installation process for server")
 	if err := p.Run(ctx); err != nil {
+		return err
+	}
+
+	if err := p.RunWarmup(ctx); err != nil {
 		return err
 	}
 
@@ -353,7 +394,7 @@ func chownRecursiveTo(path string, uid, gid int) error {
 
 // GetLogPath returns the log path for the installation process.
 func (ip *InstallationProcess) GetLogPath() string {
-	return filepath.Join(config.Get().System.LogDirectory, "/install", ip.Server.ID()+".log")
+	return installLogDiskPath(ip.Server.installLogBasePath(), "")
 }
 
 // writeFailedInstallLog writes container stdout/stderr to the install log when the script exits non-zero.
@@ -401,7 +442,11 @@ func (ip *InstallationProcess) AfterExecute(containerId string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(ip.GetLogPath(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	logPath := ip.GetLogPath()
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(logPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
@@ -410,7 +455,7 @@ func (ip *InstallationProcess) AfterExecute(containerId string) error {
 	// We write the contents of the container output to a more "permanent" file so that they
 	// can be referenced after this container is deleted. We'll also include the environment
 	// variables passed into the container to make debugging things a little easier.
-	ip.Server.Log().WithField("path", ip.GetLogPath()).Debug("writing most recent installation logs to disk")
+	ip.Server.Log().WithField("path", logPath).Debug("writing most recent installation logs to disk")
 
 	tmpl, err := template.New("header").Parse(`SLS Server Installation Log
 
@@ -464,7 +509,7 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	// writes directly to the base on the host.
 	baseServerFolder := ip.Server.Filesystem().Overlay().ServerPath
 	containerUser, hostUID, hostGID := ip.installContainerUser()
-	if err := chownRecursiveTo(baseServerFolder, hostUID, hostGID); err != nil {
+	if err := ip.prepareLifecyclePathWritable(ctx, baseServerFolder, containerUser, hostUID, hostGID); err != nil {
 		return "", errors.Wrapf(err, "install: chown base server folder for container user")
 	}
 
@@ -528,11 +573,13 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	ip.Server.SetInstallContainer(r.ID)
 
 	ip.Server.Log().WithField("container_id", r.ID).Info("running installation script for server in container")
 	if err := ip.client.ContainerStart(ctx, r.ID, container.StartOptions{}); err != nil {
 		return "", err
 	}
+	ip.Server.SetInstallStatus("running")
 
 	// Process the install event in the background by listening to the stream output until the
 	// container has stopped, at which point we'll disconnect from it.
@@ -551,11 +598,14 @@ func (ip *InstallationProcess) Execute() (string, error) {
 	case err := <-eChan:
 		// Once the container has stopped running we can mark the install process as being completed.
 		if err == nil {
+			ip.Server.SetInstallStatus("exited")
 			ip.Server.Events().Publish(DaemonMessageEvent, "Installation process completed.")
 		} else {
 			return "", err
 		}
 	case res := <-sChan:
+		ip.Server.SetInstallExitCode(res.StatusCode)
+		ip.Server.SetInstallStatus("exited")
 		if res.StatusCode != 0 {
 			ip.writeFailedInstallLog(ctx, r.ID, res.StatusCode)
 			return "", errors.Errorf("install script exited with code %d (see install log for output)", res.StatusCode)

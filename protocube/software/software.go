@@ -32,7 +32,13 @@ type ConfigFile struct {
 }
 
 type InstallationScript struct {
-	Entrypoint  string `yaml:"entrypoint" json:"entrypoint"`
-	Script      string `yaml:"script" json:"script"`
-	SkipScripts bool   `yaml:"skip-scripts,omitempty" json:"skip_scripts" default:"false"`
+	Entrypoint          string `yaml:"entrypoint" json:"entrypoint"`
+	Script              string `yaml:"script" json:"script"`
+	SkipScripts         bool   `yaml:"skip-scripts,omitempty" json:"skip_scripts" default:"false"`
+	Warmup              bool   `yaml:"warmup,omitempty" json:"warmup"`
+	WarmupTimeout       int    `yaml:"warmup-timeout,omitempty" json:"warmup_timeout"`
+	WarmupRetries       int    `yaml:"warmup-retries,omitempty" json:"warmup_retries"`
+	PostWarmupScript    string `yaml:"post-warmup-script,omitempty" json:"post_warmup_script"`
+	PostWarmupTimeout   int    `yaml:"post-warmup-timeout,omitempty" json:"post_warmup_timeout"`
+	WarmupFailurePolicy string `yaml:"warmup_failure_policy,omitempty" json:"warmup_failure_policy"`
 }

@@ -22,7 +22,10 @@ type ServerClient interface {
 	// Requests
 	Power(ctx context.Context, action models.PowerAction) error
 	Reset(ctx context.Context) error
-	Logs(ctx context.Context, size int) (gin.H, error)
+	Reinstall(ctx context.Context) error
+	Logs(ctx context.Context, page, perPage int) (gin.H, error)
+	InstallInfo(ctx context.Context) (models.InstallInfo, error)
+	InstallLogs(ctx context.Context, page, perPage int) (gin.H, error)
 	Stats(ctx context.Context, update bool) (models.ResourceUsage, error)
 	Status(ctx context.Context) (string, error)
 	GetServer(ctx context.Context) (models.ServerData, error)
@@ -71,6 +74,11 @@ func (sc *serverClient) Reset(ctx context.Context) error {
 	return err
 }
 
+func (sc *serverClient) Reinstall(ctx context.Context) error {
+	_, err := sc.Post(ctx, "/reinstall", nil)
+	return err
+}
+
 // Stats fetches resource stats from the remote node.
 func (sc *serverClient) Stats(ctx context.Context, update bool) (models.ResourceUsage, error) {
 	if update {
@@ -110,7 +118,20 @@ func (sc *serverClient) Commands(ctx context.Context, commands []string) error {
 }
 
 // Logs fetches server logs from the remote node.
-func (sc *serverClient) Logs(ctx context.Context, size int) (gin.H, error) {
-	query := q{"size": strconv.Itoa(size)}
-	return Get[gin.H](sc, ctx, "/logs", query)
+func (sc *serverClient) Logs(ctx context.Context, page, perPage int) (gin.H, error) {
+	return Get[gin.H](sc, ctx, "/logs", q{
+		"page":     strconv.Itoa(page),
+		"per_page": strconv.Itoa(perPage),
+	})
+}
+
+func (sc *serverClient) InstallInfo(ctx context.Context) (models.InstallInfo, error) {
+	return Get[models.InstallInfo](sc, ctx, "/install", nil)
+}
+
+func (sc *serverClient) InstallLogs(ctx context.Context, page, perPage int) (gin.H, error) {
+	return Get[gin.H](sc, ctx, "/install/logs", q{
+		"page":     strconv.Itoa(page),
+		"per_page": strconv.Itoa(perPage),
+	})
 }

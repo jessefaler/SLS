@@ -120,6 +120,10 @@ func (s *Server) Reset(ctx context.Context) error {
 	return s.Client().Reset(ctx)
 }
 
+func (s *Server) Reinstall(ctx context.Context) error {
+	return s.Client().Reinstall(ctx)
+}
+
 // Delete deletes the server from the daemon
 func (s *Server) Delete(ctx context.Context) error {
 	return s.Client().DeleteServer(ctx)
@@ -141,8 +145,16 @@ func (s *Server) SendCommands(ctx context.Context, commands []string) error {
 }
 
 // GetLogs fetches server logs from the remote node.
-func (s *Server) GetLogs(ctx context.Context, size int) (gin.H, error) {
-	return s.Client().Logs(ctx, size)
+func (s *Server) GetLogs(ctx context.Context, page, perPage int) (gin.H, error) {
+	return s.Client().Logs(ctx, page, perPage)
+}
+
+func (s *Server) InstallInfo(ctx context.Context) (models.InstallInfo, error) {
+	return s.Client().InstallInfo(ctx)
+}
+
+func (s *Server) InstallLogs(ctx context.Context, page, perPage int) (gin.H, error) {
+	return s.Client().InstallLogs(ctx, page, perPage)
 }
 
 // ServerData returns the ServerData model for this server.

@@ -94,6 +94,60 @@ func getServerStats(c *gin.Context) {
 	c.JSON(http.StatusOK, s.Proc())
 }
 
+func getServerInstallInfo(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context()))
+}
+
+func getServerInstallLogs(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	page, perPage := logPaginationParams(c)
+
+	out, err := s.InstallLogsAll(c.Request.Context())
+	if err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+
+	stripped := stripLogLines(out)
+	paged, totalPages := paginateLogLines(stripped, page, perPage)
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": gin.H{
+			"pagination": gin.H{
+				"total":        len(stripped),
+				"per_page":     perPage,
+				"current_page": page,
+				"total_pages":  totalPages,
+			},
+		},
+		"data": paged,
+	})
+}
+
+func postServerReinstall(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	if err := s.ValidateReinstall(); err != nil {
+		if errors.Is(err, server.ErrInstalledServerArtifactInUse) {
+			httperror.AbortWithJSON(c, http.StatusConflict, err.Error(),
+				"Stop all servers using this installed artifact before reinstalling.")
+			return
+		}
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+
+	go func(s *server.Server) {
+		if err := s.Reinstall(); err != nil {
+			s.Log().WithField("error", err).Error("failed to reinstall server")
+		}
+	}(s)
+
+	c.Status(http.StatusAccepted)
+}
+
 // Sends an array of commands to a running server instance.
 func postServerCommands(c *gin.Context) {
 	s := middleware.ExtractServer(c)
@@ -159,20 +213,33 @@ var stripAnsiRegex = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-z
 func getServerLogs(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 
-	l, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	if l <= 0 {
-		l = 100
-	} else if l > 100 {
-		l = 100
-	}
+	page, perPage := logPaginationParams(c)
 
-	out, err := s.ReadLogfile(l)
+	var out []string
+	var err error
+	out, err = s.ReadLogfile(c.Request.Context(), 0)
 	if err != nil {
 		middleware.CaptureAndAbort(c, err)
 		return
 	}
 
-	// Strip ANSI formatting codes and other formatting from each log line
+	stripped := stripLogLines(out)
+	paged, totalPages := paginateLogLines(stripped, page, perPage)
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": gin.H{
+			"pagination": gin.H{
+				"total":        len(stripped),
+				"per_page":     perPage,
+				"current_page": page,
+				"total_pages":  totalPages,
+			},
+		},
+		"data": paged,
+	})
+}
+
+func stripLogLines(out []string) []string {
 	stripped := make([]string, len(out))
 	for i, line := range out {
 		// Strip ANSI escape codes
@@ -206,6 +273,46 @@ func getServerLogs(c *gin.Context) {
 
 		stripped[i] = cleaned
 	}
-
-	c.JSON(http.StatusOK, gin.H{"data": stripped})
+	return stripped
 }
+
+func paginateLogLines(lines []string, page, perPage int) ([]string, int) {
+	total := len(lines)
+	totalPages := 0
+	if total > 0 {
+		totalPages = (total + perPage - 1) / perPage
+	}
+
+	end := total - (page-1)*perPage
+	if end <= 0 {
+		return []string{}, totalPages
+	}
+
+	start := end - perPage
+	if start < 0 {
+		start = 0
+	}
+
+	return lines[start:end], totalPages
+}
+
+func logPaginationParams(c *gin.Context) (page, perPage int) {
+	page, _ = strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+
+	perPageRaw := c.Query("per_page")
+	if perPageRaw == "" {
+		perPageRaw = c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
+	}
+	perPage, _ = strconv.Atoi(perPageRaw)
+	if perPage <= 0 {
+		perPage = 100
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+	return page, perPage
+}
+

@@ -26,8 +26,9 @@ type Server struct {
 	// Internal mutex used to block actions that need to occur sequentially, such as
 	// writing the configuration to the disk.
 	sync.RWMutex
-	ctx       context.Context
-	ctxCancel *context.CancelFunc
+	installLock *system.Locker
+	ctx         context.Context
+	ctxCancel   *context.CancelFunc
 
 	client remote.Client
 
@@ -65,16 +66,24 @@ type Server struct {
 
 	// Tracks if we've already emitted the very first status update.
 	initialStateBroadcast *system.AtomicBool
+
+	installState *installState
+
+	// BaseReinstallAllowed reports whether reinstall may proceed for servers using
+	// basePath. When true, no server on the node sharing that installed artifact
+	// is currently active.
+	BaseReinstallAllowed func(basePath string) bool
 }
 
 func New(client remote.Client) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	server := &Server{
-		ctx:       ctx,
-		ctxCancel: &cancel,
-		client:    client,
-		powerLock: system.NewLocker(),
+		ctx:         ctx,
+		ctxCancel:   &cancel,
+		installLock: system.NewLocker(),
+		client:      client,
+		powerLock:   system.NewLocker(),
 		sinks: map[system.SinkName]*system.SinkPool{
 			system.LogSink:     system.NewSinkPool(),
 			system.InstallSink: system.NewSinkPool(),
@@ -83,6 +92,7 @@ func New(client remote.Client) (*Server, error) {
 			State: system.NewAtomicString("offline"),
 		},
 		initialStateBroadcast: system.NewAtomicBool(false),
+		installState:          newInstallState(),
 	}
 
 	return server, nil
@@ -139,9 +149,24 @@ func (s *Server) IsRunning() bool {
 	return st == environment.ProcessRunningState || st == environment.ProcessStartingState
 }
 
-// Reads the log file for a server up to a specified number of bytes.
-func (s *Server) ReadLogfile(len int) ([]string, error) {
-	return s.Environment.Readlog(len)
+// Reads the log file for a server up to a specified number of lines.
+func (s *Server) ReadLogfile(ctx context.Context, lines int) ([]string, error) {
+	installLogs, installErr := s.installLogsForServer(ctx, lines)
+
+	out, err := s.Environment.Readlog(lines)
+	if err != nil {
+		out = nil
+	}
+
+	if installErr != nil && err != nil {
+		return nil, err
+	}
+
+	out = append(installLogs, out...)
+	if lines > 0 && len(out) > lines {
+		out = out[len(out)-lines:]
+	}
+	return out, nil
 }
 
 // Checks if the server is marked as being suspended or not on the system.
@@ -234,6 +259,9 @@ func (s *Server) CleanupForDestroy() {
 	s.CtxCancel()
 	s.Events().Destroy()
 	s.DestroyAllSinks()
+	if s.installLock != nil {
+		s.installLock.Destroy()
+	}
 	// per-server websockets are not implemented yet
 	// this will be needed when they are implemented
 	//s.Websockets().CancelAll()

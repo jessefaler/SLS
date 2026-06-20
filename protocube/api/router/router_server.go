@@ -111,23 +111,68 @@ func postServerReset(c *gin.Context) {
 func getServerLogs(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 
-	// Parse the size query parameter
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "100"))
-	if size <= 0 {
-		size = 100
-	} else if size > 100 {
-		size = 100
-	}
+	page, perPage := logPaginationParams(c)
 
-	// Make the request to the daemon
-	logs, err := s.GetLogs(c.Request.Context(), size)
+	logs, err := s.GetLogs(c.Request.Context(), page, perPage)
 	if err != nil {
 		client.HandleError(c, err)
 		return
 	}
 
-	// Return the logs in the response
 	c.JSON(http.StatusOK, logs)
+}
+
+func logPaginationParams(c *gin.Context) (page, perPage int) {
+	page, _ = strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+
+	perPageRaw := c.Query("per_page")
+	if perPageRaw == "" {
+		perPageRaw = c.DefaultQuery("size", c.DefaultQuery("lines", "100"))
+	}
+	perPage, _ = strconv.Atoi(perPageRaw)
+	if perPage <= 0 {
+		perPage = 100
+	}
+	if perPage > 100 {
+		perPage = 100
+	}
+	return page, perPage
+}
+
+func getServerInstallInfo(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	info, err := s.InstallInfo(c.Request.Context())
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, info)
+}
+
+func getServerInstallLogs(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	page, perPage := logPaginationParams(c)
+
+	logs, err := s.InstallLogs(c.Request.Context(), page, perPage)
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}
+
+func postServerReinstall(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+	if err := s.Reinstall(c.Request.Context()); err != nil {
+		client.HandleError(c, err)
+		return
+	}
+	c.Status(http.StatusAccepted)
 }
 
 func (r *Router) getInstallInfo(c *gin.Context) {

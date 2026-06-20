@@ -1,10 +1,12 @@
 package com.protoxon.S4J.client.entities;
 
 
+import com.protoxon.S4J.InstallInfo;
 import com.protoxon.S4J.PowerAction;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
+import com.protoxon.S4J.requests.PaginationAction;
 
 import java.util.List;
 
@@ -174,19 +176,56 @@ public interface ClientServer {
     SLSAction<Void> sendCommands(List<String> commands);
 
     /**
-     * Retrieves the server logs
-     * @param size The number of log lines to retrieve (defaults to 100, max 100, min 1)
-     * @return SLSAction that returns a list of log lines
+     * Retrieves server logs with pagination. Page 1 contains the most recent lines.
+     *
+     * @return PaginationAction that returns a page of log lines
      */
-    SLSAction<List<String>> getLogs(int size);
+    PaginationAction<String> getLogs();
 
     /**
-     * Retrieves the server logs with default size of 100
-     * @return SLSAction that returns a list of log lines
+     * Retrieves server logs with a custom page size. Page 1 contains the most recent lines.
+     *
+     * @param perPage The number of log lines per page (defaults to 50, max 100, min 1)
+     * @return PaginationAction that returns a page of log lines
      */
-    default SLSAction<List<String>> getLogs() {
-        return getLogs(100);
+    default PaginationAction<String> getLogs(int perPage) {
+        int size = perPage <= 0 ? 50 : Math.min(perPage, 100);
+        return getLogs().limit(size);
     }
+
+    /**
+     * Retrieves the current installation state for this server.
+     *
+     * @return SLSAction that resolves to the install info
+     */
+    SLSAction<InstallInfo> getInstallInfo();
+
+    /**
+     * Retrieves install logs from all install phases (install, warmup, post-warmup) with pagination.
+     * Page 1 contains the most recent lines.
+     *
+     * @return PaginationAction that returns a page of install log lines
+     */
+    PaginationAction<String> getInstallLogs();
+
+    /**
+     * Retrieves install logs with a custom page size. Page 1 contains the most recent lines.
+     *
+     * @param perPage The number of log lines per page (defaults to 50, max 100, min 1)
+     * @return PaginationAction that returns a page of install log lines
+     */
+    default PaginationAction<String> getInstallLogs(int perPage) {
+        int size = perPage <= 0 ? 50 : Math.min(perPage, 100);
+        return getInstallLogs().limit(size);
+    }
+
+    /**
+     * Reinstalls the server software using its configured installation script.
+     * Every server using the same installed artifact must be stopped first.
+     *
+     * @return SLSAction that completes when the reinstall request is accepted
+     */
+    SLSAction<Void> reinstall();
 
     /**
      * Resets the server by deleting the overlay filesystem and restarting if it was running.

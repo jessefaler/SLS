@@ -84,8 +84,8 @@ func ValidateLimits(limit *Limits) error {
 		return err
 	}
 
-	if limit.IoWeight != nil && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
-		return errors.New("io_weight must be between 10 and 1000")
+	if limit.IoWeight != nil && *limit.IoWeight != 0 && (*limit.IoWeight < 10 || *limit.IoWeight > 1000) {
+		return errors.New("io_weight must be 0 or between 10 and 1000")
 	}
 
 	return nil

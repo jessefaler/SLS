@@ -1,5 +1,6 @@
 package com.protoxon.S4J.client.entities.impl;
 
+import com.protoxon.S4J.InstallInfo;
 import com.protoxon.S4J.PowerAction;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
@@ -8,8 +9,10 @@ import com.protoxon.S4J.client.entities.Allocation;
 import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.ServerLimits;
 import com.protoxon.S4J.client.entities.ServerOverrides;
+import com.protoxon.S4J.requests.PaginationAction;
 import com.protoxon.S4J.requests.Route;
 import com.protoxon.S4J.requests.SLSActionImpl;
+import com.protoxon.S4J.requests.action.operator.impl.StringPaginationResponseImpl;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -160,34 +163,23 @@ public class ClientServerImpl implements ClientServer {
     }
 
     @Override
-    public SLSAction<List<String>> getLogs(int size) {
-        // Validate and clamp size parameter (1-100, default 100)
-        if (size <= 0) {
-            size = 100;
-        } else if (size > 100) {
-            size = 100;
-        }
+    public PaginationAction<String> getLogs() {
+        return StringPaginationResponseImpl.onPagination(
+                impl.getS4J(), Route.Server.LOGS.compile(getId()));
+    }
 
-        Route.CompiledRoute route = Route.Server.LOGS.compile(getId())
-                .withQueryParams("size", String.valueOf(size));
-
+    @Override
+    public SLSAction<InstallInfo> getInstallInfo() {
         return SLSActionImpl.onRequestExecute(
                 impl.getS4J(),
-                route,
-                (response, request) -> {
-                    JSONObject responseObj = response.getObject();
-                    JSONArray dataArray = responseObj.optJSONArray("data");
-                    
-                    if (dataArray == null) {
-                        return new ArrayList<>();
-                    }
-                    
-                    List<String> logs = new ArrayList<>();
-                    for (int i = 0; i < dataArray.length(); i++) {
-                        logs.add(dataArray.getString(i));
-                    }
-                    return logs;
-                });
+                Route.Server.INSTALL.compile(getId()),
+                (response, request) -> InstallInfo.fromJSON(response.getObject()));
+    }
+
+    @Override
+    public PaginationAction<String> getInstallLogs() {
+        return StringPaginationResponseImpl.onPagination(
+                impl.getS4J(), Route.Server.INSTALL_LOGS.compile(getId()));
     }
 
     @Override
@@ -203,6 +195,12 @@ public class ClientServerImpl implements ClientServer {
         }
         return SLSActionImpl.onRequestExecute(
                 impl.getS4J(), route);
+    }
+
+    @Override
+    public SLSAction<Void> reinstall() {
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.REINSTALL.compile(getId()));
     }
 
     @Override
