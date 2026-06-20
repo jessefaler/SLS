@@ -5,10 +5,11 @@ import (
 )
 
 var (
-	ErrIsRunning           = errors.New("server is running")
-	ErrIsPaused            = errors.New("server is paused")
-	ErrSuspended           = errors.New("server is currently in a suspended state")
-	ErrInvalidServerConfig = errors.Sentinel("invalid server configuration")
+	ErrIsRunning                = errors.New("server is running")
+	ErrIsPaused                 = errors.New("server is paused")
+	ErrSuspended                = errors.New("server is currently in a suspended state")
+	ErrInvalidServerConfig      = errors.Sentinel("invalid server configuration")
+	ErrInstalledServerArtifactInUse = errors.New("servers are currently using the installed server artifact")
 )
 
 type crashTooFrequent struct{}

@@ -1,5 +1,6 @@
 package net.slimelabs.vsls.server;
 
+import com.protoxon.S4J.InstallInfo;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
 import com.protoxon.S4J.ServerStatus;
@@ -310,6 +311,24 @@ public class Server {
      */
     public PaginationAction<String> getInstallLogs() {
         return client.getInstallLogs();
+    }
+
+    public PaginationAction<String> getInstallLogs(int lines) {
+        return client.getInstallLogs(lines);
+    }
+
+    /**
+     * Returns the current installation state for this server.
+     */
+    public SLSAction<InstallInfo> getInstallInfo() {
+        return client.getInstallInfo();
+    }
+
+    /**
+     * Reinstalls the server software using its configured installation script.
+     */
+    public SLSAction<Void> reinstall() {
+        return client.reinstall();
     }
 
     /**

@@ -96,12 +96,48 @@ func getServerStats(c *gin.Context) {
 
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	l := logLineCount(c)
-	c.JSON(http.StatusOK, s.InstallInfoWithLogs(c.Request.Context(), l))
+	c.JSON(http.StatusOK, s.InstallInfo(c.Request.Context()))
+}
+
+func getServerInstallLogs(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	page, perPage := logPaginationParams(c)
+
+	out, err := s.InstallLogsAll(c.Request.Context())
+	if err != nil {
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
+
+	stripped := stripLogLines(out)
+	paged, totalPages := paginateLogLines(stripped, page, perPage)
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": gin.H{
+			"pagination": gin.H{
+				"total":        len(stripped),
+				"per_page":     perPage,
+				"current_page": page,
+				"total_pages":  totalPages,
+			},
+		},
+		"data": paged,
+	})
 }
 
 func postServerReinstall(c *gin.Context) {
 	s := middleware.ExtractServer(c)
+
+	if err := s.ValidateReinstall(); err != nil {
+		if errors.Is(err, server.ErrInstalledServerArtifactInUse) {
+			httperror.AbortWithJSON(c, http.StatusConflict, err.Error(),
+				"Stop all servers using this installed artifact before reinstalling.")
+			return
+		}
+		middleware.CaptureAndAbort(c, err)
+		return
+	}
 
 	go func(s *server.Server) {
 		if err := s.Reinstall(); err != nil {
@@ -181,11 +217,7 @@ func getServerLogs(c *gin.Context) {
 
 	var out []string
 	var err error
-	if c.Query("type") == "install" {
-		out, err = s.InstallLogs(c.Request.Context(), 0)
-	} else {
-		out, err = s.ReadLogfile(c.Request.Context(), 0)
-	}
+	out, err = s.ReadLogfile(c.Request.Context(), 0)
 	if err != nil {
 		middleware.CaptureAndAbort(c, err)
 		return
@@ -284,7 +316,3 @@ func logPaginationParams(c *gin.Context) (page, perPage int) {
 	return page, perPage
 }
 
-func logLineCount(c *gin.Context) int {
-	_, perPage := logPaginationParams(c)
-	return perPage
-}

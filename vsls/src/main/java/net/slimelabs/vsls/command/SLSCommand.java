@@ -50,6 +50,7 @@ public class SLSCommand {
         root.then(NodeCommand.register());       // NODE
         root.then(ResetCommand.register());      // RESET
         root.then(InfoCommand.register());       // INFO
+        root.then(InstallCommand.register());    // INSTALL
         root.then(ListCommand.register());       // LIST
         root.then(FindCommand.register());       // FIND
         root.then(SystemCommand.register());     // SYSTEM
@@ -81,6 +82,7 @@ public class SLSCommand {
                             "join", "create", "start", "pause", "resume", "restart", "debug",
                             "stop", "kill", "reload", "status", "stats", "delete", "console",
                             "dequeue", "blueprint", "version", "logs", "node", "reset", "info",
+                            "install info", "install logs",
                             "list", "find", "system"))
                     .sendMessage(source);
             return 1;

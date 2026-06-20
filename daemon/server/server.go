@@ -68,6 +68,11 @@ type Server struct {
 	initialStateBroadcast *system.AtomicBool
 
 	installState *installState
+
+	// BaseReinstallAllowed reports whether reinstall may proceed for servers using
+	// basePath. When true, no server on the node sharing that installed artifact
+	// is currently active.
+	BaseReinstallAllowed func(basePath string) bool
 }
 
 func New(client remote.Client) (*Server, error) {

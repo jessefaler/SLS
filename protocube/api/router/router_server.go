@@ -113,7 +113,7 @@ func getServerLogs(c *gin.Context) {
 
 	page, perPage := logPaginationParams(c)
 
-	logs, err := s.GetLogs(c.Request.Context(), page, perPage, c.Query("type"))
+	logs, err := s.GetLogs(c.Request.Context(), page, perPage)
 	if err != nil {
 		client.HandleError(c, err)
 		return
@@ -142,19 +142,28 @@ func logPaginationParams(c *gin.Context) (page, perPage int) {
 	return page, perPage
 }
 
-func logLineCount(c *gin.Context) int {
-	_, perPage := logPaginationParams(c)
-	return perPage
-}
-
 func getServerInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	info, err := s.InstallInfo(c.Request.Context(), logLineCount(c))
+	info, err := s.InstallInfo(c.Request.Context())
 	if err != nil {
 		client.HandleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, info)
+}
+
+func getServerInstallLogs(c *gin.Context) {
+	s := middleware.ExtractServer(c)
+
+	page, perPage := logPaginationParams(c)
+
+	logs, err := s.InstallLogs(c.Request.Context(), page, perPage)
+	if err != nil {
+		client.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
 }
 
 func postServerReinstall(c *gin.Context) {
@@ -168,9 +177,5 @@ func postServerReinstall(c *gin.Context) {
 
 func (r *Router) getInstallInfo(c *gin.Context) {
 	s := middleware.ExtractServer(c)
-	if s.InstallScript == nil {
-		httperror.JSON(c, http.StatusInternalServerError, "install script is missing", "Server install script is missing.")
-		return
-	}
 	c.JSON(http.StatusOK, s.InstallScript)
 }

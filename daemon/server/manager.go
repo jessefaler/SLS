@@ -44,7 +44,30 @@ func NewManager(client remote.Client) *Manager {
 func (m *Manager) Add(server *Server) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	server.BaseReinstallAllowed = m.baseReinstallAllowed
 	m.servers[server.id] = server
+}
+
+// baseReinstallAllowed reports whether every server on this node sharing basePath
+// is offline so the installed artifact may be reinstalled.
+func (m *Manager) baseReinstallAllowed(basePath string) bool {
+	clean := filepath.Clean(basePath)
+	if clean == "" {
+		return true
+	}
+
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	for _, s := range m.servers {
+		if s.sharedBasePath() != clean {
+			continue
+		}
+		if s.Environment.State() != environment.ProcessOfflineState {
+			return false
+		}
+	}
+	return true
 }
 
 // Get returns a single server instance and a boolean value indicating if it was
