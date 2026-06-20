@@ -93,7 +93,7 @@ func (ip *InstallationProcess) applyWarmupDefaults() {
 
 func (ip *InstallationProcess) runWarmupAttempt(ctx context.Context, attempt int) error {
 	name := ip.Server.ID() + "_warmup"
-	ip.Server.StartInstallPhase(InstallPhaseWarming, name, filepath.Join(config.Get().System.LogDirectory, "install", ip.Server.ID()+"-warmup.log"))
+	ip.Server.StartInstallPhase(InstallPhaseWarming, name, installLogDiskPath(ip.Server.installLogBasePath(), "-warmup"))
 
 	if err := ip.removeNamedContainer(ctx, name); err != nil {
 		return err
@@ -132,7 +132,7 @@ func (ip *InstallationProcess) runWarmupAttempt(ctx context.Context, attempt int
 
 func (ip *InstallationProcess) runPostWarmup(ctx context.Context) error {
 	name := ip.Server.ID() + "_post_warmup"
-	ip.Server.StartInstallPhase(InstallPhasePostWarmup, name, filepath.Join(config.Get().System.LogDirectory, "install", ip.Server.ID()+"-post-warmup.log"))
+	ip.Server.StartInstallPhase(InstallPhasePostWarmup, name, installLogDiskPath(ip.Server.installLogBasePath(), "-post-warmup"))
 
 	if err := ip.removeNamedContainer(ctx, name); err != nil {
 		return err

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,7 +26,7 @@ const (
 	InstallPhaseInstallFailed    InstallPhase = "install_failed"
 	InstallPhaseWarmupFailed     InstallPhase = "warmup_failed"
 	InstallPhasePostWarmupFailed InstallPhase = "post_warmup_failed"
-	InstallPhaseReady            InstallPhase = "ready"
+	InstallPhaseCompleted        InstallPhase = "completed"
 )
 
 type InstallInfo struct {
@@ -37,7 +38,6 @@ type InstallInfo struct {
 	StartedAt     *time.Time   `json:"started_at,omitempty"`
 	FinishedAt    *time.Time   `json:"finished_at,omitempty"`
 	FailureReason string       `json:"failure_reason,omitempty"`
-	Content       []string     `json:"content,omitempty"`
 }
 
 type installState struct {
@@ -99,7 +99,7 @@ func (s *Server) FinishInstallPhase(phase InstallPhase, failureReason string) {
 	s.installState.phase = phase
 	s.installState.finishedAt = &now
 	s.installState.failureReason = failureReason
-	if phase == InstallPhaseReady && s.installState.exitCode == nil {
+	if phase == InstallPhaseCompleted && s.installState.exitCode == nil {
 		var code int64
 		s.installState.exitCode = &code
 	}
@@ -108,15 +108,6 @@ func (s *Server) FinishInstallPhase(phase InstallPhase, failureReason string) {
 func (s *Server) InstallInfo(ctx context.Context) InstallInfo {
 	info := s.installInfoSnapshot()
 	s.enrichInstallInfoFromDocker(ctx, &info)
-	return info
-}
-
-func (s *Server) InstallInfoWithLogs(ctx context.Context, lines int) InstallInfo {
-	info := s.InstallInfo(ctx)
-	logs, err := s.InstallLogs(ctx, lines)
-	if err == nil {
-		info.Content = logs
-	}
 	return info
 }
 
@@ -144,7 +135,7 @@ func (s *Server) installLogPath() string {
 
 func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string, error) {
 	phase := s.installPhase()
-	if phase != InstallPhaseIdle && phase != InstallPhaseReady {
+	if phase != InstallPhaseIdle && phase != InstallPhaseCompleted {
 		return s.ReadInstallLogfile(ctx, lines)
 	}
 
@@ -153,23 +144,93 @@ func (s *Server) installLogsForServer(ctx context.Context, lines int) ([]string,
 		return logs, nil
 	}
 
-	ownerID := InstallLockOwner(s.Filesystem().Overlay().ServerPath)
+	ownerID := InstallLockOwner(s.installLogBasePath())
 	if ownerID == "" || ownerID == s.ID() {
 		return nil, nil
 	}
 
-	logs, err := readInstallLogsFromDocker(ctx, ownerID+"_installer", lines)
-	if err != nil {
-		return nil, err
-	}
-	if len(logs) > 0 {
-		return logs, nil
-	}
-	return readTailLines(filepath.Join(config.Get().System.LogDirectory, "install", ownerID+".log"), lines), nil
+	return readInstallLogsFromDocker(ctx, ownerID+"_installer", lines)
 }
 
-func (s *Server) InstallLogs(ctx context.Context, lines int) ([]string, error) {
-	return s.installLogsForServer(ctx, lines)
+type installLogSource struct {
+	phase         InstallPhase
+	diskPath      string
+	containerName string
+}
+
+func (s *Server) installLogSources() []installLogSource {
+	id := s.ID()
+	basePath := s.installLogBasePath()
+	return []installLogSource{
+		{
+			phase:         InstallPhaseInstalling,
+			diskPath:      installLogDiskPath(basePath, ""),
+			containerName: id + "_installer",
+		},
+		{
+			phase:         InstallPhaseWarming,
+			diskPath:      installLogDiskPath(basePath, "-warmup"),
+			containerName: id + "_warmup",
+		},
+		{
+			phase:         InstallPhasePostWarmup,
+			diskPath:      installLogDiskPath(basePath, "-post-warmup"),
+			containerName: id + "_post_warmup",
+		},
+	}
+}
+
+// InstallLogsAll returns install logs from every phase (install, warmup, post-warmup)
+// concatenated in order. During an active phase, live container output is preferred.
+func (s *Server) InstallLogsAll(ctx context.Context) ([]string, error) {
+	current := s.installPhase()
+	ownerID := InstallLockOwner(s.installLogBasePath())
+
+	var out []string
+	for _, src := range s.installLogSources() {
+		logs, err := s.installPhaseLogs(ctx, current, src, ownerID)
+		if err != nil {
+			return nil, err
+		}
+		if len(logs) == 0 {
+			continue
+		}
+		if len(out) > 0 {
+			out = append(out, "")
+		}
+		out = append(out, logs...)
+	}
+	return out, nil
+}
+
+func (s *Server) installPhaseLogs(ctx context.Context, current InstallPhase, src installLogSource, ownerID string) ([]string, error) {
+	if current == src.phase {
+		logs, err := readInstallLogsFromDocker(ctx, src.containerName, 0)
+		if err != nil {
+			return nil, err
+		}
+		if len(logs) > 0 {
+			return logs, nil
+		}
+
+		if path := s.installLogPath(); path == src.diskPath {
+			if logs := readTailLines(path, 0); len(logs) > 0 {
+				return logs, nil
+			}
+		}
+
+		if logs := readTailLines(src.diskPath, 0); len(logs) > 0 {
+			return logs, nil
+		}
+	} else if logs := readTailLines(src.diskPath, 0); len(logs) > 0 {
+		return logs, nil
+	}
+
+	if src.phase != InstallPhaseInstalling || ownerID == "" || ownerID == s.ID() {
+		return nil, nil
+	}
+
+	return readInstallLogsFromDocker(ctx, ownerID+"_installer", 0)
 }
 
 func (s *Server) installPhase() InstallPhase {
@@ -240,10 +301,11 @@ func (s *Server) ReadInstallLogfile(ctx context.Context, lines int) ([]string, e
 }
 
 func (s *Server) readStoredInstallLogs(lines int) []string {
+	basePath := s.installLogBasePath()
 	paths := []string{
-		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+".log"),
-		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+"-warmup.log"),
-		filepath.Join(config.Get().System.LogDirectory, "install", s.ID()+"-post-warmup.log"),
+		installLogDiskPath(basePath, ""),
+		installLogDiskPath(basePath, "-warmup"),
+		installLogDiskPath(basePath, "-post-warmup"),
 	}
 
 	var out []string
@@ -325,6 +387,51 @@ func readTailLines(path string, max int) []string {
 		}
 	}
 	return lines
+}
+
+func (s *Server) installLogBasePath() string {
+	return s.Filesystem().Overlay().ServerPath
+}
+
+// installLogDiskPath returns the on-disk install log path for a server base folder.
+// Example: paper/1.20.1 -> {logDirectory}/install/paper-1.20.1.log
+func installLogDiskPath(serverPath, suffix string) string {
+	return filepath.Join(installLogDirectory(), sanitizeInstallLogKey(serverPath)+suffix+".log")
+}
+
+func installLogDirectory() string {
+	return filepath.Join(config.Get().System.LogDirectory, "install")
+}
+
+func sanitizeInstallLogKey(serverPath string) string {
+	if serverPath == "" {
+		return "unknown"
+	}
+
+	p := strings.Trim(filepath.ToSlash(filepath.Clean(serverPath)), "/")
+	if p == "" {
+		return "root"
+	}
+
+	var b strings.Builder
+	for _, r := range p {
+		switch {
+		case (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
+		case r == '-', r == '_', r == '.':
+			b.WriteRune(r)
+		case r == '/', r == '\\':
+			b.WriteRune('-')
+		default:
+			b.WriteRune('-')
+		}
+	}
+
+	key := strings.Trim(b.String(), "-")
+	if key == "" {
+		return "unknown"
+	}
+	return key
 }
 
 func cloneInt64(v *int64) *int64 {

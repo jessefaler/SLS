@@ -48,7 +48,7 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 	var err error
 	if !s.Config().SkipInstallScripts {
 		installerName := s.ID() + "_installer"
-		s.StartInstallPhase(InstallPhaseInstalling, installerName, filepath.Join(config.Get().System.LogDirectory, "/install", s.ID()+".log"))
+		s.StartInstallPhase(InstallPhaseInstalling, installerName, installLogDiskPath(s.installLogBasePath(), ""))
 
 		// Send the start event so protocube can automatically update.
 		s.Events().Publish(InstallStartedEvent, "")
@@ -56,14 +56,14 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 		err = s.internalInstall(ctx)
 	} else {
 		s.Log().Info("server configured to skip running installation scripts for this software, not executing process")
-		s.FinishInstallPhase(InstallPhaseReady, "")
+		s.FinishInstallPhase(InstallPhaseCompleted, "")
 	}
 
 	// Notify protocube of install state. On failure, do this in the background so we return
 	// (and the caller can log the error) immediately instead of blocking on a slow/timeout HTTP call.
 	successful := err == nil
 	if successful {
-		s.FinishInstallPhase(InstallPhaseReady, "")
+		s.FinishInstallPhase(InstallPhaseCompleted, "")
 	} else {
 		switch s.installPhase() {
 		case InstallPhaseWarmupFailed, InstallPhasePostWarmupFailed:
@@ -94,15 +94,21 @@ func (s *Server) install(ctx context.Context, reinstall bool) error {
 	return errors.WithStackIf(err)
 }
 
+// ValidateReinstall reports whether reinstall can proceed. Every server using the
+// same installed artifact must be stopped first.
+func (s *Server) ValidateReinstall() error {
+	if s.BaseReinstallAllowed != nil && !s.BaseReinstallAllowed(s.sharedBasePath()) {
+		return ErrInstalledServerArtifactInUse
+	}
+	return nil
+}
+
 // Reinstall reinstalls a server's software by utilizing the installation script
 // for the server software. This does not touch any existing files for the server,
 // other than what the script modifies.
 func (s *Server) Reinstall() error {
-	if s.Environment.State() != environment.ProcessOfflineState {
-		s.Log().Debug("waiting for server instance to enter a stopped state")
-		if err := s.Environment.WaitForStop(s.Context(), time.Second*10, true); err != nil {
-			return errors.WrapIf(err, "install: failed to stop running environment")
-		}
+	if err := s.ValidateReinstall(); err != nil {
+		return err
 	}
 
 	s.Log().Info("syncing server state with remote source before executing re-installation process")
@@ -114,6 +120,13 @@ func (s *Server) Reinstall() error {
 	defer cancel()
 
 	return s.install(installCtx, true)
+}
+
+func (s *Server) sharedBasePath() string {
+	if s.fs == nil {
+		return ""
+	}
+	return filepath.Clean(s.Filesystem().Overlay().ServerPath)
 }
 
 // Internal installation function used to simplify reporting back to Protocube.
@@ -381,7 +394,7 @@ func chownRecursiveTo(path string, uid, gid int) error {
 
 // GetLogPath returns the log path for the installation process.
 func (ip *InstallationProcess) GetLogPath() string {
-	return filepath.Join(config.Get().System.LogDirectory, "/install", ip.Server.ID()+".log")
+	return installLogDiskPath(ip.Server.installLogBasePath(), "")
 }
 
 // writeFailedInstallLog writes container stdout/stderr to the install log when the script exits non-zero.

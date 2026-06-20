@@ -1,5 +1,6 @@
 package com.protoxon.S4J.client.entities.impl;
 
+import com.protoxon.S4J.InstallInfo;
 import com.protoxon.S4J.PowerAction;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.ServerStats;
@@ -168,10 +169,17 @@ public class ClientServerImpl implements ClientServer {
     }
 
     @Override
+    public SLSAction<InstallInfo> getInstallInfo() {
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(),
+                Route.Server.INSTALL.compile(getId()),
+                (response, request) -> InstallInfo.fromJSON(response.getObject()));
+    }
+
+    @Override
     public PaginationAction<String> getInstallLogs() {
         return StringPaginationResponseImpl.onPagination(
-                impl.getS4J(),
-                Route.Server.LOGS.compile(getId()).withQueryParams("type", "install"));
+                impl.getS4J(), Route.Server.INSTALL_LOGS.compile(getId()));
     }
 
     @Override
@@ -187,6 +195,12 @@ public class ClientServerImpl implements ClientServer {
         }
         return SLSActionImpl.onRequestExecute(
                 impl.getS4J(), route);
+    }
+
+    @Override
+    public SLSAction<Void> reinstall() {
+        return SLSActionImpl.onRequestExecute(
+                impl.getS4J(), Route.Server.REINSTALL.compile(getId()));
     }
 
     @Override
