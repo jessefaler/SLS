@@ -7,7 +7,7 @@
     <!-- Project Information -->
     <groupId>net.slimelabs</groupId>
     <artifactId>vsls</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
     <name>vsls</name>
 
@@ -15,7 +15,7 @@
     <parent>
         <groupId>com.protoxon</groupId>
         <artifactId>sls-monorepo</artifactId>
-        <version>1.0.1</version>
+        <version>1.1.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
