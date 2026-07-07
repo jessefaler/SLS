@@ -1,0 +1,82 @@
+#!/bin/ash
+# Paper Installation Script
+#
+# Server Files: /home/container
+PROJECT=paper
+SERVER_JARFILE=server.jar
+USER_AGENT="SLS (https://protoxon.github.io/sls-docs/)"
+
+if [ -n "${DL_PATH}" ]; then
+	echo -e "Using supplied download url: ${DL_PATH}"
+	DOWNLOAD_URL=`eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g')`
+else
+	VER_EXISTS=`curl --user-agent "${USER_AGENT}"  -s https://fill.papermc.io/v3/projects/${PROJECT} | jq -r --arg VERSION $VERSION '.versions | any(.[]; index($VERSION))' | grep -m1 true`
+	LATEST_VERSION=`curl --user-agent "${USER_AGENT}"  -s https://fill.papermc.io/v3/projects/${PROJECT} | jq -r '.versions | to_entries | .[0].value[0]'`
+
+	if [ "${VER_EXISTS}" == "true" ]; then
+		echo -e "Version is valid. Using version ${VERSION}"
+	else
+		echo -e "Specified version not found. Defaulting to the latest ${PROJECT} version"
+		VERSION=${LATEST_VERSION}
+	fi
+
+	BUILD_EXISTS=`curl --user-agent "${USER_AGENT}"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION} | jq -r --arg BUILD ${BUILD_NUMBER} '.builds[] | tostring | contains($BUILD)' | grep -m1 true`
+	LATEST_BUILD=`curl --user-agent "${USER_AGENT}"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION} | jq -r '.builds' | jq -r '.[0]'`
+
+	if [ "${BUILD_EXISTS}" == "true" ]; then
+		echo -e "Build is valid for version ${VERSION}. Using build ${BUILD_NUMBER}"
+	else
+		echo -e "Using the latest ${PROJECT} build for version ${VERSION}"
+		BUILD_NUMBER=${LATEST_BUILD}
+	fi
+
+	echo "Version being downloaded"
+	echo -e "Project: ${PROJECT}"
+	echo -e "MC Version: ${VERSION}"
+	echo -e "Build: ${BUILD_NUMBER}"
+	DOWNLOAD_URL=`curl --user-agent "${USER_AGENT}"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION}/builds/${BUILD_NUMBER} | jq -r '.downloads."server:default".url'`
+fi
+
+cd /home/container
+
+echo -e "Running curl --user-agent \"${USER_AGENT}\"  -o ${SERVER_JARFILE} ${DOWNLOAD_URL}"
+
+if [ -f ${SERVER_JARFILE} ]; then
+	mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old
+fi
+
+curl --user-agent "${USER_AGENT}"  -o ${SERVER_JARFILE} ${DOWNLOAD_URL}
+
+
+echo "Writing default server.properties file"
+cat > server.properties <<EOF
+server-port=25565
+server-ip=
+max-players=50
+motd=SLS
+allow-nether=false
+online-mode=false
+enable-command-block=true
+spawn-protection=0
+view-distance=12
+EOF
+
+echo "Writing default bukkit.yml file"
+cat > bukkit.yml <<EOF
+settings:
+  allow-end: false
+EOF
+
+echo "Writing default spigot.yml file"
+cat > spigot.yml <<EOF
+settings:
+  bungeecord: true
+EOF
+
+printf "\033[1m\033[33mcontainer@sls~ \033[0mjava -version\n"
+java -version
+
+echo "Accepting the Minecraft EULA..."
+echo "By continuing with this installation, you agree to the Minecraft EULA:"
+echo "https://aka.ms/MinecraftEULA"
+echo "eula=true" > eula.txt
