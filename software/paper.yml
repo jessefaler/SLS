@@ -22,7 +22,7 @@ software:
     - java_17: ">=1.18 <=1.20.4"
     - java_21: ">=1.20.5 <=1.21.11"
     - java_25: ">=1.21.12"
-    - default: java_21
+    - default: java_25
 
   invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -XX:+PerfDisableSharedMem -XX:+ParallelRefProcEnabled -jar server.jar"
   stop-command: "stop"
@@ -30,82 +30,7 @@ software:
 
   install-script:
     entrypoint: bash
-    script: |
-      #!/bin/bash
-      set -e
-
-      PROJECT=paper
-      : "${SERVER_JARFILE:=server.jar}"
-
-      if [ -n "${DL_PATH}" ]; then
-          echo -e "Using supplied download url: ${DL_PATH}"
-          DOWNLOAD_URL=$(eval echo "$(echo "${DL_PATH}" | sed -e 's/{{/${/g' -e 's/}}/}/g')")
-      else
-          VER_EXISTS=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}" | jq -r --arg VERSION "${VERSION}" '.versions[] | contains($VERSION)' | grep -m1 true || true)
-          LATEST_VERSION=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}" | jq -r '.versions' | jq -r '.[-1]')
-          if [ "${VER_EXISTS}" = "true" ]; then
-              echo -e "Version is valid. Using version ${VERSION}"
-          else
-              echo -e "Specified version not found. Defaulting to the latest ${PROJECT} version"
-              VERSION=${LATEST_VERSION}
-          fi
-
-          BUILD_EXISTS=false
-          if [ -n "${BUILD_NUMBER}" ]; then
-              BUILD_EXISTS=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}" | jq -r --arg BUILD "${BUILD_NUMBER}" '.builds[] | tostring | . == $BUILD' | grep -m1 true || true)
-          fi
-          LATEST_BUILD=$(curl -s "https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}" | jq -r '.builds' | jq -r '.[-1]')
-          if [ "${BUILD_EXISTS}" = "true" ]; then
-              echo -e "Build is valid for version ${VERSION}. Using build ${BUILD_NUMBER}"
-          else
-              echo -e "Using the latest ${PROJECT} build for version ${VERSION}"
-              BUILD_NUMBER=${LATEST_BUILD}
-          fi
-
-          JAR_NAME=${PROJECT}-${VERSION}-${BUILD_NUMBER}.jar
-          echo -e "MC Version: ${VERSION}"
-          echo -e "Build: ${BUILD_NUMBER}"
-          echo -e "JAR Name of Build: ${JAR_NAME}"
-          DOWNLOAD_URL=https://api.papermc.io/v2/projects/${PROJECT}/versions/${VERSION}/builds/${BUILD_NUMBER}/downloads/${JAR_NAME}
-      fi
-
-      cd /home/container
-      echo -e "Running curl -o ${SERVER_JARFILE} ${DOWNLOAD_URL}"
-      if [ -f "${SERVER_JARFILE}" ]; then
-          mv "${SERVER_JARFILE}" "${SERVER_JARFILE}.old"
-      fi
-      curl -f -o "${SERVER_JARFILE}" "${DOWNLOAD_URL}"
-
-      if [ ! -f "${SERVER_JARFILE}" ]; then
-          echo "ERROR: Server jar not found after download. Aborting."
-          exit 1
-      fi
-
-      cat > server.properties <<EOF
-      server-port=25565
-      server-ip=
-      max-players=50
-      motd=SLS
-      allow-nether=false
-      online-mode=false
-      enable-command-block=true
-      spawn-protection=0
-      view-distance=12
-      EOF
-
-      cat > bukkit.yml <<EOF
-      settings:
-        allow-end: false
-      EOF
-
-      cat > spigot.yml <<EOF
-      settings:
-        bungeecord: true
-      EOF
-
-      printf "\033[1m\033[33mcontainer@sls~ \033[0mjava -version\n"
-      java -version
-      echo "eula=true" > eula.txt
+    script: "#!/bin/ash\n# Paper Installation Script\n#\n# Server Files: /home/container\nPROJECT=paper\nSERVER_JARFILE=server.jar\nUSER_AGENT=\"SLS (https://protoxon.github.io/sls-docs/)\"\n\nif [ -n \"${DL_PATH}\" ]; then\n  echo -e \"Using supplied download url: ${DL_PATH}\"\n  DOWNLOAD_URL=`eval echo $(echo ${DL_PATH} | sed -e 's/{{/${/g' -e 's/}}/}/g')`\nelse\n  VER_EXISTS=`curl --user-agent \"${USER_AGENT}\"  -s https://fill.papermc.io/v3/projects/${PROJECT} | jq -r --arg VERSION $VERSION '.versions | any(.[]; index($VERSION))' | grep -m1 true`\n  LATEST_VERSION=`curl --user-agent \"${USER_AGENT}\"  -s https://fill.papermc.io/v3/projects/${PROJECT} | jq -r '.versions | to_entries | .[0].value[0]'`\n\n  if [ \"${VER_EXISTS}\" == \"true\" ]; then\n    echo -e \"Version is valid. Using version ${VERSION}\"\n  else\n    echo -e \"Specified version not found. Defaulting to the latest ${PROJECT} version\"\n    VERSION=${LATEST_VERSION}\n  fi\n\n  BUILD_EXISTS=`curl --user-agent \"${USER_AGENT}\"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION} | jq -r --arg BUILD ${BUILD_NUMBER} '.builds[] | tostring | contains($BUILD)' | grep -m1 true`\n  LATEST_BUILD=`curl --user-agent \"${USER_AGENT}\"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION} | jq -r '.builds' | jq -r '.[0]'`\n\n  if [ \"${BUILD_EXISTS}\" == \"true\" ]; then\n    echo -e \"Build is valid for version ${VERSION}. Using build ${BUILD_NUMBER}\"\n  else\n    echo -e \"Using the latest ${PROJECT} build for version ${VERSION}\"\n    BUILD_NUMBER=${LATEST_BUILD}\n  fi\n\n  echo \"Version being downloaded\"\n  echo -e \"Project: ${PROJECT}\"\n  echo -e \"MC Version: ${VERSION}\"\n  echo -e \"Build: ${BUILD_NUMBER}\"\n  DOWNLOAD_URL=`curl --user-agent \"${USER_AGENT}\"  -s https://fill.papermc.io/v3/projects/${PROJECT}/versions/${VERSION}/builds/${BUILD_NUMBER} | jq -r '.downloads.\"server:default\".url'`\nfi\n\ncd /home/container\n\necho -e \"Running curl --user-agent \\\"${USER_AGENT}\\\"  -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\"\n\nif [ -f ${SERVER_JARFILE} ]; then\n  mv ${SERVER_JARFILE} ${SERVER_JARFILE}.old\nfi\n\ncurl --user-agent \"${USER_AGENT}\"  -o ${SERVER_JARFILE} ${DOWNLOAD_URL}\n\n\necho \"Writing default server.properties file\"\ncat > server.properties <<EOF\nserver-port=25565\nserver-ip=\nmax-players=50\nmotd=SLS\nallow-nether=false\nonline-mode=false\nenable-command-block=true\nspawn-protection=0\nview-distance=12\nEOF\n\necho \"Writing default bukkit.yml file\"\ncat > bukkit.yml <<EOF\nsettings:\n  allow-end: false\nEOF\n\necho \"Writing default spigot.yml file\"\ncat > spigot.yml <<EOF\nsettings:\n  bungeecord: true\nEOF\n\nprintf \"\\033[1m\\033[33mcontainer@sls~ \\033[0mjava -version\\n\"\njava -version\n\necho \"Accepting the Minecraft EULA...\"\necho \"By continuing with this installation, you agree to the Minecraft EULA:\"\necho \"https://aka.ms/MinecraftEULA\"\necho \"eula=true\" > eula.txt"
     skip-scripts: false
     warmup: true
     warmup-timeout: 600
