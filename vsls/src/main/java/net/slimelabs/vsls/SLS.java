@@ -29,7 +29,7 @@ import static net.slimelabs.vsls.channel.MessageChannel.SLS_CHANNEL;
 @Plugin(
         id = "vsls",
         name = "vSLS",
-        version = "1.0.2",
+        version = "1.1.0",
         description = "Server Management Plugin",
         authors = {"Protoxon & Contributors"},
         dependencies = {
