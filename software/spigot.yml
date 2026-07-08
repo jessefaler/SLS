@@ -22,7 +22,7 @@ software:
     - java_17: ">=1.18 <=1.20.4"
     - java_21: ">=1.20.5 <=1.21.11"
     - java_25: ">=1.21.12"
-    - default: java_21
+    - default: java_25
 
   invocation: "java -Xms128M -XX:MaxRAMPercentage=95.0 -Dterminal.jline=false -Dterminal.ansi=true -Ddisable.watchdog=true -jar server.jar"
   stop-command: "stop"
