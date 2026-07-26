@@ -36,7 +36,7 @@ public class SLSCommand {
         root.then(ResumeCommand.register());     // RESUME
         root.then(RestartCommand.register());    // RESTART
         root.then(DebugCommand.register());      // DEBUG
-        root.then(StopCommand.register());       // SHUTDOWN
+        root.then(StopCommand.register());       // STOP
         root.then(KillCommand.register());       // KILL
         root.then(ReloadCommand.register());     // RELOAD
         root.then(StatusCommand.register());     // STATUS
