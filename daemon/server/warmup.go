@@ -224,7 +224,7 @@ func (ip *InstallationProcess) createLifecycleContainer(ctx context.Context, nam
 }
 
 func (ip *InstallationProcess) lifecycleMounts(baseServerFolder string) []mount.Mount {
-	mounts := []mount.Mount{
+	return []mount.Mount{
 		{
 			Target:   "/home/container",
 			Source:   baseServerFolder,
@@ -232,15 +232,6 @@ func (ip *InstallationProcess) lifecycleMounts(baseServerFolder string) []mount.
 			ReadOnly: false,
 		},
 	}
-	for _, m := range append(ip.Server.customMounts(), ip.Server.volumeMounts()...) {
-		mounts = append(mounts, mount.Mount{
-			Target:   m.Target,
-			Source:   m.Source,
-			Type:     mount.TypeBind,
-			ReadOnly: m.ReadOnly,
-		})
-	}
-	return mounts
 }
 
 func (ip *InstallationProcess) prepareLifecyclePathWritable(ctx context.Context, path, containerUser string, hostUID, hostGID int) error {
