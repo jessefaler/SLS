@@ -1,14 +1,12 @@
 package net.slimelabs.vsls.server.lifecycle;
 
 import com.protoxon.S4J.ServerStatus;
-import com.protoxon.S4J.entities.Blueprint;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import net.slimelabs.vsls.SLS;
-import net.slimelabs.vsls.blueprints.annotations.VslsAnnotations;
 import net.slimelabs.vsls.log.Log;
 import net.slimelabs.vsls.server.Server;
 import net.slimelabs.vsls.server.ServerProvider;
@@ -19,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class LifecycleManager {
 
@@ -44,20 +43,17 @@ public class LifecycleManager {
         SLS.proxy.getScheduler()
                 .buildTask(SLS.plugin, () -> {
                     for (Server server : provider.getAll()) {
-                        if(server.getStatus() == ServerStatus.RUNNING) {
-                            if (server.getPlayerCount() == 0) {
-                                if(!server.isLifecycleEnabled()) {
-                                    // Skip if lifecycle is disabled
-                                    continue;
+                        if (server.getStatus() == ServerStatus.RUNNING
+                                && server.getPlayerCount() == 0
+                                && server.isLifecycleEnabled()) {
+                            server.getStats().executeAsync(stats -> {
+                                if (stats.getUptime() > Duration.ofMinutes(1).toMillis()
+                                        && server.getPlayerCount() == 0
+                                        && server.getStatus() == ServerStatus.RUNNING
+                                        && server.isLifecycleEnabled()) {
+                                    scheduleStop(server.getCompositeId());
                                 }
-                                server.getStats().executeAsync(stats -> {
-                                    if (stats.getUptime() > Duration.ofMinutes(1).toMillis()
-                                            && server.getPlayerCount() == 0
-                                            && server.getStatus() == ServerStatus.RUNNING) {
-                                        shutdown(server);
-                                    }
-                                });
-                            }
+                            });
                         }
                     }
                 })
@@ -72,13 +68,7 @@ public class LifecycleManager {
     public void onServerPreConnect(ServerPreConnectEvent event) {
         // OriginalServer is the server the player is attempting to connect to
         // Make sure the server they are trying to connect to is not pending to stop
-        String id = event.getOriginalServer().getServerInfo().getName();
-        ScheduledTask task = pendingStops.remove(id);
-        if (task != null) {
-            task.cancel();
-            shuttingDown.remove(id);
-            Log.debug("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
-        }
+        cancelPendingStop(event.getOriginalServer().getServerInfo().getName());
 
         // Previous Server is the server the player is coming from (null if they just joined the proxy)
         // Check if it is empty if so shut it down assuming it is an SLS managed server
@@ -100,52 +90,105 @@ public class LifecycleManager {
     }
 
     /**
-     * Perform delayed emptiness check
+     * Schedule a cancelable stop for a server that may now be empty.
      */
     private void delayedCheck(RegisteredServer rs) {
-        SLS.proxy.getScheduler()
-                .buildTask(SLS.plugin, () -> {
-                    String id = rs.getServerInfo().getName();
-                    int playerCount = ServerUtils.getPlayers(id).size();
-
-                    if (playerCount == 0) {
-                        Server server = provider.resolve(id);
-                        if (server != null) {
-                            if(!server.isLifecycleEnabled()) {
-                                // Skip if lifecycle is disabled
-                                return;
-                            }
-                            if(server.getStatus() == ServerStatus.RUNNING) {
-                                shutdown(server);
-                            }
-                        }
-                    }
-                })
-                .delay(SLS.config.lifecycle.stop_delay, TimeUnit.SECONDS)
-                .schedule();
+        String id = rs.getServerInfo().getName();
+        Server server = provider.resolve(id);
+        if (server == null || !server.isLifecycleEnabled()) {
+            return;
+        }
+        scheduleStop(id);
     }
 
     /**
-     * Schedule shutdown if not already scheduled
+     * Schedule a cancelable stop after {@code stop_delay} if one is not already pending.
+     * Emptiness is re-checked when the task fires so leave-time player counts can settle.
+     */
+    private void scheduleStop(String id) {
+        if (shuttingDown.contains(id) || pendingStops.containsKey(id)) {
+            return;
+        }
+
+        Server server = provider.resolve(id);
+        if (server == null || !server.isLifecycleEnabled()) {
+            return;
+        }
+
+        AtomicReference<ScheduledTask> taskRef = new AtomicReference<>();
+        ScheduledTask task = SLS.proxy.getScheduler()
+                .buildTask(SLS.plugin, () -> {
+                    ScheduledTask self = taskRef.get();
+                    if (self == null || pendingStops.get(id) != self) {
+                        return; // cancelled or replaced before we ran
+                    }
+
+                    Server current = provider.resolve(id);
+                    if (current == null
+                            || !current.isLifecycleEnabled()
+                            || current.getStatus() != ServerStatus.RUNNING
+                            || !ServerUtils.getPlayers(id).isEmpty()) {
+                        pendingStops.remove(id, self);
+                        return;
+                    }
+
+                    // Claim the pending stop; if this fails a join cancelled us mid-check
+                    if (!pendingStops.remove(id, self)) {
+                        return;
+                    }
+
+                    shutdown(current);
+                })
+                .delay(SLS.config.lifecycle.stop_delay, TimeUnit.SECONDS)
+                .schedule();
+        taskRef.set(task);
+
+        ScheduledTask existing = pendingStops.putIfAbsent(id, task);
+        if (existing != null) {
+            task.cancel();
+            return;
+        }
+
+        Log.debug("Lifecycle Manager: Scheduled shutdown for empty server " + id
+                + " in " + SLS.config.lifecycle.stop_delay + "s");
+    }
+
+    /**
+     * Cancel a pending stop when a player joins (or is joining) the server.
+     */
+    private void cancelPendingStop(String id) {
+        ScheduledTask task = pendingStops.remove(id);
+        if (task != null) {
+            task.cancel();
+            shuttingDown.remove(id);
+            Log.debug("Lifecycle Manager: Cancelled shutdown for server " + id + " (player joined)");
+        }
+    }
+
+    /**
+     * Stop an empty server if not already shutting down
      */
     private void shutdown(Server server) {
         String id = server.getCompositeId();
 
-        // Prevent duplicate shutdown scheduling
+        // Prevent duplicate shutdown
         if (!shuttingDown.add(id)) {
             return;
+        }
+
+        ScheduledTask pending = pendingStops.remove(id);
+        if (pending != null) {
+            pending.cancel();
         }
 
         Log.debug("Lifecycle Manager: Shutting down empty server " + id);
         server.sendCommand("say [SLS] Server is empty. Shutting down...");
 
-        // Stop immediately
-        server.stop().executeAsync(success -> {}, failure -> {
+        server.stop().executeAsync(success -> {
+            shuttingDown.remove(id);
+        }, failure -> {
+            shuttingDown.remove(id);
             Log.warn("Lifecycle Manager: Failed to stop server " + id);
         });
-
-        // Cleanup
-        shuttingDown.remove(id);
-        pendingStops.remove(id);
     }
 }
