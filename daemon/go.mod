@@ -15,7 +15,7 @@ require (
 	github.com/containerd/platforms v0.2.1
 	github.com/creasty/defaults v1.8.0
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/docker/go-connections v0.7.0
+	github.com/docker/go-connections v0.8.0
 	github.com/fatih/color v1.19.0
 	github.com/franela/goblin v0.0.0-20211003143422-0a4f594942bf
 	github.com/gabriel-vasile/mimetype v1.4.13
