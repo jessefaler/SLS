@@ -236,7 +236,7 @@ public class ServerManager implements ServerProvider {
             server.getEvents().clearAllListeners();
             // Unregister the server in velocity
             SLS.proxy.getServer(server.getCompositeId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
-            ViaVersion.unregister(id);
+            ViaVersion.unregister(server.getCompositeId());
         }
     }
 

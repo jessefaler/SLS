@@ -409,7 +409,7 @@ public class Server {
     public void setCompositeIdPrefix(String prefix) {
         // Reregister the server with the new composite id
         SLS.proxy.getServer(getCompositeId()).ifPresent(registeredServer -> SLS.proxy.unregisterServer(registeredServer.getServerInfo()));
-        ViaVersion.unregister(getId());
+        ViaVersion.unregister(getCompositeId());
         this.compositeId = prefix + "." + shortId;
         InetSocketAddress address = new InetSocketAddress(
                 getAllocation().getAlias().isEmpty() ? getAllocation().getIp() : getAllocation().getAlias(),

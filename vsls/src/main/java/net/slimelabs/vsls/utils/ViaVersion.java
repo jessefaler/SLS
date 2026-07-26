@@ -59,11 +59,10 @@ public class ViaVersion {
      * <p>
      * If the ViaVersion plugin is not present on the proxy
      * this will do nothing and return
-     * @param serverId the id of the server
      */
-    public static void unregister(String serverId) {
+    public static void unregister(String compositeId) {
         if(!isUsingViaVersion()) return; // ViaVersion is not in use on the proxy so return
-        getDetector().uncacheProtocolVersion(serverId);
+        getDetector().uncacheProtocolVersion(compositeId);
     }
 
     /**
