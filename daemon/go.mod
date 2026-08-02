@@ -9,7 +9,7 @@ require (
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/apex/log v1.9.0
 	github.com/beevik/etree v1.7.0
-	github.com/buger/jsonparser v1.2.0
+	github.com/buger/jsonparser v1.6.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/containerd/errdefs v1.0.0
 	github.com/containerd/platforms v0.2.1
