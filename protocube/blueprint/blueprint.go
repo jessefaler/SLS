@@ -9,6 +9,8 @@ import (
 type Blueprint struct {
 	// Blueprint metadata (name, id, type)
 	Meta Meta `yaml:"metadata" json:"metadata"`
+	// Mixins this blueprint inherits
+	Includes []string `yaml:"includes,omitempty" json:"includes,omitempty"`
 	// Server runtime configuration
 	Server *Server `yaml:"server,omitempty" json:"server,omitempty"`
 	// Data state configuration (volumes, host mounts, env var's and files to copy)
