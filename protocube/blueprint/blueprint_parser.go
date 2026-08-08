@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"emperror.dev/errors"
-	"github.com/apex/log"
 	"gopkg.in/yaml.v3"
 	"protoxon.com/sls/protocube/config"
 	"protoxon.com/sls/protocube/environment"
@@ -24,53 +23,9 @@ func LoadAllBlueprints(blueprintsRoot string, sw *software.Registry) ([]*Bluepri
 	if softwareRegistry == nil {
 		return nil, errors.New("Failed to load blueprints software registry was nil")
 	}
-	var blueprints []*Blueprint
-	seenIDs := make(map[string]struct{}) // tracks loaded blueprint IDs
-
-	err := filepath.Walk(blueprintsRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.WithField("path", path).Warnf("blueprint parser: Failed to access file: %v", err)
-			return nil
-		}
-
-		// Skip directories
-		if info.IsDir() {
-			return nil
-		}
-
-		// Only process .yaml / .yml files
-		ext := strings.ToLower(filepath.Ext(info.Name()))
-		if ext != ".yaml" && ext != ".yml" {
-			return nil
-		}
-
-		// Load the blueprint file
-		bp, loadErr := load(path)
-		if loadErr != nil {
-			log.WithField("blueprint", path).Warnf("Failed to load blueprint: %v", loadErr)
-			return nil
-		}
-
-		// Check for duplicate ID
-		if _, exists := seenIDs[bp.Meta.ID]; exists {
-			log.WithField("id", bp.Meta.ID).
-				WithField("file", path).
-				Errorf("Blueprint validation failed: blueprint with ID '%s' already exists", bp.Meta.ID)
-			return nil // skip duplicate
-		}
-
-		// Mark ID as seen and append blueprint
-		seenIDs[bp.Meta.ID] = struct{}{}
-		blueprints = append(blueprints, bp)
-
-		return nil
+	return loadAllYAML(blueprintsRoot, "blueprint", load, func(bp *Blueprint) string {
+		return bp.Meta.ID
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return blueprints, nil
 }
 
 // Load reads a YAML blueprint file from the given path
@@ -222,12 +177,57 @@ func (v *Volume) Validate() error {
 	return nil
 }
 
+func (m *Mount) Validate() error {
+	if m.Source == "" {
+		return errors.New("mount.source cannot be empty")
+	}
+	if m.Target == "" {
+		return errors.New("mount.target cannot be empty")
+	}
+	return nil
+}
+
+func (c *Copy) Validate() error {
+	if c.Source == "" {
+		return errors.New("copy.source cannot be empty")
+	}
+	if c.Target == "" {
+		return errors.New("copy.target cannot be empty")
+	}
+	return nil
+}
+
 func (s *State) Validate() error {
+	seenVolumes := make(map[string]struct{}, len(s.Volumes))
 	for i := range s.Volumes {
 		if err := s.Volumes[i].Validate(); err != nil {
 			return errors.Wrap(err, "state.volumes")
 		}
+		name := s.Volumes[i].Name
+		if _, exists := seenVolumes[name]; exists {
+			return errors.Errorf("state.volumes: duplicate volume name %q", name)
+		}
+		seenVolumes[name] = struct{}{}
 	}
+
+	for i := range s.Mounts {
+		if err := s.Mounts[i].Validate(); err != nil {
+			return errors.Wrap(err, "state.mounts")
+		}
+	}
+
+	for i := range s.Copy {
+		if err := s.Copy[i].Validate(); err != nil {
+			return errors.Wrap(err, "state.copy")
+		}
+	}
+
+	for key := range s.Env {
+		if key == "" {
+			return errors.New("state.env key cannot be empty")
+		}
+	}
+
 	return nil
 }
 
