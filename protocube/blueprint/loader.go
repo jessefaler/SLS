@@ -44,6 +44,10 @@ func LoadAll(root string, sw *software.Registry) (*LoadResult, error) {
 			return nil
 		}
 		if info.IsDir() {
+			switch info.Name() {
+			case sourcesCacheDir, ".git":
+				return filepath.SkipDir
+			}
 			return nil
 		}
 

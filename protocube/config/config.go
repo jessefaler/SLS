@@ -40,6 +40,9 @@ type Configuration struct {
 
 	System SystemConfiguration `yaml:"system"`
 
+	// Blueprint configures how blueprints are sourced (e.g. git remotes synced to disk).
+	Blueprint BlueprintConfiguration `yaml:"blueprint"`
+
 	// AllowedOrigins is a list of allowed request origins.
 	AllowedOrigins []string `json:"allowed_origins" yaml:"allowed_origins"`
 
@@ -81,6 +84,38 @@ type SystemConfiguration struct {
 	Blueprints string `default:"/var/lib/sls/blueprints" json:"-" yaml:"blueprints"`
 	// Directory where Protocube plugins are stored
 	Plugins string `default:"/var/lib/sls/plugins" json:"-" yaml:"plugins"`
+}
+
+// BlueprintConfiguration configures remote blueprint sources that are synced
+// into system.blueprints before load/reload.
+type BlueprintConfiguration struct {
+	Sources []BlueprintSource `yaml:"sources"`
+}
+
+// BlueprintSource describes a single remote blueprint source.
+type BlueprintSource struct {
+	// Type of source. Currently only "git" is supported.
+	Type string `yaml:"type"`
+	// URL is the git repository URL (https or ssh).
+	URL string `yaml:"url"`
+	// Ref is a branch, tag, or commit. Defaults to "main".
+	Ref string `yaml:"ref"`
+	// Path is a subdirectory inside the repository to sync. Defaults to ".".
+	Path string `yaml:"path"`
+	// Dest is a path relative to system.blueprints where files are written. Defaults to ".".
+	Dest string `yaml:"dest"`
+	// Auth holds optional credentials for private repositories.
+	Auth *BlueprintSourceAuth `yaml:"auth,omitempty"`
+	// UpdateOnReload controls whether this source is refreshed on blueprint reload.
+	// Defaults to true when omitted.
+	UpdateOnReload *bool `yaml:"update_on_reload,omitempty"`
+}
+
+// BlueprintSourceAuth configures how to authenticate to a private git source.
+type BlueprintSourceAuth struct {
+	// TokenEnv is the name of an environment variable containing a token
+	// (used for HTTPS remotes as an x-access-token).
+	TokenEnv string `yaml:"token_env"`
 }
 
 // InitConfig Reads the configuration from the disk and then sets up the global singleton

@@ -14,6 +14,22 @@ system:
   software: "/var/lib/sls/software"
   plugins: "/var/lib/sls/plugins"
 
+# Optional remote blueprint sources. Each source is synced to disk under
+# system.blueprints before blueprints are loaded (and on reload by default).
+#
+# blueprint:
+#   sources:
+#     - type: git
+#       url: "https://github.com/org/sls-blueprints.git"
+#       ref: "main"
+#       path: "."
+#       dest: "."
+#       auth:
+#         token_env: "GITHUB_TOKEN"
+#       update_on_reload: true
+blueprint:
+  sources: []
+
 api:
   host: "0.0.0.0"
   port: 5620
