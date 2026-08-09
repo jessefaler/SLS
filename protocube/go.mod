@@ -7,7 +7,7 @@ require (
 	github.com/NYTimes/logrotate v1.0.0
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/apex/log v1.9.0
-	github.com/buger/jsonparser v1.2.0
+	github.com/buger/jsonparser v1.6.1
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/creasty/defaults v1.8.0
 	github.com/docker/docker v28.5.2+incompatible
