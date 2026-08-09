@@ -25,7 +25,7 @@ system:
 #       path: "."
 #       dest: "."
 #       auth:
-#         token_env: "GITHUB_TOKEN"
+#         token: "ghp_..."           # optional; GITHUB_TOKEN env is preferred
 #       update_on_reload: true
 blueprint:
   sources: []

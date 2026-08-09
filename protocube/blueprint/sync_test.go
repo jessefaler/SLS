@@ -230,6 +230,25 @@ func TestGitAuthUsesTokenForHTTPS(t *testing.T) {
 	}
 }
 
+func TestResolveSourceToken(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "")
+
+	if got := resolveSourceToken(nil); got != "" {
+		t.Fatalf("nil auth, empty env: got %q", got)
+	}
+	if got := resolveSourceToken(&config.BlueprintSourceAuth{Token: "inline"}); got != "inline" {
+		t.Fatalf("inline only: got %q", got)
+	}
+
+	t.Setenv("GITHUB_TOKEN", "from-env")
+	if got := resolveSourceToken(&config.BlueprintSourceAuth{Token: "inline"}); got != "from-env" {
+		t.Fatalf("GITHUB_TOKEN should win: got %q", got)
+	}
+	if got := resolveSourceToken(nil); got != "from-env" {
+		t.Fatalf("GITHUB_TOKEN without auth block: got %q", got)
+	}
+}
+
 func TestResolveUnderRootRejectsEscape(t *testing.T) {
 	root := t.TempDir()
 	if _, err := resolveUnderRoot(root, "../outside"); err == nil {

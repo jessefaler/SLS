@@ -118,6 +118,20 @@ func sourceUpdatesOnReload(src config.BlueprintSource) bool {
 	return *src.UpdateOnReload
 }
 
+const githubTokenEnv = "GITHUB_TOKEN"
+
+// resolveSourceToken returns an HTTPS auth token. GITHUB_TOKEN wins when set;
+// otherwise the optional inline auth.token is used.
+func resolveSourceToken(auth *config.BlueprintSourceAuth) string {
+	if token := os.Getenv(githubTokenEnv); token != "" {
+		return token
+	}
+	if auth != nil {
+		return strings.TrimSpace(auth.Token)
+	}
+	return ""
+}
+
 func syncSource(root string, src config.BlueprintSource) error {
 	switch strings.ToLower(strings.TrimSpace(src.Type)) {
 	case "git":
@@ -153,17 +167,7 @@ func syncGitSource(root string, src config.BlueprintSource) error {
 		return errors.Wrap(err, "dest")
 	}
 
-	token := ""
-	if src.Auth != nil {
-		envName := strings.TrimSpace(src.Auth.TokenEnv)
-		if envName != "" {
-			token = os.Getenv(envName)
-			if token == "" {
-				log.WithField("token_env", envName).
-					Warn("blueprint sync: auth token env is empty; continuing without token")
-			}
-		}
-	}
+	token := resolveSourceToken(src.Auth)
 
 	cacheKey := sourceCacheKey(rawURL, ref, repoPath, dest)
 	cacheDir := filepath.Join(root, sourcesCacheDir, cacheKey)

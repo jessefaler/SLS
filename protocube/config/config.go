@@ -113,9 +113,9 @@ type BlueprintSource struct {
 
 // BlueprintSourceAuth configures how to authenticate to a private git source.
 type BlueprintSourceAuth struct {
-	// TokenEnv is the name of an environment variable containing a token
-	// (used for HTTPS remotes as an x-access-token).
-	TokenEnv string `yaml:"token_env"`
+	// Token is an inline HTTPS token (x-access-token). Prefer setting the
+	// GITHUB_TOKEN environment variable so secrets are not stored in config.
+	Token string `yaml:"token,omitempty"`
 }
 
 // InitConfig Reads the configuration from the disk and then sets up the global singleton
