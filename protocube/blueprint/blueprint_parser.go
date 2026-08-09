@@ -2,7 +2,6 @@ package blueprint
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,35 +13,6 @@ import (
 )
 
 var softwareRegistry *software.Registry
-
-// LoadAllBlueprints walks the Blueprints root directory recursively,
-// finds all .yaml/.yml files, and loads them into Blueprint structs.
-// It validates that no two blueprints share the same ID.
-func LoadAllBlueprints(blueprintsRoot string, sw *software.Registry) ([]*Blueprint, error) {
-	softwareRegistry = sw // Assign software registry so we can use it later
-	if softwareRegistry == nil {
-		return nil, errors.New("Failed to load blueprints software registry was nil")
-	}
-	return loadAllYAML(blueprintsRoot, "blueprint", load, func(bp *Blueprint) string {
-		return bp.Meta.ID
-	})
-}
-
-// Load reads a YAML blueprint file from the given path
-// and unmarshal's it into a Blueprint struct.
-func load(path string) (*Blueprint, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var blueprint Blueprint
-	if err := yaml.Unmarshal(data, &blueprint); err != nil {
-		return nil, err
-	}
-
-	return &blueprint, nil
-}
 
 // String returns the blueprint as a nicely formatted YAML string.
 func (bp *Blueprint) String() (string, error) {
@@ -66,11 +36,12 @@ func (bp *Blueprint) String() (string, error) {
 }
 
 // UnmarshalYAML implements a custom YAML unmarshaler for Blueprint.
-// It ensures required sections (blueprint, server) are present,
-// validates their contents, and applies defaults for optional fields.
+// It validates metadata and field shape. Completeness checks (software,
+// version, image) run after mixin includes are applied during Resolve.
 func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type rawBlueprint struct {
 		Meta        *Meta                  `yaml:"blueprint"`
+		Includes    []string               `yaml:"includes"`
 		State       *State                 `yaml:"state"`
 		Server      *Server                `yaml:"server"`
 		Save        bool                   `yaml:"save"`
@@ -89,11 +60,15 @@ func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	if raw.Server == nil {
-		return errors.New("missing required section: server")
-	}
-	if err := raw.Server.Validate(); err != nil {
+	if err := validateIncludes(raw.Includes); err != nil {
 		return err
+	}
+
+	// Server may be omitted when mixins supply it; validate shape only if present.
+	if raw.Server != nil {
+		if err := raw.Server.validateServer(); err != nil {
+			return err
+		}
 	}
 
 	if raw.State != nil {
@@ -102,8 +77,8 @@ func (bp *Blueprint) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
-	// Commit validated data
 	bp.Meta = *raw.Meta
+	bp.Includes = raw.Includes
 	bp.State = raw.State
 	bp.Server = raw.Server
 	bp.Save = raw.Save
@@ -121,6 +96,22 @@ func (m *Meta) Validate() error {
 	}
 	if m.Type == "" {
 		return errors.New("missing required field: blueprint.type")
+	}
+	return nil
+}
+
+func validateIncludes(includes []string) error {
+	seen := make(map[string]struct{}, len(includes))
+	for i, id := range includes {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return errors.New("includes contains an empty mixin id")
+		}
+		includes[i] = id
+		if _, exists := seen[id]; exists {
+			return errors.Errorf("includes contains duplicate mixin id %q", id)
+		}
+		seen[id] = struct{}{}
 	}
 	return nil
 }

@@ -279,7 +279,7 @@ func ExtractNode(c *gin.Context) *node.Node {
 // Returns a 404 if we cannot locate it. If the blueprint is found it is set into
 // the request context, and the logger for the context is also updated to include
 // the blueprint ID in the fields list.
-func BlueprintExists(registry *blueprint.Registry) gin.HandlerFunc {
+func BlueprintExists(registry *blueprint.BlueprintRegistry) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bp *blueprint.Blueprint
 		if c.Param("blueprint") != "" {
@@ -333,4 +333,38 @@ func ExtractBlueprint(c *gin.Context) *blueprint.Blueprint {
 		panic("router/middleware: cannot extract blueprint: not present in request context")
 	}
 	return v.(*blueprint.Blueprint)
+}
+
+// MixinExists will ensure that the requested mixin exists in this setup.
+// Returns a 404 if we cannot locate it. If the mixin is found it is set into
+// the request context, and the logger for the context is also updated to include
+// the mixin ID in the fields list.
+func MixinExists(registry *blueprint.MixinRegistry) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if registry == nil {
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
+			return
+		}
+		var m *blueprint.Mixin
+		if c.Param("mixin") != "" {
+			m = registry.Get(c.Param("mixin"))
+		}
+		if m == nil {
+			httperror.AbortWithJSON(c, http.StatusNotFound, "resource not found", "The requested resource does not exist on this instance.")
+			return
+		}
+		c.Set("logger", ExtractLogger(c).WithField("mixin_id", m.Meta.ID))
+		c.Set("mixin", m)
+		c.Next()
+	}
+}
+
+// ExtractMixin will return the mixin from the gin.Context or panic if it is
+// not present.
+func ExtractMixin(c *gin.Context) *blueprint.Mixin {
+	v, ok := c.Get("mixin")
+	if !ok {
+		panic("router/middleware: cannot extract mixin: not present in request context")
+	}
+	return v.(*blueprint.Mixin)
 }

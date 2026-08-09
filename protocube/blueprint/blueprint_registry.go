@@ -4,27 +4,27 @@ import (
 	"sync"
 )
 
-type Registry struct {
+type BlueprintRegistry struct {
 	mutex      sync.RWMutex
 	blueprints map[string]*Blueprint
 }
 
-// NewRegistry returns a new blueprint registry instance.
-func NewRegistry() *Registry {
-	return &Registry{
+// NewBlueprintRegistry returns a new blueprint registry instance.
+func NewBlueprintRegistry() *BlueprintRegistry {
+	return &BlueprintRegistry{
 		blueprints: make(map[string]*Blueprint),
 	}
 }
 
 // Register Adds a blueprint to the registry
-func (registry *Registry) Register(blueprint *Blueprint) {
+func (registry *BlueprintRegistry) Register(blueprint *Blueprint) {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 	registry.blueprints[blueprint.Meta.ID] = blueprint
 }
 
 // RegisterAll adds a slice of blueprints to the registry
-func (registry *Registry) RegisterAll(blueprints []*Blueprint) {
+func (registry *BlueprintRegistry) RegisterAll(blueprints []*Blueprint) {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 
@@ -34,14 +34,14 @@ func (registry *Registry) RegisterAll(blueprints []*Blueprint) {
 }
 
 // Clear removes all blueprints from the registry.
-func (registry *Registry) Clear() {
+func (registry *BlueprintRegistry) Clear() {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 	registry.blueprints = make(map[string]*Blueprint)
 }
 
 // ReplaceAll atomically replaces the entire registry with the provided blueprint list.
-func (registry *Registry) ReplaceAll(blueprints []*Blueprint) {
+func (registry *BlueprintRegistry) ReplaceAll(blueprints []*Blueprint) {
 	registry.mutex.Lock()
 	defer registry.mutex.Unlock()
 	// Replace the entire map in a single lock window
@@ -53,7 +53,7 @@ func (registry *Registry) ReplaceAll(blueprints []*Blueprint) {
 }
 
 // Get returns the blueprint with the given ID, or nil if not found.
-func (registry *Registry) Get(id string) *Blueprint {
+func (registry *BlueprintRegistry) Get(id string) *Blueprint {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 	return registry.blueprints[id]
@@ -61,7 +61,7 @@ func (registry *Registry) Get(id string) *Blueprint {
 
 // Find returns all elements from the collection matching the filter.
 // If none are found it returns an empty slice
-func (registry *Registry) Find(filter func(match *Blueprint) bool) *[]Blueprint {
+func (registry *BlueprintRegistry) Find(filter func(match *Blueprint) bool) *[]Blueprint {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 	blueprints := make([]Blueprint, 0)
@@ -74,14 +74,14 @@ func (registry *Registry) Find(filter func(match *Blueprint) bool) *[]Blueprint 
 }
 
 // FindType return a slice containing all blueprints matching the provided type
-func (registry *Registry) FindType(blueprintType string) *[]Blueprint {
+func (registry *BlueprintRegistry) FindType(blueprintType string) *[]Blueprint {
 	return registry.Find(func(match *Blueprint) bool {
 		return match.Meta.Type == blueprintType
 	})
 }
 
 // All return a slice containing all blueprints
-func (registry *Registry) All() []*Blueprint {
+func (registry *BlueprintRegistry) All() []*Blueprint {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 	blueprints := make([]*Blueprint, len(registry.blueprints))
@@ -94,7 +94,7 @@ func (registry *Registry) All() []*Blueprint {
 }
 
 // AllMeta returns a slice containing the Meta field of all registered blueprints.
-func (registry *Registry) AllMeta() []Meta {
+func (registry *BlueprintRegistry) AllMeta() []Meta {
 	registry.mutex.RLock()
 	defer registry.mutex.RUnlock()
 

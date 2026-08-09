@@ -1,37 +1,10 @@
 package blueprint
 
 import (
-	"os"
 	"strings"
 
 	"emperror.dev/errors"
-	"gopkg.in/yaml.v3"
 )
-
-// LoadAllMixins walks the Mixins directory recursively,
-// finds all .yaml/.yml files, and loads them into Mixins structs.
-// It validates that no two mixins share the same ID.
-func LoadAllMixins(mixinsDirectory string) ([]*Mixin, error) {
-	return loadAllYAML(mixinsDirectory, "mixin", loadMixin, func(m *Mixin) string {
-		return m.Meta.ID
-	})
-}
-
-// loadMixin reads a YAML mixin file from the given path
-// and unmarshal's it into a Mixin struct.
-func loadMixin(path string) (*Mixin, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var mixin Mixin
-	if err := yaml.Unmarshal(data, &mixin); err != nil {
-		return nil, err
-	}
-
-	return &mixin, nil
-}
 
 // UnmarshalYAML implements a custom YAML unmarshaler for Mixin.
 // It requires the mixin metadata section and validates field shape for any

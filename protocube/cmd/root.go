@@ -76,15 +76,18 @@ func run(cmd *cobra.Command, _ []string) {
 	log.WithField("root", config.Get().System.Software).Infof("Loaded %d software configurations.", len(sw))
 
 	// =========================================================
-	// Initialize the blueprint registry
+	// Initialize blueprint and mixin registries
 	// =========================================================
-	blueprintRegistry := blueprint.NewRegistry()
-	blueprints, err := blueprint.LoadAllBlueprints(config.Get().System.Blueprints, softwareRegistry)
+	mixinRegistry := blueprint.NewMixinRegistry()
+	blueprintRegistry := blueprint.NewBlueprintRegistry()
+	loaded, err := blueprint.LoadAll(config.Get().System.Blueprints, softwareRegistry)
 	if err != nil {
 		log.WithError(err).Fatal("failed to load blueprints")
 	}
-	blueprintRegistry.RegisterAll(blueprints)
-	log.WithField("root", config.Get().System.Blueprints).Infof("Initialized blueprint registry. Loaded %d blueprints", len(blueprints))
+	mixinRegistry.RegisterAll(loaded.Mixins)
+	blueprintRegistry.RegisterAll(loaded.Blueprints)
+	log.WithField("root", config.Get().System.Blueprints).
+		Infof("Initialized registries. Loaded %d blueprints and %d mixins", len(loaded.Blueprints), len(loaded.Mixins))
 
 	// =========================================================
 	// Configure the api
@@ -93,6 +96,7 @@ func run(cmd *cobra.Command, _ []string) {
 		ServerManager:     serverManager,
 		LoadBalancer:      loadBalancer,
 		BlueprintRegistry: blueprintRegistry,
+		MixinRegistry:     mixinRegistry,
 		SoftwareRegistry:  softwareRegistry,
 		NodeManager:       nodeManager,
 		Client:            remoteClient,

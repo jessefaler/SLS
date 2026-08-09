@@ -45,6 +45,7 @@ public class SLSCommand {
         root.then(ConsoleCommand.register());    // CONSOLE
         root.then(DequeueCommand.register());    // DEQUEUE
         root.then(BlueprintCommand.register());  // BLUEPRINT
+        root.then(MixinCommand.register());      // MIXIN
         root.then(VersionCommand.register());    // VERSION
         root.then(LogsCommand.register());       // LOGS
         root.then(NodeCommand.register());       // NODE
@@ -81,7 +82,7 @@ public class SLSCommand {
                     .add(MessageFormatter.commandUsage("/sls",
                             "join", "create", "start", "pause", "resume", "restart", "debug",
                             "stop", "kill", "reload", "status", "stats", "delete", "console",
-                            "dequeue", "blueprint", "version", "logs", "node", "reset", "info",
+                            "dequeue", "blueprint", "mixin", "version", "logs", "node", "reset", "info",
                             "install info", "install logs",
                             "list", "find", "system"))
                     .sendMessage(source);

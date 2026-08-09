@@ -78,7 +78,7 @@ func (manager *Manager) RemovePack(name string) {
 
 // LoadAllPacks scans all blueprints for a "resource_pack" annotation.
 // For each blueprint that has one, a pack is created and registered.
-func (manager *Manager) LoadAllPacks(bpr *blueprint.Registry) {
+func (manager *Manager) LoadAllPacks(bpr *blueprint.BlueprintRegistry) {
 	root := config.Get().ResourcePacksRoot
 	for _, bp := range bpr.All() {
 		if pack, ok := bp.Annotations["resource_pack"].(string); ok {

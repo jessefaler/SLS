@@ -137,6 +137,12 @@ func ConfigureDirectories() error {
 		return err
 	}
 
+	mixins := filepath.Join(config.System.Blueprints, "mixins")
+	log.WithField("path", mixins).Debug("ensuring blueprint mixins directory exists")
+	if err := os.MkdirAll(mixins, 0o700); err != nil {
+		return err
+	}
+
 	log.WithField("path", config.System.Software).Debug("ensuring software directory exists")
 	if err := os.MkdirAll(config.System.Software, 0o700); err != nil {
 		return err
