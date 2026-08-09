@@ -253,12 +253,7 @@ func (r *Router) postReloadSoftware(c *gin.Context) {
 }
 
 func (r *Router) postReloadBlueprints(c *gin.Context) {
-	if err := blueprint.SyncConfiguredSources(true); err != nil {
-		log.WithError(err).Error("failed to sync blueprint sources")
-		httperror.AbortWithJSON(c, http.StatusInternalServerError, err.Error(), "Failed to sync blueprint sources.")
-		return
-	}
-	loaded, err := blueprint.LoadAll(config.Get().System.Blueprints, r.SoftwareRegistry)
+	loaded, err := blueprint.SyncAndLoadConfigured(true, r.SoftwareRegistry)
 	if err != nil {
 		log.WithError(err).Error("failed to reload blueprints")
 		httperror.AbortWithJSON(c, http.StatusInternalServerError, err.Error(), "Failed to reload blueprints.")

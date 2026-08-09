@@ -2,12 +2,9 @@ package blueprint
 
 import (
 	"crypto/sha1"
-	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,49 +12,103 @@ import (
 
 	"emperror.dev/errors"
 	"github.com/apex/log"
+	git "github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"protoxon.com/sls/protocube/config"
+	"protoxon.com/sls/protocube/software"
 )
 
 const sourcesCacheDir = ".sources"
 
-// syncMu serializes SyncSources so concurrent reloads cannot race on caches/dests.
+// syncMu serializes sync+load so concurrent reloads cannot race on caches/dests.
 var syncMu sync.Mutex
 
-// SyncConfiguredSources syncs blueprint.sources from config into system.blueprints.
+// SyncAndLoadConfigured syncs blueprint.sources then loads blueprints under one
+// lock. Source sync failures are logged and skipped; load errors are returned.
 // When isReload is true, sources with update_on_reload: false are skipped.
-func SyncConfiguredSources(isReload bool) error {
-	cfg := config.Get()
-	if cfg == nil {
-		return nil
-	}
-	return SyncSources(cfg.System.Blueprints, cfg.Blueprint.Sources, isReload)
-}
-
-// SyncSources clones/updates configured sources into root, then mirrors each
-// source path into its dest under root. Existing LoadAll still reads from root.
-func SyncSources(root string, sources []config.BlueprintSource, isReload bool) error {
+func SyncAndLoadConfigured(isReload bool, sw *software.Registry) (*LoadResult, error) {
 	syncMu.Lock()
 	defer syncMu.Unlock()
 
+	cfg := config.Get()
+	if cfg == nil {
+		return nil, errors.New("config is nil")
+	}
+	syncSourcesLocked(cfg.System.Blueprints, cfg.Blueprint.Sources, isReload)
+	return LoadAll(cfg.System.Blueprints, sw)
+}
+
+// SyncSources clones/updates configured sources into root, then mirrors each
+// source path into its dest under root. Per-source failures are logged and
+// skipped so other sources still sync. Existing LoadAll still reads from root.
+func SyncSources(root string, sources []config.BlueprintSource, isReload bool) {
+	syncMu.Lock()
+	defer syncMu.Unlock()
+	syncSourcesLocked(root, sources, isReload)
+}
+
+func syncSourcesLocked(root string, sources []config.BlueprintSource, isReload bool) {
 	if len(sources) == 0 {
-		return nil
+		return
 	}
 	if strings.TrimSpace(root) == "" {
-		return errors.New("blueprint sync: blueprints root is empty")
+		log.Error("blueprint sync: blueprints root is empty")
+		return
 	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
-		return errors.Wrap(err, "blueprint sync: create blueprints root")
+		log.WithError(err).Error("blueprint sync: create blueprints root")
+		return
 	}
 
+	skipDupDest := duplicateDestIndexes(root, sources)
 	for i, src := range sources {
+		if skipDupDest[i] {
+			continue
+		}
 		if isReload && !sourceUpdatesOnReload(src) {
 			continue
 		}
 		if err := syncSource(root, src); err != nil {
-			return errors.Wrapf(err, "blueprint sync: source[%d]", i)
+			log.WithError(err).
+				WithField("index", i).
+				WithField("type", src.Type).
+				WithField("url", src.URL).
+				Error("blueprint sync: source failed; continuing with remaining sources")
+			continue
 		}
 	}
-	return nil
+}
+
+// duplicateDestIndexes returns indexes to skip because another earlier source
+// already claims the same resolved dest. Shared dests are unsafe: each source
+// has its own manifest and stale cleanup can delete the other's files.
+func duplicateDestIndexes(root string, sources []config.BlueprintSource) map[int]bool {
+	skip := make(map[int]bool)
+	seen := make(map[string]int)
+	for i, src := range sources {
+		dest := strings.TrimSpace(src.Dest)
+		if dest == "" {
+			dest = "."
+		}
+		destDir, err := resolveUnderRoot(root, dest)
+		if err != nil {
+			continue
+		}
+		if prev, ok := seen[destDir]; ok {
+			skip[i] = true
+			log.WithField("index", i).
+				WithField("dest", destDir).
+				WithField("conflicts_with", prev).
+				Error("blueprint sync: duplicate dest; skipping source")
+			continue
+		}
+		seen[destDir] = i
+	}
+	return skip
 }
 
 func sourceUpdatesOnReload(src config.BlueprintSource) bool {
@@ -151,77 +202,180 @@ func sourceCacheKey(rawURL, ref, path, dest string) string {
 }
 
 func gitCloneOrUpdate(dir, rawURL, ref, token string) error {
-	gitDir := filepath.Join(dir, ".git")
-	if _, err := os.Stat(gitDir); err != nil {
-		if err := os.RemoveAll(dir); err != nil {
-			return errors.Wrap(err, "clear incomplete clone")
+	auth, err := gitAuth(rawURL, token)
+	if err != nil {
+		return err
+	}
+
+	repo, err := git.PlainOpen(dir)
+	if err != nil {
+		if remErr := os.RemoveAll(dir); remErr != nil {
+			return errors.Wrap(remErr, "clear incomplete clone")
 		}
-		if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
+		if mkErr := os.MkdirAll(filepath.Dir(dir), 0o700); mkErr != nil {
+			return mkErr
+		}
+		repo, err = cloneRepo(dir, rawURL, ref, auth)
+		if err != nil {
+			_ = os.RemoveAll(dir)
 			return err
 		}
-		// Prefer a shallow clone of the ref when it is a branch or tag.
-		// Always clone the clean URL; auth is supplied via env for this process only.
-		if err := runGit("", token, "clone", "--depth", "1", "--branch", ref, rawURL, dir); err != nil {
-			if err := runGit("", token, "clone", rawURL, dir); err != nil {
-				return errors.Wrap(err, "git clone")
-			}
-			if err := runGit(dir, token, "checkout", "-f", ref); err != nil {
-				return errors.Wrapf(err, "git checkout %s", ref)
-			}
+	} else {
+		if err := setOriginURL(repo, rawURL); err != nil {
+			return errors.Wrap(err, "set origin url")
 		}
-		// Ensure origin never stores credentials even if an older git wrote them.
-		if err := runGit(dir, "", "remote", "set-url", "origin", rawURL); err != nil {
-			return errors.Wrap(err, "git remote set-url")
+		if err := fetchRepo(repo, auth); err != nil {
+			return err
 		}
+	}
+
+	return checkoutRef(repo, ref)
+}
+
+func cloneRepo(dir, rawURL, ref string, auth transport.AuthMethod) (*git.Repository, error) {
+	// Prefer a shallow single-branch clone of the requested ref.
+	for _, name := range []plumbing.ReferenceName{
+		plumbing.NewBranchReferenceName(ref),
+		plumbing.NewTagReferenceName(ref),
+	} {
+		repo, err := git.PlainClone(dir, false, &git.CloneOptions{
+			URL:           rawURL,
+			Auth:          auth,
+			Depth:         1,
+			SingleBranch:  true,
+			ReferenceName: name,
+			Tags:          git.NoTags,
+		})
+		if err == nil {
+			if err := setOriginURL(repo, rawURL); err != nil {
+				return nil, errors.Wrap(err, "set origin url")
+			}
+			return repo, nil
+		}
+		_ = os.RemoveAll(dir)
+	}
+
+	// Fall back to a full clone (needed for arbitrary commit SHAs).
+	repo, err := git.PlainClone(dir, false, &git.CloneOptions{
+		URL:  rawURL,
+		Auth: auth,
+		Tags: git.AllTags,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "git clone")
+	}
+	if err := setOriginURL(repo, rawURL); err != nil {
+		return nil, errors.Wrap(err, "set origin url")
+	}
+	return repo, nil
+}
+
+func fetchRepo(repo *git.Repository, auth transport.AuthMethod) error {
+	err := repo.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Auth:       auth,
+		Force:      true,
+		Depth:      1,
+		Tags:       git.AllTags,
+	})
+	if err == nil || err == git.NoErrAlreadyUpToDate {
 		return nil
 	}
 
-	if err := runGit(dir, "", "remote", "set-url", "origin", rawURL); err != nil {
-		return errors.Wrap(err, "git remote set-url")
+	// Shallow fetch can fail for some refs; retry without depth.
+	err = repo.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Auth:       auth,
+		Force:      true,
+		Tags:       git.AllTags,
+	})
+	if err == nil || err == git.NoErrAlreadyUpToDate {
+		return nil
 	}
-	if err := runGit(dir, token, "fetch", "--depth", "1", "origin", ref); err != nil {
-		if err := runGit(dir, token, "fetch", "origin", ref); err != nil {
-			return errors.Wrapf(err, "git fetch %s", ref)
+	return errors.Wrap(err, "git fetch")
+}
+
+func setOriginURL(repo *git.Repository, rawURL string) error {
+	cfg, err := repo.Config()
+	if err != nil {
+		return err
+	}
+	remote, ok := cfg.Remotes["origin"]
+	if !ok || remote == nil {
+		cfg.Remotes["origin"] = &gitconfig.RemoteConfig{
+			Name: "origin",
+			URLs: []string{rawURL},
 		}
+	} else {
+		remote.URLs = []string{rawURL}
 	}
-	if err := runGit(dir, "", "checkout", "-f", "FETCH_HEAD"); err != nil {
-		return errors.Wrap(err, "git checkout FETCH_HEAD")
+	return repo.Storer.SetConfig(cfg)
+}
+
+func checkoutRef(repo *git.Repository, ref string) error {
+	hash, err := resolveRef(repo, ref)
+	if err != nil {
+		return err
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return errors.Wrap(err, "git worktree")
+	}
+	if err := wt.Checkout(&git.CheckoutOptions{Hash: hash, Force: true}); err != nil {
+		return errors.Wrapf(err, "git checkout %s", ref)
 	}
 	return nil
 }
 
-// runGit runs git with prompt disabled. When token is non-empty, HTTPS auth is
-// injected via GIT_CONFIG_* env (Authorization: Basic x-access-token) so the
-// token is never written into .git/config.
-func runGit(dir, token string, args ...string) error {
-	cmd := exec.Command("git", args...)
-	if dir != "" {
-		cmd.Dir = dir
+func resolveRef(repo *git.Repository, ref string) (plumbing.Hash, error) {
+	// Prefer remote-tracking refs so a fetch actually moves the worktree on update.
+	candidates := []plumbing.Revision{
+		plumbing.Revision("refs/remotes/origin/" + ref),
+		plumbing.Revision("refs/tags/" + ref),
+		plumbing.Revision(ref),
+		plumbing.Revision("refs/heads/" + ref),
 	}
-	env := append(os.Environ(),
-		"GIT_TERMINAL_PROMPT=0",
-		"GIT_ASKPASS=echo",
-	)
-	if token != "" {
-		auth := "Authorization: Basic " + base64.StdEncoding.EncodeToString(
-			[]byte("x-access-token:"+token),
-		)
-		env = append(env,
-			"GIT_CONFIG_COUNT=1",
-			"GIT_CONFIG_KEY_0=http.extraHeader",
-			"GIT_CONFIG_VALUE_0="+auth,
-		)
-	}
-	cmd.Env = env
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		msg := strings.TrimSpace(string(out))
-		if msg == "" {
-			msg = err.Error()
+	var last error
+	for _, rev := range candidates {
+		hash, err := repo.ResolveRevision(rev)
+		if err == nil {
+			return *hash, nil
 		}
-		return fmt.Errorf("%s", msg)
+		last = err
 	}
-	return nil
+	return plumbing.ZeroHash, errors.Wrapf(last, "resolve ref %q", ref)
+}
+
+func gitAuth(rawURL, token string) (transport.AuthMethod, error) {
+	if isSSHGitURL(rawURL) {
+		if token != "" {
+			log.Warn("blueprint sync: auth token ignored for SSH URL; using SSH agent")
+		}
+		auth, err := gitssh.DefaultAuthBuilder("git")
+		if err != nil {
+			return nil, errors.Wrap(err, "ssh auth")
+		}
+		return auth, nil
+	}
+	if token != "" {
+		return &http.BasicAuth{
+			Username: "x-access-token",
+			Password: token,
+		}, nil
+	}
+	return nil, nil
+}
+
+func isSSHGitURL(rawURL string) bool {
+	u := strings.TrimSpace(rawURL)
+	switch {
+	case strings.HasPrefix(u, "git@"):
+		return true
+	case strings.HasPrefix(u, "ssh://"):
+		return true
+	default:
+		return false
+	}
 }
 
 // resolveUnderRoot joins root/rel and ensures the result stays under root.
@@ -273,8 +427,12 @@ func mirrorTree(src, dst, manifestPath string) error {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
+		target, err := resolveUnderRoot(dst, filepath.FromSlash(rel))
+		if err != nil {
+			return errors.Wrapf(err, "mirror path %q", rel)
+		}
 		current[rel] = struct{}{}
-		return copyFile(path, filepath.Join(dst, filepath.FromSlash(rel)), info.Mode())
+		return copyFile(path, target, info.Mode())
 	}); err != nil {
 		return err
 	}
@@ -283,7 +441,13 @@ func mirrorTree(src, dst, manifestPath string) error {
 		if _, ok := current[rel]; ok {
 			continue
 		}
-		target := filepath.Join(dst, filepath.FromSlash(rel))
+		target, err := resolveUnderRoot(dst, filepath.FromSlash(rel))
+		if err != nil {
+			log.WithError(err).
+				WithField("rel", rel).
+				Warn("blueprint sync: ignoring stale manifest path that escapes dest")
+			continue
+		}
 		if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
 			return errors.Wrapf(err, "remove stale %s", rel)
 		}
@@ -295,7 +459,10 @@ func mirrorTree(src, dst, manifestPath string) error {
 
 func removeEmptyParents(root, rel string) {
 	for rel != "." && rel != "" && rel != string(os.PathSeparator) {
-		dir := filepath.Join(root, rel)
+		dir, err := resolveUnderRoot(root, rel)
+		if err != nil {
+			return
+		}
 		if err := os.Remove(dir); err != nil {
 			return
 		}
