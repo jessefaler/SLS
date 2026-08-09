@@ -7,9 +7,11 @@ import com.protoxon.S4J.client.entities.ClientServer;
 import com.protoxon.S4J.client.entities.SLSClient;
 import com.protoxon.S4J.client.entities.WebSocketEventStream;
 import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.entities.Mixin;
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.entities.SystemInformation;
 import com.protoxon.S4J.entities.impl.BlueprintImpl;
+import com.protoxon.S4J.entities.impl.MixinImpl;
 import com.protoxon.S4J.entities.impl.SystemInformationImpl;
 import com.protoxon.S4J.requests.PaginationAction;
 import com.protoxon.S4J.requests.Route;
@@ -94,6 +96,23 @@ public class SLSClientImpl implements SLSClient {
                 (response, request) -> {
                     JSONObject blueprintObj = response.getObject();
                     return new BlueprintImpl(blueprintObj, this);
+                });
+    }
+
+    @Override
+    public PaginationAction<Mixin> getMixins() {
+        return PaginationResponseImpl.onPagination(
+                api, Route.Mixins.GET_MIXINS.compile(), (object) -> new MixinImpl(object, this));
+    }
+
+    @Override
+    public SLSAction<Mixin> getMixin(String id) {
+        return SLSActionImpl.onRequestExecute(
+                api,
+                Route.Mixin.GET_MIXIN.compile(id),
+                (response, request) -> {
+                    JSONObject mixinObj = response.getObject();
+                    return new MixinImpl(mixinObj, this);
                 });
     }
 

@@ -31,6 +31,7 @@ func (r *Router) Configure() *gin.Engine {
 		protected.POST("/servers", r.postCreateServer)
 		protected.GET("/blueprints", r.getAllBlueprints)
 		protected.POST("/blueprints/reload", r.postReloadBlueprints)
+		protected.GET("/mixins", r.getAllMixins)
 		protected.POST("/software/reload", r.postReloadSoftware)
 		protected.GET("/events", r.getEventStream)
 		protected.GET("/events/ws", r.getServerWebsocket)
@@ -42,6 +43,14 @@ func (r *Router) Configure() *gin.Engine {
 	blueprintGroup.Use(middleware.RequireAuthorization(r.KeyService, scope.Node), middleware.BlueprintExists(r.BlueprintRegistry))
 	{
 		blueprintGroup.GET("", getBlueprint)
+	}
+
+	// These are mixin specific routes, and require that the request be authorized, and
+	// that the mixin exist.
+	mixinGroup := router.Group("/api/mixins/:mixin")
+	mixinGroup.Use(middleware.RequireAuthorization(r.KeyService, scope.Node), middleware.MixinExists(r.MixinRegistry))
+	{
+		mixinGroup.GET("", getMixin)
 	}
 
 	// These are server specific routes, and require that the request be authorized, and

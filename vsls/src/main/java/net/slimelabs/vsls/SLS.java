@@ -21,6 +21,7 @@ import net.slimelabs.vsls.matchmaking.join.DirectServerJoiner;
 import net.slimelabs.vsls.matchmaking.join.JoinService;
 import net.slimelabs.vsls.matchmaking.registry.GameTypeRegistry;
 import net.slimelabs.vsls.matchmaking.strategies.RandomBlueprintStrategy;
+import net.slimelabs.vsls.mixins.MixinRegistry;
 import net.slimelabs.vsls.packets.ChatPackets;
 import net.slimelabs.vsls.server.ServerManager;
 
@@ -49,6 +50,7 @@ public class SLS {
 
     public static ServerManager     servers;
     public static BlueprintRegistry blueprints;
+    public static MixinRegistry     mixins;
     public static SLSClient         api;
 
     public static GameTypeRegistry   gameTypes;
@@ -78,6 +80,8 @@ public class SLS {
         // Initialize the blueprint registry
         BlueprintRegistry blueprintRegistry = new BlueprintRegistry(api);
         SLS.blueprints = blueprintRegistry;
+        // Initialize the mixin registry
+        SLS.mixins = new MixinRegistry(api);
         // Initialize the event stream
         EventStream eventStream = new EventStream(api.getEventStream());
         SLS.eventStream = eventStream;

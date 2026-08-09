@@ -72,6 +72,59 @@ func getBlueprint(c *gin.Context) {
 	c.JSON(http.StatusOK, bp)
 }
 
+func (r *Router) getAllMixins(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "50"))
+
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 {
+		perPage = 20
+	}
+
+	items := make([]*blueprint.Mixin, 0)
+	if c.Query("meta") == "true" {
+		// items = r.MixinRegistry.AllMeta()
+	} else if r.MixinRegistry != nil {
+		items = r.MixinRegistry.All()
+	}
+
+	total := len(items)
+	start := (page - 1) * perPage
+	end := start + perPage
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+
+	paged := items[start:end]
+
+	totalPages := 0
+	if perPage > 0 && total > 0 {
+		totalPages = (total + perPage - 1) / perPage
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"meta": gin.H{
+			"pagination": gin.H{
+				"total":        total,
+				"per_page":     perPage,
+				"current_page": page,
+				"total_pages":  totalPages,
+			},
+		},
+		"data": paged,
+	})
+}
+
+func getMixin(c *gin.Context) {
+	m := middleware.ExtractMixin(c)
+	c.JSON(http.StatusOK, m)
+}
+
 func (r *Router) getInstallationScript(c *gin.Context) {
 	s := middleware.ExtractServer(c)
 	if s.InstallScript == nil {
@@ -200,12 +253,18 @@ func (r *Router) postReloadSoftware(c *gin.Context) {
 }
 
 func (r *Router) postReloadBlueprints(c *gin.Context) {
-	blueprints, err := blueprint.LoadAllBlueprints(config.Get().System.Blueprints, r.SoftwareRegistry)
+	loaded, err := blueprint.LoadAll(config.Get().System.Blueprints, r.SoftwareRegistry)
 	if err != nil {
-		log.WithError(err).Fatal("failed to load blueprints")
+		log.WithError(err).Error("failed to reload blueprints")
+		httperror.AbortWithJSON(c, http.StatusInternalServerError, err.Error(), "Failed to reload blueprints.")
+		return
 	}
-	r.BlueprintRegistry.ReplaceAll(blueprints)
-	log.WithField("root", config.Get().System.Blueprints).Infof("Reloaded blueprint registry. Loaded %d blueprints", len(blueprints))
+	if r.MixinRegistry != nil {
+		r.MixinRegistry.ReplaceAll(loaded.Mixins)
+	}
+	r.BlueprintRegistry.ReplaceAll(loaded.Blueprints)
+	log.WithField("root", config.Get().System.Blueprints).
+		Infof("Reloaded registries. Loaded %d blueprints and %d mixins", len(loaded.Blueprints), len(loaded.Mixins))
 	c.Status(http.StatusOK)
 }
 

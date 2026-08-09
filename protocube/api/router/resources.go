@@ -13,7 +13,8 @@ import (
 // Resources holds shared dependencies for an API server.
 type Resources struct {
 	ServerManager     *server.Manager
-	BlueprintRegistry *blueprint.Registry
+	BlueprintRegistry *blueprint.BlueprintRegistry
+	MixinRegistry     *blueprint.MixinRegistry
 	SoftwareRegistry  *software.Registry
 	NodeManager       *node.Manager
 	LoadBalancer      *balancer.Provider

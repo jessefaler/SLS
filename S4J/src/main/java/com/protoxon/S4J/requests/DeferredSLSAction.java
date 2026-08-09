@@ -1,9 +1,8 @@
-
-
 package com.protoxon.S4J.requests;
 
 import com.protoxon.S4J.entities.S4J;
 import com.protoxon.S4J.SLSAction;
+import com.protoxon.S4J.exceptions.ApiError;
 import com.protoxon.S4J.exceptions.ApiFailure;
 import com.protoxon.S4J.exceptions.RateLimitedException;
 
@@ -22,9 +21,9 @@ public class DeferredSLSAction<T> implements SLSAction<T> {
 	}
 
 	@Override
-    public S4J getS4J() {
-        return api;
-    }
+	public S4J getS4J() {
+		return api;
+	}
 
 	@Override
 	public T execute(boolean shouldQueue) throws RateLimitedException {
@@ -33,8 +32,17 @@ public class DeferredSLSAction<T> implements SLSAction<T> {
 
 	@Override
 	public void executeAsync(Consumer<? super T> success, Consumer<? super ApiFailure> failure) {
+		Consumer<? super T> finalizedSuccess = success == null ? SLSAction.getDefaultSuccess() : success;
+		Consumer<? super ApiFailure> finalizedFailure = failure == null ? SLSAction.getDefaultFailure() : failure;
+
 		CompletableFuture.supplyAsync(value, api.getSupplierPool())
-				.thenAcceptAsync(success == null ? SLSAction.getDefaultSuccess() : success);
+				.whenComplete((result, error) -> {
+					if (error != null) {
+						finalizedFailure.accept(ApiError.coerce(error));
+						return;
+					}
+					finalizedSuccess.accept(result);
+				});
 	}
 
 	@Override

@@ -3,6 +3,7 @@ package com.protoxon.S4J.client.entities;
 import com.protoxon.S4J.SLSAction;
 import com.protoxon.S4J.client.actions.ServerCreationAction;
 import com.protoxon.S4J.entities.Blueprint;
+import com.protoxon.S4J.entities.Mixin;
 import com.protoxon.S4J.entities.SystemInformation;
 import com.protoxon.S4J.requests.PaginationAction;
 
@@ -39,6 +40,19 @@ public interface SLSClient {
      * @return SLSAction that returns the blueprint with the given ID
      */
     SLSAction<Blueprint> getBlueprint(String id);
+
+    /**
+     * Retrieves all mixins
+     * @return PaginationAction that returns mixins
+     */
+    PaginationAction<Mixin> getMixins();
+
+    /**
+     * Retrieves a single mixin by its ID
+     * @param id The mixin ID
+     * @return SLSAction that returns the mixin with the given ID
+     */
+    SLSAction<Mixin> getMixin(String id);
 
     WebSocketEventStream getEventStream();
 

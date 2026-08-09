@@ -71,16 +71,17 @@ public class ReloadCommand {
     }
 
     public static void reloadBlueprints(CommandSource source) {
-        // Make a request to the protocube api to tell it to reload its blueprints
-        // Then fetch blueprints from protocube and reload local cache
+        // Tell Protocube to reload blueprints+mixins, then refresh both local caches
         SLS.api.reloadBlueprints()
                 .flatMap(v -> SLS.blueprints.reload())
+                .flatMap(v -> SLS.mixins.reload())
                 .executeAsync(v -> {
                     SLS.gameTypes.load(SLS.blueprints.getAll());
-                    int num = SLS.blueprints.getAll().size();
+                    int blueprints = SLS.blueprints.getAll().size();
+                    int mixins = SLS.mixins.getAll().size();
                     ProtoMessage.chat()
                             .add(MessagePreset.SLS)
-                            .add("Loaded " + num + " blueprints", NamedTextColor.GRAY)
+                            .add("Loaded " + blueprints + " blueprints and " + mixins + " mixins", NamedTextColor.GRAY)
                             .sendMessage(source);
                 }, failure -> Log.requestError("Failed to reload blueprints", failure, source));
     }

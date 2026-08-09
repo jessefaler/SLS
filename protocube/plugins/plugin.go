@@ -18,7 +18,7 @@ var loadedPlugins []Plugin
 // SLS is the plugin context that gets passes to plugins for accessing data from protocube
 type SLS struct {
 	Logger            *log.Entry
-	BlueprintRegistry *blueprint.Registry
+	BlueprintRegistry *blueprint.BlueprintRegistry
 	Router            *gin.Engine
 	PluginsDir        string
 	LoadBalancer      *balancer.Provider

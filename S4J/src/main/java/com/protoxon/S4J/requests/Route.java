@@ -49,6 +49,14 @@ public class Route {
         public static final Route GET_BLUEPRINT = new Route(GET, "blueprints/{blueprint_id}");
     }
 
+    public static class Mixins {
+        public static final Route GET_MIXINS = new Route(GET, "mixins");
+    }
+
+    public static class Mixin {
+        public static final Route GET_MIXIN = new Route(GET, "mixins/{mixin_id}");
+    }
+
     public static class Software {
         public static final Route RELOAD = new Route(POST, "software/reload");
     }

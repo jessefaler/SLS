@@ -46,7 +46,6 @@ func init() {
 	if err != nil {
 		return
 	}
-
 }
 
 // create-api-key flags (non-interactive mode)

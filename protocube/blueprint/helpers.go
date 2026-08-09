@@ -2,84 +2,205 @@ package blueprint
 
 import (
 	"maps"
-	"os"
-	"path/filepath"
-	"strings"
 
-	"github.com/apex/log"
+	"protoxon.com/sls/protocube/environment"
 )
 
-// loadAllYAML walks root recursively for .yaml/.yml files, loads each with load,
-// and rejects duplicate IDs. Failed file access or load errors are logged and skipped.
-func loadAllYAML[T any](
-	root, kind string,
-	load func(path string) (*T, error),
-	id func(*T) string,
-) ([]*T, error) {
-	var items []*T
-	seenIDs := make(map[string]struct{})
-	kindTitle := strings.ToUpper(kind[:1]) + kind[1:]
-
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.WithField("path", path).Warnf("%s parser: Failed to access file: %v", kind, err)
-			return nil
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		ext := strings.ToLower(filepath.Ext(info.Name()))
-		if ext != ".yaml" && ext != ".yml" {
-			return nil
-		}
-
-		item, loadErr := load(path)
-		if loadErr != nil {
-			log.WithField(kind, path).Warnf("Failed to load %s: %v", kind, loadErr)
-			return nil
-		}
-
-		itemID := id(item)
-		if _, exists := seenIDs[itemID]; exists {
-			log.WithField("id", itemID).
-				WithField("file", path).
-				Errorf("%s validation failed: %s with ID '%s' already exists", kindTitle, kind, itemID)
-			return nil
-		}
-
-		seenIDs[itemID] = struct{}{}
-		items = append(items, item)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return items, nil
-}
-
-// MergeState merges the provided environment variables into the base states environment variables
-// (env wins on key collision)
+// MergeState merges the provided environment variables into the base state's
+// environment variables (env wins on key collision). Used for per-server overrides.
 func MergeState(base *State, env map[string]string) *State {
 	if len(env) == 0 {
 		return base
 	}
-	out := &State{}
-	if base != nil {
-		out.Volumes = base.Volumes
-		out.Mounts = base.Mounts
-		out.Copy = base.Copy
-		if len(base.Env) > 0 {
-			out.Env = maps.Clone(base.Env)
-		}
+	out := copyState(base)
+	if out == nil {
+		out = &State{}
+	}
+	if out.Env == nil {
+		out.Env = make(map[string]string, len(env))
+	} else {
+		out.Env = maps.Clone(out.Env)
 	}
 	for k, v := range env {
-		if out.Env == nil {
-			out.Env = make(map[string]string, len(env))
-		}
 		out.Env[k] = v
 	}
 	return out
+}
+
+// mergeMixinOverlay merges overlay onto base. Overlay wins on conflicts.
+// Meta and Extends are left to the caller.
+func mergeMixinOverlay(base, overlay *Mixin) *Mixin {
+	if overlay == nil {
+		return copyMixin(base)
+	}
+	if base == nil {
+		return &Mixin{
+			Server:      copyServer(overlay.Server),
+			State:       copyState(overlay.State),
+			Annotations: maps.Clone(overlay.Annotations),
+		}
+	}
+	return &Mixin{
+		Server:      mergeServer(base.Server, overlay.Server),
+		State:       mergeStates(base.State, overlay.State),
+		Annotations: mergeAnnotations(base.Annotations, overlay.Annotations),
+	}
+}
+
+func mergeServer(base, overlay *Server) *Server {
+	if overlay == nil {
+		return copyServer(base)
+	}
+	if base == nil {
+		return copyServer(overlay)
+	}
+
+	out := copyServer(base)
+	if overlay.Software != "" {
+		out.Software = overlay.Software
+	}
+	if overlay.Version != "" {
+		out.Version = overlay.Version
+	}
+	if overlay.Image != "" {
+		out.Image = overlay.Image
+	}
+	if overlay.Path != "" {
+		out.Path = overlay.Path
+	}
+	out.Limits = environment.MergeLimits(environment.CopyLimits(out.Limits), overlay.Limits)
+	out.Configs = mergeConfigs(out.Configs, overlay.Configs)
+	return out
+}
+
+func mergeStates(base, overlay *State) *State {
+	if overlay == nil {
+		return copyState(base)
+	}
+	if base == nil {
+		return copyState(overlay)
+	}
+
+	out := copyState(base)
+
+	if len(overlay.Volumes) > 0 {
+		byName := make(map[string]int, len(out.Volumes))
+		for i, v := range out.Volumes {
+			byName[v.Name] = i
+		}
+		for _, v := range overlay.Volumes {
+			if i, ok := byName[v.Name]; ok {
+				out.Volumes[i] = v
+			} else {
+				byName[v.Name] = len(out.Volumes)
+				out.Volumes = append(out.Volumes, v)
+			}
+		}
+	}
+
+	if len(overlay.Mounts) > 0 {
+		out.Mounts = append(out.Mounts, overlay.Mounts...)
+	}
+	if len(overlay.Copy) > 0 {
+		out.Copy = append(out.Copy, overlay.Copy...)
+	}
+	if len(overlay.Env) > 0 {
+		if out.Env == nil {
+			out.Env = maps.Clone(overlay.Env)
+		} else {
+			maps.Copy(out.Env, overlay.Env)
+		}
+	}
+
+	return out
+}
+
+func mergeAnnotations(base, overlay map[string]interface{}) map[string]interface{} {
+	if len(overlay) == 0 {
+		return maps.Clone(base)
+	}
+	if len(base) == 0 {
+		return maps.Clone(overlay)
+	}
+	out := maps.Clone(base)
+	maps.Copy(out, overlay)
+	return out
+}
+
+func mergeConfigs(base, overlay map[string]ConfigFile) map[string]ConfigFile {
+	if len(overlay) == 0 {
+		return cloneConfigs(base)
+	}
+	if len(base) == 0 {
+		return cloneConfigs(overlay)
+	}
+	out := cloneConfigs(base)
+	for k, v := range overlay {
+		out[k] = cloneConfigFile(v)
+	}
+	return out
+}
+
+func copyMixin(m *Mixin) *Mixin {
+	if m == nil {
+		return nil
+	}
+	return &Mixin{
+		Meta:        m.Meta,
+		Extends:     append([]string(nil), m.Extends...),
+		Server:      copyServer(m.Server),
+		State:       copyState(m.State),
+		Annotations: maps.Clone(m.Annotations),
+	}
+}
+
+func copyServer(s *Server) *Server {
+	if s == nil {
+		return nil
+	}
+	return &Server{
+		Software: s.Software,
+		Version:  s.Version,
+		Image:    s.Image,
+		Path:     s.Path,
+		Limits:   environment.CopyLimits(s.Limits),
+		Configs:  cloneConfigs(s.Configs),
+	}
+}
+
+func copyState(s *State) *State {
+	if s == nil {
+		return nil
+	}
+	out := &State{
+		Env: maps.Clone(s.Env),
+	}
+	if len(s.Volumes) > 0 {
+		out.Volumes = append([]Volume(nil), s.Volumes...)
+	}
+	if len(s.Mounts) > 0 {
+		out.Mounts = append([]Mount(nil), s.Mounts...)
+	}
+	if len(s.Copy) > 0 {
+		out.Copy = append([]Copy(nil), s.Copy...)
+	}
+	return out
+}
+
+func cloneConfigs(in map[string]ConfigFile) map[string]ConfigFile {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]ConfigFile, len(in))
+	for k, v := range in {
+		out[k] = cloneConfigFile(v)
+	}
+	return out
+}
+
+func cloneConfigFile(c ConfigFile) ConfigFile {
+	return ConfigFile{
+		Parser: c.Parser,
+		Find:   maps.Clone(c.Find),
+	}
 }

@@ -65,6 +65,30 @@ public class BlueprintRetriever
 }
 ```
 
+**Getting mixins Asynchronously**:
+```java
+public class MixinRetriever
+{
+    public static void main(String[] args)
+    {
+        SLSClient api = SLSBuilder.createClient("https://127.0.0.1", "xyz321");
+
+        PaginationAction<Mixin> action = api.getMixins();
+        action.executeAsync(
+            (mixins) -> {
+                for (Mixin mixin : mixins) {
+                    System.out.println("Mixin: " + mixin.getId() + " - " + mixin.getDescription());
+                }
+            },
+            (error) -> {
+                System.err.println("Failed to retrieve mixins: " + error.getMessage());
+                error.printStackTrace();
+            }
+        );
+    }
+}
+```
+
 **Using WebSocket Event Stream**:
 ```java
 public class EventStreamListener
