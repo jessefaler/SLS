@@ -78,6 +78,9 @@ func run(cmd *cobra.Command, _ []string) {
 	// =========================================================
 	// Initialize blueprint and mixin registries
 	// =========================================================
+	if err := blueprint.SyncConfiguredSources(false); err != nil {
+		log.WithError(err).Fatal("failed to sync blueprint sources")
+	}
 	mixinRegistry := blueprint.NewMixinRegistry()
 	blueprintRegistry := blueprint.NewBlueprintRegistry()
 	loaded, err := blueprint.LoadAll(config.Get().System.Blueprints, softwareRegistry)
