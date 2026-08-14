@@ -241,12 +241,6 @@ func (s *Server) HandleReset() error {
 		lockAcquired = true
 		s.Log().Info("acquired power lock for reset, stopping server...")
 
-		// Server is running, stop it first
-		if err := s.Environment.Stop(s.Context()); err != nil {
-			s.powerLock.Release()
-			return errors.Wrap(err, "failed to stop server instance during reset")
-		}
-
 		// Wait for the server to fully stop before resetting
 		if err := s.Environment.WaitForStop(s.Context(), time.Minute*10, true); err != nil {
 			s.powerLock.Release()
