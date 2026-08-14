@@ -85,6 +85,107 @@ func TestResolveMixinExtendsAndBlueprintIncludes(t *testing.T) {
 	}
 }
 
+func TestResolveAnnotationsDeepMergeVsls(t *testing.T) {
+	raw := &LoadResult{
+		Mixins: []*Mixin{
+			{
+				Meta: MixinMeta{ID: "vsls-base"},
+				Server: &Server{
+					Software: "platform",
+					Version:  "1.0.0",
+					Image:    "java_21",
+				},
+				Annotations: map[string]interface{}{
+					"vsls": map[string]interface{}{
+						"dont-stop-when-empty": true,
+						"max-instances":        4,
+						"on-join": []interface{}{
+							map[string]interface{}{"run": "say from mixin"},
+						},
+					},
+					"maintainer": "mixin",
+				},
+			},
+		},
+		Blueprints: []*Blueprint{
+			{
+				Meta:     Meta{ID: "bp", Name: "BP", Type: "game"},
+				Includes: []string{"vsls-base"},
+				Annotations: map[string]interface{}{
+					"vsls": map[string]interface{}{
+						"max-instances": 1,
+						"matchmaking": map[string]interface{}{
+							"maxPlayers": 8,
+						},
+					},
+					"maintainer": "blueprint",
+				},
+			},
+		},
+	}
+
+	reg := software.NewRegistry()
+	reg.Register(&software.Software{
+		Id:   "platform",
+		Name: "platform",
+		DockerImages: map[string]string{
+			"java_21": "ghcr.io/example/java:21",
+		},
+		StopCommand:  "stop",
+		Invocation:   "java -jar server.jar",
+		OnlineSignal: "Done",
+	})
+	softwareRegistry = reg
+
+	out := Resolve(raw)
+	if len(out.Blueprints) != 1 {
+		t.Fatalf("blueprints: got %d", len(out.Blueprints))
+	}
+	vsls, ok := annotationMap(out.Blueprints[0].Annotations["vsls"])
+	if !ok {
+		t.Fatalf("expected merged vsls map, got %#v", out.Blueprints[0].Annotations["vsls"])
+	}
+	if vsls["dont-stop-when-empty"] != true {
+		t.Fatalf("mixin vsls.dont-stop-when-empty dropped: %#v", vsls)
+	}
+	if vsls["max-instances"] != 1 {
+		t.Fatalf("blueprint vsls.max-instances should win: %#v", vsls["max-instances"])
+	}
+	mm, ok := annotationMap(vsls["matchmaking"])
+	if !ok || mm["maxPlayers"] != 8 {
+		t.Fatalf("blueprint vsls.matchmaking not merged: %#v", vsls["matchmaking"])
+	}
+	onJoin, ok := vsls["on-join"].([]interface{})
+	if !ok || len(onJoin) != 1 {
+		t.Fatalf("mixin vsls.on-join dropped: %#v", vsls["on-join"])
+	}
+	if out.Blueprints[0].Annotations["maintainer"] != "blueprint" {
+		t.Fatalf("scalar annotation should be replaced: %#v", out.Blueprints[0].Annotations["maintainer"])
+	}
+}
+
+func TestMergeAnnotationsNestedDoesNotMutateInputs(t *testing.T) {
+	base := map[string]interface{}{
+		"vsls": map[string]interface{}{"max-instances": 4},
+	}
+	overlay := map[string]interface{}{
+		"vsls": map[string]interface{}{"dont-stop-when-empty": true},
+	}
+	got := mergeAnnotations(base, overlay)
+	vsls, ok := annotationMap(got["vsls"])
+	if !ok || vsls["max-instances"] != 4 || vsls["dont-stop-when-empty"] != true {
+		t.Fatalf("merge: %#v", got)
+	}
+	baseVsls := base["vsls"].(map[string]interface{})
+	if _, exists := baseVsls["dont-stop-when-empty"]; exists {
+		t.Fatalf("merge mutated base: %#v", base)
+	}
+	overlayVsls := overlay["vsls"].(map[string]interface{})
+	if _, exists := overlayVsls["max-instances"]; exists {
+		t.Fatalf("merge mutated overlay: %#v", overlay)
+	}
+}
+
 func TestResolveMixinCycle(t *testing.T) {
 	raw := &LoadResult{
 		Mixins: []*Mixin{

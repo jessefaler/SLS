@@ -37,7 +37,7 @@ func mergeMixinOverlay(base, overlay *Mixin) *Mixin {
 		return &Mixin{
 			Server:      copyServer(overlay.Server),
 			State:       copyState(overlay.State),
-			Annotations: maps.Clone(overlay.Annotations),
+			Annotations: cloneAnnotations(overlay.Annotations),
 		}
 	}
 	return &Mixin{
@@ -115,16 +115,76 @@ func mergeStates(base, overlay *State) *State {
 	return out
 }
 
+// mergeAnnotations deep-merges annotation maps. Nested maps are merged
+// recursively; overlay wins on scalars, lists, and type mismatches.
+// This keeps mixin annotations.vsls keys when a blueprint only sets some of them.
 func mergeAnnotations(base, overlay map[string]interface{}) map[string]interface{} {
 	if len(overlay) == 0 {
-		return maps.Clone(base)
+		return cloneAnnotations(base)
 	}
 	if len(base) == 0 {
-		return maps.Clone(overlay)
+		return cloneAnnotations(overlay)
 	}
-	out := maps.Clone(base)
-	maps.Copy(out, overlay)
+	out := cloneAnnotations(base)
+	for k, ov := range overlay {
+		bv, ok := out[k]
+		if !ok {
+			out[k] = cloneAnnotationValue(ov)
+			continue
+		}
+		baseMap, baseIsMap := annotationMap(bv)
+		overMap, overIsMap := annotationMap(ov)
+		if baseIsMap && overIsMap {
+			out[k] = mergeAnnotations(baseMap, overMap)
+			continue
+		}
+		out[k] = cloneAnnotationValue(ov)
+	}
 	return out
+}
+
+func cloneAnnotations(in map[string]interface{}) map[string]interface{} {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]interface{}, len(in))
+	for k, v := range in {
+		out[k] = cloneAnnotationValue(v)
+	}
+	return out
+}
+
+func cloneAnnotationValue(v interface{}) interface{} {
+	if m, ok := annotationMap(v); ok {
+		return cloneAnnotations(m)
+	}
+	if s, ok := v.([]interface{}); ok {
+		out := make([]interface{}, len(s))
+		for i, item := range s {
+			out[i] = cloneAnnotationValue(item)
+		}
+		return out
+	}
+	return v
+}
+
+func annotationMap(v interface{}) (map[string]interface{}, bool) {
+	switch m := v.(type) {
+	case map[string]interface{}:
+		return m, true
+	case map[interface{}]interface{}:
+		out := make(map[string]interface{}, len(m))
+		for k, val := range m {
+			ks, ok := k.(string)
+			if !ok {
+				return nil, false
+			}
+			out[ks] = val
+		}
+		return out, true
+	default:
+		return nil, false
+	}
 }
 
 func mergeConfigs(base, overlay map[string]ConfigFile) map[string]ConfigFile {
@@ -150,7 +210,7 @@ func copyMixin(m *Mixin) *Mixin {
 		Extends:     append([]string(nil), m.Extends...),
 		Server:      copyServer(m.Server),
 		State:       copyState(m.State),
-		Annotations: maps.Clone(m.Annotations),
+		Annotations: cloneAnnotations(m.Annotations),
 	}
 }
 
