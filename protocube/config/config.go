@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/apex/log"
@@ -278,10 +279,23 @@ Location: %s[reset]
 	os.Exit(1)
 }
 
-// GetTLSConfig Configures the TSL config and certificates for
-// the api server
-func GetTLSConfig() *tls.Config {
-	return &tls.Config{
-		MinVersion: tls.VersionTLS13,
+// GetTLSConfig builds the TLS config for the API server from the certificate
+// and key paths in the current configuration.
+func GetTLSConfig() (*tls.Config, error) {
+	cfg := Get()
+	return loadTLSConfig(cfg.Api.Tls.CertificateFile, cfg.Api.Tls.KeyFile)
+}
+
+func loadTLSConfig(certFile, keyFile string) (*tls.Config, error) {
+	if strings.TrimSpace(certFile) == "" || strings.TrimSpace(keyFile) == "" {
+		return nil, fmt.Errorf("tls: certificate and key file paths must be set when TLS is enabled")
 	}
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("tls: failed to load certificate %q and key %q: %w", certFile, keyFile, err)
+	}
+	return &tls.Config{
+		MinVersion:   tls.VersionTLS13,
+		Certificates: []tls.Certificate{cert},
+	}, nil
 }

@@ -44,7 +44,10 @@ func (api *Api) Run() {
 
 	// Wrap listener in TLS if enabled
 	if cfg.Tls.Enabled {
-		tlsCfg := config.GetTLSConfig()
+		tlsCfg, err := config.GetTLSConfig()
+		if err != nil {
+			log.WithField("error", err).Fatal("Failed to load TLS configuration")
+		}
 		lis = tls.NewListener(lis, tlsCfg)
 	}
 	// Set the api listener
