@@ -60,6 +60,5 @@ type CompressedChunk struct {
 }
 
 func NewManifest(chunking fastcdc.Options, chunks []CompressedChunk) Manifest {
-
-	return ManifestFromMeta(chunking, meta)
+	return Manifest{}
 }
